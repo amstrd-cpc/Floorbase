@@ -65,7 +65,13 @@ npm run db:generate
 npm run db:migrate -- --name init
 ```
 
-### 5) Start development server
+### 5) Seed baseline configuration (optional, but recommended)
+
+```bash
+npm run db:seed
+```
+
+### 6) Start development server
 
 ```bash
 npm run dev
@@ -86,6 +92,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `npm run db:migrate` - Run development migrations
 - `npm run db:deploy` - Apply migrations in deploy environments
 - `npm run db:studio` - Open Prisma Studio
+- `npm run db:seed` - Seed default reservation statuses for existing organizations
 
 ## Notes
 

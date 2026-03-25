@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  HOST
+  STAFF
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  ASSIGN_TABLE
+  NOTE_ADDED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  INTERNAL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Organization {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  venues         Venue[]
+  guests         Guest[]
+  reservations   Reservation[]
+  memberships    Membership[]
+  auditLogs      AuditLog[]
+  users          User[]          @relation("OrganizationUsers")
+  notifications  NotificationLog[]
+}
+
+model Venue {
+  id            String          @id @default(cuid())
+  organizationId String
+  name          String
+  slug          String
+  timezone      String          @default("UTC")
+  currency      String          @default("USD")
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  areas         Area[]
+  reservations  Reservation[]
+  businessHours BusinessHours[]
+  blackoutRules BlackoutRule[]
+  tables        Table[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model Area {
+  id         String    @id @default(cuid())
+  venueId     String
+  name       String
+  sortOrder  Int       @default(0)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  venue      Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables     Table[]
+
+  @@unique([venueId, name])
+  @@index([venueId])
+}
+
+model Table {
+  id           String             @id @default(cuid())
+  venueId      String
+  areaId       String
+  name         String
+  code         String?
+  capacityMin  Int?
+  capacityMax  Int
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  venue        Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  area         Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  reservations ReservationTable[]
+
+  @@unique([venueId, name])
+  @@unique([venueId, code])
+  @@index([venueId])
+  @@index([areaId])
+}
+
+model Guest {
+  id              String         @id @default(cuid())
+  organizationId  String
+  firstName       String?
+  lastName        String?
+  fullName        String?
+  email           String?
+  phone           String?
+  notes           String?
+  tags            Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservations    Reservation[]
+  notifications   NotificationLog[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([phone])
+}
+
+model ReservationStatus {
+  id            String         @id @default(cuid())
+  organizationId String
+  code          String
+  label         String
+  color         String?
+  isDefault     Boolean        @default(false)
+  sortOrder     Int            @default(0)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservations  Reservation[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model Reservation {
+  id                String             @id @default(cuid())
+  organizationId    String
+  venueId           String
+  guestId           String
+  reservationStatusId String
+  reservationDate   DateTime
+  startAt           DateTime
+  endAt             DateTime
+  partySize         Int
+  source            String?
+  internalNotes     String?
+  specialRequests   String?
+  depositRequired   Boolean            @default(false)
+  createdByUserId   String?
+  updatedByUserId   String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest             Guest              @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  status            ReservationStatus  @relation(fields: [reservationStatusId], references: [id], onDelete: Restrict)
+  createdByUser     User?              @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser     User?              @relation("UpdatedByUser", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  reservationTables ReservationTable[]
+  deposit           Deposit?
+  notifications     NotificationLog[]
+
+  @@index([organizationId])
+  @@index([venueId, reservationDate])
+  @@index([guestId])
+  @@index([reservationStatusId])
+  @@index([startAt, endAt])
+}
+
+model ReservationTable {
+  id             String       @id @default(cuid())
+  reservationId  String
+  tableId        String
+  createdAt      DateTime     @default(now())
+
+  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  table          Table        @relation(fields: [tableId], references: [id], onDelete: Restrict)
+
+  @@unique([reservationId, tableId])
+  @@index([tableId])
+}
+
+model Deposit {
+  id              String       @id @default(cuid())
+  reservationId   String       @unique
+  amountMinor     Int
+  currency        String       @default("USD")
+  status          String
+  paidAt          DateTime?
+  provider        String?
+  providerRef     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  reservation     Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model User {
+  id                 String          @id @default(cuid())
+  organizationId     String?
+  email              String          @unique
+  firstName          String?
+  lastName           String?
+  isActive           Boolean         @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  organization       Organization?   @relation("OrganizationUsers", fields: [organizationId], references: [id], onDelete: SetNull)
+  memberships        Membership[]
+  createdReservations Reservation[]  @relation("CreatedByUser")
+  updatedReservations Reservation[]  @relation("UpdatedByUser")
+  auditLogs          AuditLog[]      @relation("AuditActor")
+
+  @@index([organizationId])
+}
+
+model Membership {
+  id              String          @id @default(cuid())
+  organizationId  String
+  userId          String
+  role            MembershipRole
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, role])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id              String          @id @default(cuid())
+  organizationId  String
+  venueId         String?
+  actorUserId     String?
+  entityType      String
+  entityId        String
+  action          AuditAction
+  changes         Json?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser       User?           @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([venueId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model BusinessHours {
+  id           String      @id @default(cuid())
+  venueId      String
+  dayOfWeek    Int
+  openTime     String
+  closeTime    String
+  isClosed     Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  venue        Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, dayOfWeek])
+  @@index([venueId])
+}
+
+model BlackoutRule {
+  id             String      @id @default(cuid())
+  venueId        String
+  name           String
+  startsAt       DateTime
+  endsAt         DateTime
+  isFullDay      Boolean     @default(false)
+  reason         String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  venue          Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+  @@index([startsAt, endsAt])
+}
+
+model NotificationLog {
+  id               String              @id @default(cuid())
+  organizationId   String
+  reservationId    String?
+  guestId          String?
+  channel          NotificationChannel
+  templateKey      String?
+  recipient        String
+  status           NotificationStatus  @default(QUEUED)
+  provider         String?
+  providerRef      String?
+  errorMessage     String?
+  sentAt           DateTime?
+  createdAt        DateTime            @default(now())
+
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservation      Reservation?        @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  guest            Guest?              @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([reservationId])
+  @@index([guestId])
+  @@index([status])
+  @@index([createdAt])
+}

@@ -14,7 +14,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force",
+    "db:reseed": "prisma migrate reset --force --skip-generate"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

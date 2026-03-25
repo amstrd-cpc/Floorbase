@@ -15,6 +15,13 @@ enum MembershipRole {
   STAFF
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ORGANIZATION_ADMIN
+  VENUE_MANAGER
+  HOST
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -52,6 +59,8 @@ model Organization {
   auditLogs      AuditLog[]
   users          User[]          @relation("OrganizationUsers")
   notifications  NotificationLog[]
+  adminRoles     AdminRoleAssignment[]
+  authInvites    AuthInvite[]
 }
 
 model Venue {
@@ -71,6 +80,8 @@ model Venue {
   businessHours BusinessHours[]
   blackoutRules BlackoutRule[]
   tables        Table[]
+  adminRoles    AdminRoleAssignment[]
+  authInvites   AuthInvite[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -229,6 +240,7 @@ model User {
   lastName           String?
   isActive           Boolean         @default(true)
   lastLoginAt        DateTime?
+  passwordHash       String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -237,6 +249,9 @@ model User {
   createdReservations Reservation[]  @relation("CreatedByUser")
   updatedReservations Reservation[]  @relation("UpdatedByUser")
   auditLogs          AuditLog[]      @relation("AuditActor")
+  adminRoles         AdminRoleAssignment[]
+  authSessions       AuthSession[]
+  sentInvites        AuthInvite[]    @relation("AuthInviteSender")
 
   @@index([organizationId])
 }
@@ -310,6 +325,60 @@ model BlackoutRule {
 
   @@index([venueId])
   @@index([startsAt, endsAt])
+}
+
+
+model AdminRoleAssignment {
+  id              String      @id @default(cuid())
+  userId          String
+  role            AdminRole
+  organizationId  String?
+  venueId         String?
+  isActive        Boolean     @default(true)
+  scopeKey        String      @unique
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([userId, role])
+  @@index([organizationId])
+  @@index([venueId])
+}
+
+model AuthInvite {
+  id              String      @id @default(cuid())
+  email           String
+  tokenHash       String      @unique
+  role            AdminRole
+  organizationId  String?
+  venueId         String?
+  invitedByUserId String?
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime    @default(now())
+
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  invitedByUser   User?       @relation("AuthInviteSender", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model AuthSession {
+  id              String      @id @default(cuid())
+  userId          String
+  tokenHash       String      @unique
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model NotificationLog {

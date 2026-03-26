@@ -1,6 +1,12 @@
 import { Prisma, type ReservationStatus } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
 import {
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES,
+  computeReservationWindow,
+  validateSlotAligned
+} from './availability';
+import {
   type CancelReservationInput,
   type ChangeReservationStatusInput,
   type CreateReservationInput,
@@ -177,6 +183,84 @@ async function assertTableAssignments(
   }
 }
 
+function assertDurationAndSlot(input: {
+  startAt: Date;
+  endAt: Date;
+  durationMinutes: number;
+}) {
+  if (
+    input.durationMinutes < MIN_RESERVATION_DURATION_MINUTES ||
+    input.durationMinutes > MAX_RESERVATION_DURATION_MINUTES
+  ) {
+    throw new ReservationValidationError(
+      `Reservation duration must be between ${MIN_RESERVATION_DURATION_MINUTES} and ${MAX_RESERVATION_DURATION_MINUTES} minutes.`
+    );
+  }
+
+  if (
+    !validateSlotAligned(input.startAt) ||
+    !validateSlotAligned(input.endAt)
+  ) {
+    throw new ReservationValidationError(
+      'startAt and endAt must align to 15-minute reservation slots.'
+    );
+  }
+}
+
+async function assertNoTableConflicts(
+  tx: Prisma.TransactionClient,
+  input: {
+    organizationId: string;
+    venueId: string;
+    reservationIdToExclude?: string;
+    tableIds: string[];
+    startAt: Date;
+    endAt: Date;
+  }
+) {
+  const overlaps = await tx.reservationTable.findMany({
+    where: {
+      tableId: { in: input.tableIds },
+      reservation: {
+        organizationId: input.organizationId,
+        venueId: input.venueId,
+        ...(input.reservationIdToExclude
+          ? { id: { not: input.reservationIdToExclude } }
+          : {}),
+        status: {
+          code: { not: 'CANCELED' }
+        },
+        startAt: { lt: input.endAt },
+        endAt: { gt: input.startAt }
+      }
+    },
+    select: {
+      tableId: true,
+      reservation: {
+        select: {
+          id: true,
+          startAt: true,
+          endAt: true
+        }
+      }
+    },
+    take: 1
+  });
+
+  if (overlaps.length > 0) {
+    const overlap = overlaps[0];
+    throw new ReservationValidationError(
+      'One or more assigned tables are unavailable for the selected time window.',
+      {
+        tableId: overlap.tableId,
+        conflictingReservationId: overlap.reservation.id,
+        conflictingStartAt: overlap.reservation.startAt.toISOString(),
+        conflictingEndAt: overlap.reservation.endAt.toISOString()
+      }
+    );
+  }
+}
+
 async function createOrUpdateGuest(
   tx: Prisma.TransactionClient,
   input: {
@@ -311,6 +395,13 @@ export async function createReservation(input: {
     }
 
     return await prisma.$transaction(async (tx) => {
+      const reservationWindow = computeReservationWindow({
+        startAt: parsed.data.startAt,
+        endAt: parsed.data.endAt,
+        durationMinutes: parsed.data.durationMinutes
+      });
+      assertDurationAndSlot(reservationWindow);
+
       await assertVenue(tx, {
         venueId: parsed.data.venueId,
         organizationId: input.organizationId
@@ -319,6 +410,13 @@ export async function createReservation(input: {
         venueId: parsed.data.venueId,
         tableIds: parsed.data.tableIds,
         partySize: parsed.data.partySize
+      });
+      await assertNoTableConflicts(tx, {
+        organizationId: input.organizationId,
+        venueId: parsed.data.venueId,
+        tableIds: parsed.data.tableIds,
+        startAt: reservationWindow.startAt,
+        endAt: reservationWindow.endAt
       });
 
       const status = parsed.data.reservationStatusId
@@ -340,8 +438,8 @@ export async function createReservation(input: {
           guestId: guest.id,
           reservationStatusId: status.id,
           reservationDate: parsed.data.reservationDate,
-          startAt: parsed.data.startAt,
-          endAt: parsed.data.endAt,
+          startAt: reservationWindow.startAt,
+          endAt: reservationWindow.endAt,
           partySize: parsed.data.partySize,
           source: parsed.data.source,
           internalNotes: parsed.data.internalNotes,
@@ -372,8 +470,9 @@ export async function createReservation(input: {
         action: 'CREATE',
         changes: toJsonValue({
           partySize: parsed.data.partySize,
-          startAt: parsed.data.startAt.toISOString(),
-          endAt: parsed.data.endAt.toISOString(),
+          startAt: reservationWindow.startAt.toISOString(),
+          endAt: reservationWindow.endAt.toISOString(),
+          durationMinutes: reservationWindow.durationMinutes,
           reservationStatusId: status.id,
           tableIds: parsed.data.tableIds
         })
@@ -482,16 +581,29 @@ export async function updateReservation(input: {
       );
 
     const nextStartAt = parsed.data.startAt ?? current.startAt;
-    const nextEndAt = parsed.data.endAt ?? current.endAt;
+    const reservationWindow = computeReservationWindow({
+      startAt: nextStartAt,
+      endAt: parsed.data.endAt ?? current.endAt,
+      durationMinutes: parsed.data.durationMinutes
+    });
 
-    if (nextEndAt <= nextStartAt) {
+    if (reservationWindow.endAt <= reservationWindow.startAt) {
       throw new ReservationValidationError('endAt must be after startAt.', {
         endAt: 'must be later than startAt'
       });
     }
+    assertDurationAndSlot(reservationWindow);
 
     await assertVenue(tx, { venueId, organizationId: input.organizationId });
     await assertTableAssignments(tx, { venueId, tableIds, partySize });
+    await assertNoTableConflicts(tx, {
+      organizationId: input.organizationId,
+      venueId,
+      reservationIdToExclude: current.id,
+      tableIds,
+      startAt: reservationWindow.startAt,
+      endAt: reservationWindow.endAt
+    });
 
     if (parsed.data.reservationStatusId) {
       await assertStatus(tx, {
@@ -543,9 +655,10 @@ export async function updateReservation(input: {
         reservationStatusId:
           parsed.data.reservationStatusId ?? current.reservationStatusId,
         reservationDate:
-          parsed.data.reservationDate ?? inferReservationDate(nextStartAt),
-        startAt: nextStartAt,
-        endAt: nextEndAt,
+          parsed.data.reservationDate ??
+          inferReservationDate(reservationWindow.startAt),
+        startAt: reservationWindow.startAt,
+        endAt: reservationWindow.endAt,
         partySize,
         source: parsed.data.source ?? current.source,
         internalNotes: parsed.data.internalNotes ?? current.internalNotes,

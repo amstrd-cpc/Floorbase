@@ -31,45 +31,48 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl items-center p-6">
       <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Internal Admin Login</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Invite-only access. Public signup is disabled.</p>
+        <h1 className="text-2xl font-semibold">Internal Admin Sign In</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Invite-only access for hosts, managers, and admins.
+        </p>
 
-        {error ? <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+        {error ? <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 
         {inviteToken ? (
           <form action="/api/auth/invite/accept" method="post" className="mt-6 space-y-3">
             <input type="hidden" name="token" value={inviteToken} />
             <h2 className="text-sm font-medium">Accept invite and set password</h2>
-            <input name="firstName" placeholder="First name" className="w-full rounded border p-2 text-sm" />
-            <input name="lastName" placeholder="Last name" className="w-full rounded border p-2 text-sm" />
-            <input
+            <label className="block text-sm">First name<input required name="firstName" placeholder="First name" className="mt-1 w-full rounded border p-2 text-sm" /></label>
+            <label className="block text-sm">Last name<input required name="lastName" placeholder="Last name" className="mt-1 w-full rounded border p-2 text-sm" /></label>
+            <label className="block text-sm">Password<input
               name="password"
               type="password"
               minLength={8}
               required
               placeholder="Create password"
-              className="w-full rounded border p-2 text-sm"
-            />
+              className="mt-1 w-full rounded border p-2 text-sm"
+            /></label>
             <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
               Accept Invite
             </button>
           </form>
         ) : (
           <form action="/api/auth/login" method="post" className="mt-6 space-y-3">
-            <input
+            <label className="block text-sm">Work email<input
               name="email"
               type="email"
               required
               placeholder="work-email@company.com"
-              className="w-full rounded border p-2 text-sm"
-            />
-            <input
+              className="mt-1 w-full rounded border p-2 text-sm"
+            /></label>
+            <label className="block text-sm">Password<input
               name="password"
               type="password"
               required
+              minLength={8}
               placeholder="Password"
-              className="w-full rounded border p-2 text-sm"
-            />
+              className="mt-1 w-full rounded border p-2 text-sm"
+            /></label>
             <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
               Sign in
             </button>

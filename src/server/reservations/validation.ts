@@ -1,3 +1,4 @@
+import { DepositStatus, ReservationSource } from '@prisma/client';
 import { z } from 'zod';
 
 const optionalTrimmedString = z
@@ -24,7 +25,7 @@ const depositSchema = z
       .trim()
       .length(3)
       .transform((value) => value.toUpperCase()),
-    status: z.string().trim().min(1).max(64),
+    status: z.nativeEnum(DepositStatus),
     paidAt: z.coerce.date().nullable().optional(),
     provider: optionalTrimmedString,
     providerRef: optionalTrimmedString
@@ -52,13 +53,7 @@ const baseMutationSchema = z
     tableIds: tableIdsSchema,
     internalNotes: optionalTrimmedString,
     specialRequests: optionalTrimmedString,
-    source: z
-      .string()
-      .trim()
-      .max(120)
-      .transform((value) => (value.length === 0 ? null : value))
-      .nullable()
-      .optional(),
+    source: z.nativeEnum(ReservationSource).nullable().optional(),
     depositRequired: z.boolean().optional(),
     deposit: depositSchema.nullable().optional()
   })

@@ -1,3 +1,4 @@
+import { AdminRole } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { getCurrentSession } from './session';
 
@@ -14,7 +15,8 @@ function roleMatchesScope(
     return true;
   }
 
-  const organizationMatches = !scope.organizationId || assignment.organizationId === scope.organizationId;
+  const organizationMatches =
+    !scope.organizationId || assignment.organizationId === scope.organizationId;
   const venueMatches = !scope.venueId || assignment.venueId === scope.venueId;
 
   return organizationMatches && venueMatches;
@@ -31,7 +33,7 @@ export async function requireAuthenticatedUser() {
 }
 
 export async function requireRole(
-  requiredRoles: ReadonlyArray<'SUPER_ADMIN' | 'ORGANIZATION_ADMIN' | 'VENUE_MANAGER' | 'HOST'>,
+  requiredRoles: ReadonlyArray<AdminRole>,
   scope?: RoleScope
 ) {
   const user = await requireAuthenticatedUser();
@@ -41,7 +43,7 @@ export async function requireRole(
       return false;
     }
 
-    if (assignment.role === 'SUPER_ADMIN') {
+    if (assignment.role === AdminRole.SUPER_ADMIN) {
       return true;
     }
 

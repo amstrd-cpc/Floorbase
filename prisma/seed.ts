@@ -1,21 +1,65 @@
 import { scrypt as scryptCallback, randomBytes } from 'crypto';
 import { promisify } from 'util';
-import { PrismaClient } from '@prisma/client';
+import { AdminRole, PrismaClient, ReservationSource } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const scrypt = promisify(scryptCallback);
 
 const DEFAULT_STATUSES = [
-  { code: 'PENDING', label: 'Pending', sortOrder: 10, isDefault: true, color: '#f59e0b' },
-  { code: 'CONFIRMED', label: 'Confirmed', sortOrder: 20, isDefault: false, color: '#16a34a' },
-  { code: 'SEATED', label: 'Seated', sortOrder: 30, isDefault: false, color: '#2563eb' },
-  { code: 'COMPLETED', label: 'Completed', sortOrder: 40, isDefault: false, color: '#6b7280' },
-  { code: 'NO_SHOW', label: 'No Show', sortOrder: 50, isDefault: false, color: '#dc2626' },
-  { code: 'CANCELED', label: 'Canceled', sortOrder: 60, isDefault: false, color: '#7c3aed' }
+  {
+    code: 'PENDING',
+    label: 'Pending',
+    sortOrder: 10,
+    isDefault: true,
+    color: '#f59e0b'
+  },
+  {
+    code: 'CONFIRMED',
+    label: 'Confirmed',
+    sortOrder: 20,
+    isDefault: false,
+    color: '#16a34a'
+  },
+  {
+    code: 'SEATED',
+    label: 'Seated',
+    sortOrder: 30,
+    isDefault: false,
+    color: '#2563eb'
+  },
+  {
+    code: 'COMPLETED',
+    label: 'Completed',
+    sortOrder: 40,
+    isDefault: false,
+    color: '#6b7280'
+  },
+  {
+    code: 'NO_SHOW',
+    label: 'No Show',
+    sortOrder: 50,
+    isDefault: false,
+    color: '#dc2626'
+  },
+  {
+    code: 'CANCELED',
+    label: 'Canceled',
+    sortOrder: 60,
+    isDefault: false,
+    color: '#7c3aed'
+  }
 ] as const;
 
-const ORGANIZATION = { name: 'Northfork Hospitality Group', slug: 'northfork-hospitality' } as const;
-const VENUE = { name: 'Harbor House', slug: 'harbor-house', timezone: 'America/New_York', currency: 'USD' } as const;
+const ORGANIZATION = {
+  name: 'Northfork Hospitality Group',
+  slug: 'northfork-hospitality'
+} as const;
+const VENUE = {
+  name: 'Harbor House',
+  slug: 'harbor-house',
+  timezone: 'America/New_York',
+  currency: 'USD'
+} as const;
 
 const AREAS = [
   { name: 'Main Dining Room', sortOrder: 10 },
@@ -24,15 +68,69 @@ const AREAS = [
 ] as const;
 
 const TABLES = [
-  { areaName: 'Main Dining Room', name: 'Table 11', code: 'M11', capacityMin: 2, capacityMax: 2 },
-  { areaName: 'Main Dining Room', name: 'Table 12', code: 'M12', capacityMin: 2, capacityMax: 2 },
-  { areaName: 'Main Dining Room', name: 'Table 21', code: 'M21', capacityMin: 2, capacityMax: 4 },
-  { areaName: 'Main Dining Room', name: 'Table 22', code: 'M22', capacityMin: 2, capacityMax: 4 },
-  { areaName: 'Main Dining Room', name: 'Table 31', code: 'M31', capacityMin: 4, capacityMax: 6 },
-  { areaName: 'Patio', name: 'Patio 1', code: 'P1', capacityMin: 2, capacityMax: 2 },
-  { areaName: 'Patio', name: 'Patio 2', code: 'P2', capacityMin: 2, capacityMax: 4 },
-  { areaName: 'Patio', name: 'Patio 3', code: 'P3', capacityMin: 4, capacityMax: 4 },
-  { areaName: 'Bar', name: 'Bar 1', code: 'B1', capacityMin: 1, capacityMax: 2 },
+  {
+    areaName: 'Main Dining Room',
+    name: 'Table 11',
+    code: 'M11',
+    capacityMin: 2,
+    capacityMax: 2
+  },
+  {
+    areaName: 'Main Dining Room',
+    name: 'Table 12',
+    code: 'M12',
+    capacityMin: 2,
+    capacityMax: 2
+  },
+  {
+    areaName: 'Main Dining Room',
+    name: 'Table 21',
+    code: 'M21',
+    capacityMin: 2,
+    capacityMax: 4
+  },
+  {
+    areaName: 'Main Dining Room',
+    name: 'Table 22',
+    code: 'M22',
+    capacityMin: 2,
+    capacityMax: 4
+  },
+  {
+    areaName: 'Main Dining Room',
+    name: 'Table 31',
+    code: 'M31',
+    capacityMin: 4,
+    capacityMax: 6
+  },
+  {
+    areaName: 'Patio',
+    name: 'Patio 1',
+    code: 'P1',
+    capacityMin: 2,
+    capacityMax: 2
+  },
+  {
+    areaName: 'Patio',
+    name: 'Patio 2',
+    code: 'P2',
+    capacityMin: 2,
+    capacityMax: 4
+  },
+  {
+    areaName: 'Patio',
+    name: 'Patio 3',
+    code: 'P3',
+    capacityMin: 4,
+    capacityMax: 4
+  },
+  {
+    areaName: 'Bar',
+    name: 'Bar 1',
+    code: 'B1',
+    capacityMin: 1,
+    capacityMax: 2
+  },
   { areaName: 'Bar', name: 'Bar 2', code: 'B2', capacityMin: 1, capacityMax: 2 }
 ] as const;
 
@@ -41,31 +139,27 @@ const STAFF_USERS = [
     email: 'owner@harborhouse.dev',
     firstName: 'Morgan',
     lastName: 'Lee',
-    membershipRole: 'OWNER' as const,
-    adminRole: 'ORGANIZATION_ADMIN' as const
+    adminRole: AdminRole.ORGANIZATION_ADMIN
   },
   {
     email: 'manager@harborhouse.dev',
     firstName: 'Avery',
     lastName: 'Patel',
-    membershipRole: 'MANAGER' as const,
-    adminRole: 'VENUE_MANAGER' as const
+    adminRole: AdminRole.VENUE_MANAGER
   },
   {
     email: 'host@harborhouse.dev',
     firstName: 'Jordan',
     lastName: 'Kim',
-    membershipRole: 'HOST' as const,
-    adminRole: 'HOST' as const
+    adminRole: AdminRole.HOST
   }
 ] as const;
-
 
 const SUPER_ADMIN_USER = {
   email: 'platform-admin@floorbase.dev',
   firstName: 'Casey',
   lastName: 'Rowe',
-  adminRole: 'SUPER_ADMIN' as const
+  adminRole: AdminRole.SUPER_ADMIN
 };
 
 const GUESTS = [
@@ -125,7 +219,7 @@ function atTime(base: Date, hour: number, minute = 0) {
 
 async function hashSeedPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
-  const derivedKey = (await scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 })) as Buffer;
+  const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
   return `scrypt$16384$8$1$${salt}$${derivedKey.toString('hex')}`;
 }
 
@@ -140,8 +234,19 @@ async function seedOrganization() {
 async function seedVenue(organizationId: string) {
   return prisma.venue.upsert({
     where: { organizationId_slug: { organizationId, slug: VENUE.slug } },
-    update: { name: VENUE.name, timezone: VENUE.timezone, currency: VENUE.currency, isActive: true },
-    create: { organizationId, name: VENUE.name, slug: VENUE.slug, timezone: VENUE.timezone, currency: VENUE.currency }
+    update: {
+      name: VENUE.name,
+      timezone: VENUE.timezone,
+      currency: VENUE.currency,
+      isActive: true
+    },
+    create: {
+      organizationId,
+      name: VENUE.name,
+      slug: VENUE.slug,
+      timezone: VENUE.timezone,
+      currency: VENUE.currency
+    }
   });
 }
 
@@ -149,12 +254,27 @@ async function seedReservationStatuses(organizationId: string) {
   for (const status of DEFAULT_STATUSES) {
     await prisma.reservationStatus.upsert({
       where: { organizationId_code: { organizationId, code: status.code } },
-      update: { label: status.label, color: status.color, sortOrder: status.sortOrder, isDefault: status.isDefault, isActive: true },
-      create: { organizationId, code: status.code, label: status.label, color: status.color, sortOrder: status.sortOrder, isDefault: status.isDefault }
+      update: {
+        label: status.label,
+        color: status.color,
+        sortOrder: status.sortOrder,
+        isDefault: status.isDefault,
+        isActive: true
+      },
+      create: {
+        organizationId,
+        code: status.code,
+        label: status.label,
+        color: status.color,
+        sortOrder: status.sortOrder,
+        isDefault: status.isDefault
+      }
     });
   }
 
-  const statuses = await prisma.reservationStatus.findMany({ where: { organizationId, isActive: true } });
+  const statuses = await prisma.reservationStatus.findMany({
+    where: { organizationId, isActive: true }
+  });
   return Object.fromEntries(statuses.map((status) => [status.code, status]));
 }
 
@@ -173,7 +293,8 @@ async function seedAreasAndTables(venueId: string) {
 
   for (const table of TABLES) {
     const areaId = areaByName.get(table.areaName);
-    if (!areaId) throw new Error(`Area not found for table seed: ${table.name}`);
+    if (!areaId)
+      throw new Error(`Area not found for table seed: ${table.name}`);
 
     await prisma.table.upsert({
       where: { venueId_name: { venueId, name: table.name } },
@@ -200,15 +321,26 @@ async function seedBusinessHours(venueId: string) {
   for (const row of BUSINESS_HOURS) {
     await prisma.businessHours.upsert({
       where: { venueId_dayOfWeek: { venueId, dayOfWeek: row.dayOfWeek } },
-      update: { openTime: row.openTime, closeTime: row.closeTime, isClosed: row.isClosed },
-      create: { venueId, dayOfWeek: row.dayOfWeek, openTime: row.openTime, closeTime: row.closeTime, isClosed: row.isClosed }
+      update: {
+        openTime: row.openTime,
+        closeTime: row.closeTime,
+        isClosed: row.isClosed
+      },
+      create: {
+        venueId,
+        dayOfWeek: row.dayOfWeek,
+        openTime: row.openTime,
+        closeTime: row.closeTime,
+        isClosed: row.isClosed
+      }
     });
   }
 }
 
-
 async function seedSuperAdminUser() {
-  const seedPasswordHash = await hashSeedPassword(process.env.SEED_DEFAULT_PASSWORD ?? 'DevPassword123!');
+  const seedPasswordHash = await hashSeedPassword(
+    process.env.SEED_DEFAULT_PASSWORD ?? 'DevPassword123!'
+  );
 
   const superAdmin = await prisma.user.upsert({
     where: { email: SUPER_ADMIN_USER.email },
@@ -235,7 +367,7 @@ async function seedSuperAdminUser() {
     update: { isActive: true },
     create: {
       userId: superAdmin.id,
-      role: 'SUPER_ADMIN',
+      role: AdminRole.SUPER_ADMIN,
       organizationId: null,
       venueId: null,
       scopeKey,
@@ -244,9 +376,14 @@ async function seedSuperAdminUser() {
   });
 }
 
-async function seedStaffUsers(input: { organizationId: string; venueId: string }) {
+async function seedStaffUsers(input: {
+  organizationId: string;
+  venueId: string;
+}) {
   const usersByEmail = new Map<string, string>();
-  const seedPasswordHash = await hashSeedPassword(process.env.SEED_DEFAULT_PASSWORD ?? 'DevPassword123!');
+  const seedPasswordHash = await hashSeedPassword(
+    process.env.SEED_DEFAULT_PASSWORD ?? 'DevPassword123!'
+  );
 
   for (const user of STAFF_USERS) {
     const createdUser = await prisma.user.upsert({
@@ -269,24 +406,10 @@ async function seedStaffUsers(input: { organizationId: string; venueId: string }
 
     usersByEmail.set(user.email, createdUser.id);
 
-    await prisma.membership.upsert({
-      where: {
-        organizationId_userId_role: {
-          organizationId: input.organizationId,
-          userId: createdUser.id,
-          role: user.membershipRole
-        }
-      },
-      update: { isActive: true },
-      create: {
-        organizationId: input.organizationId,
-        userId: createdUser.id,
-        role: user.membershipRole,
-        isActive: true
-      }
-    });
-
-    const venueScoped = user.adminRole === 'VENUE_MANAGER' || user.adminRole === 'HOST' ? input.venueId : null;
+    const venueScoped =
+      user.adminRole === 'VENUE_MANAGER' || user.adminRole === 'HOST'
+        ? input.venueId
+        : null;
     const scopeKey = `${createdUser.id}:${user.adminRole}:${input.organizationId}:${venueScoped ?? 'global'}`;
 
     await prisma.adminRoleAssignment.upsert({
@@ -310,7 +433,9 @@ async function seedGuests(organizationId: string) {
   const guestsByEmail = new Map<string, string>();
 
   for (const guest of GUESTS) {
-    const existingGuest = await prisma.guest.findFirst({ where: { organizationId, email: guest.email } });
+    const existingGuest = await prisma.guest.findFirst({
+      where: { organizationId, email: guest.email }
+    });
     const createdGuest = existingGuest
       ? await prisma.guest.update({
           where: { id: existingGuest.id },
@@ -350,7 +475,9 @@ async function seedSampleReservations(input: {
   guestsByEmail: Map<string, string>;
 }) {
   const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
 
   const schedule = [
     {
@@ -361,7 +488,7 @@ async function seedSampleReservations(input: {
       startAt: atTime(today, 18, 30),
       endAt: atTime(today, 20, 0),
       partySize: 4,
-      source: 'website',
+      source: ReservationSource.WEBSITE,
       specialRequests: 'Window-side patio seating if available.',
       internalNotes: 'Anniversary note added by host.'
     },
@@ -373,7 +500,7 @@ async function seedSampleReservations(input: {
       startAt: atTime(today, 19, 0),
       endAt: atTime(today, 20, 30),
       partySize: 3,
-      source: 'phone',
+      source: ReservationSource.PHONE,
       specialRequests: 'No shellfish in shared dishes.',
       internalNotes: 'Allergy reconfirmed on arrival.'
     },
@@ -385,7 +512,7 @@ async function seedSampleReservations(input: {
       startAt: atTime(new Date(today.getTime() + 86400000), 20, 0),
       endAt: atTime(new Date(today.getTime() + 86400000), 22, 0),
       partySize: 6,
-      source: 'widget',
+      source: ReservationSource.WIDGET,
       specialRequests: 'Birthday dessert with candle.',
       internalNotes: 'Pending callback for final headcount.'
     },
@@ -397,7 +524,7 @@ async function seedSampleReservations(input: {
       startAt: atTime(new Date(today.getTime() - 86400000), 17, 30),
       endAt: atTime(new Date(today.getTime() - 86400000), 18, 30),
       partySize: 2,
-      source: 'walk-in',
+      source: ReservationSource.WALK_IN,
       specialRequests: null,
       internalNotes: 'Canceled by guest due to delay.'
     },
@@ -409,7 +536,7 @@ async function seedSampleReservations(input: {
       startAt: atTime(new Date(today.getTime() - 172800000), 12, 30),
       endAt: atTime(new Date(today.getTime() - 172800000), 14, 0),
       partySize: 2,
-      source: 'website',
+      source: ReservationSource.WEBSITE,
       specialRequests: null,
       internalNotes: 'Lunch prefix menu selected.'
     }
@@ -418,10 +545,13 @@ async function seedSampleReservations(input: {
   for (const reservation of schedule) {
     const guestId = input.guestsByEmail.get(reservation.guestEmail);
     const status = input.statusByCode[reservation.statusCode];
-    const createdByUserId = input.usersByEmail.get('host@harborhouse.dev') ?? null;
+    const createdByUserId =
+      input.usersByEmail.get('host@harborhouse.dev') ?? null;
 
     if (!guestId || !status) {
-      throw new Error(`Missing seed dependency for reservation ${reservation.guestEmail}/${reservation.statusCode}`);
+      throw new Error(
+        `Missing seed dependency for reservation ${reservation.guestEmail}/${reservation.statusCode}`
+      );
     }
 
     const createdReservation = await prisma.reservation.upsert({
@@ -460,7 +590,12 @@ async function seedSampleReservations(input: {
     });
 
     await prisma.reservationTable.upsert({
-      where: { reservationId_tableId: { reservationId: createdReservation.id, tableId: table.id } },
+      where: {
+        reservationId_tableId: {
+          reservationId: createdReservation.id,
+          tableId: table.id
+        }
+      },
       update: {},
       create: { reservationId: createdReservation.id, tableId: table.id }
     });
@@ -476,7 +611,10 @@ async function main() {
 
   const statusByCode = await seedReservationStatuses(organization.id);
   await seedSuperAdminUser();
-  const usersByEmail = await seedStaffUsers({ organizationId: organization.id, venueId: venue.id });
+  const usersByEmail = await seedStaffUsers({
+    organizationId: organization.id,
+    venueId: venue.id
+  });
   const guestsByEmail = await seedGuests(organization.id);
 
   await seedSampleReservations({
@@ -487,7 +625,9 @@ async function main() {
     guestsByEmail
   });
 
-  console.log('Seeded organization, venue, roles, users, guests, statuses, and sample reservations.');
+  console.log(
+    'Seeded organization, venue, roles, users, guests, statuses, and sample reservations.'
+  );
 }
 
 main()

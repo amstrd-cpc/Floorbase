@@ -1,19 +1,24 @@
+import { AdminRole } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
 import { requireRole } from './authorization';
 
 export async function getAdminContext() {
   const user = await requireRole([
-    'SUPER_ADMIN',
-    'ORGANIZATION_ADMIN',
-    'VENUE_MANAGER',
-    'HOST'
+    AdminRole.SUPER_ADMIN,
+    AdminRole.ORGANIZATION_ADMIN,
+    AdminRole.VENUE_MANAGER,
+    AdminRole.HOST
   ]);
 
-  const roles = user.adminRoles as Array<{ role: string; organizationId: string | null; venueId: string | null }>
+  const roles = user.adminRoles as Array<{
+    role: AdminRole;
+    organizationId: string | null;
+    venueId: string | null;
+  }>;
 
   const orgRole =
     roles.find((role) => role.organizationId) ??
-    roles.find((role) => role.role === 'SUPER_ADMIN');
+    roles.find((role) => role.role === AdminRole.SUPER_ADMIN);
 
   const organizationId = orgRole?.organizationId;
 

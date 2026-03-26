@@ -1,15 +1,8 @@
+import { AdminRole } from '@prisma/client';
+import { ROLE_PRIORITY } from './roles';
+
 export const AUTH_COOKIE_PATH = '/';
 
-export const ADMIN_ROLES = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
-  ORGANIZATION_ADMIN: 'ORGANIZATION_ADMIN',
-  VENUE_MANAGER: 'VENUE_MANAGER',
-  HOST: 'HOST'
-} as const;
+export const ADMIN_ROLES = AdminRole;
 
-export const ROLE_PRIORITY: ReadonlyArray<string> = [
-  ADMIN_ROLES.HOST,
-  ADMIN_ROLES.VENUE_MANAGER,
-  ADMIN_ROLES.ORGANIZATION_ADMIN,
-  ADMIN_ROLES.SUPER_ADMIN
-];
+export { ROLE_PRIORITY };

@@ -12,11 +12,11 @@ const SCRYPT_PARAMS = {
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
-  const derivedKey = (await scrypt(password, salt, SCRYPT_PARAMS.keylen, {
-    N: SCRYPT_PARAMS.N,
-    r: SCRYPT_PARAMS.r,
-    p: SCRYPT_PARAMS.p
-  })) as Buffer;
+  const derivedKey = (await scrypt(
+    password,
+    salt,
+    SCRYPT_PARAMS.keylen
+  )) as Buffer;
 
   return `scrypt$${SCRYPT_PARAMS.N}$${SCRYPT_PARAMS.r}$${SCRYPT_PARAMS.p}$${salt}$${derivedKey.toString('hex')}`;
 }
@@ -29,11 +29,7 @@ export async function verifyPassword(password: string, encodedHash: string) {
   }
 
   const expected = Buffer.from(hash, 'hex');
-  const actual = (await scrypt(password, salt, expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p)
-  })) as Buffer;
+  const actual = (await scrypt(password, salt, expected.length)) as Buffer;
 
   if (expected.length !== actual.length) {
     return false;

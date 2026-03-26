@@ -7,19 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MembershipRole {
-  OWNER
-  ADMIN
-  MANAGER
-  HOST
-  STAFF
-}
-
 enum AdminRole {
   SUPER_ADMIN
   ORGANIZATION_ADMIN
   VENUE_MANAGER
   HOST
+}
+
+enum ReservationSource {
+  PHONE
+  WEBSITE
+  WIDGET
+  WALK_IN
+  MANUAL
+  INTERNAL
+}
+
+enum DepositStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  REFUNDED
+  FAILED
+  WAIVED
 }
 
 enum AuditAction {
@@ -46,35 +56,35 @@ enum NotificationStatus {
 }
 
 model Organization {
-  id             String          @id @default(cuid())
-  name           String
-  slug           String          @unique
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  venues         Venue[]
-  guests         Guest[]
-  reservations   Reservation[]
-  memberships    Membership[]
-  auditLogs      AuditLog[]
-  users          User[]          @relation("OrganizationUsers")
-  notifications  NotificationLog[]
-  adminRoles     AdminRoleAssignment[]
-  authInvites    AuthInvite[]
+  id                String                @id @default(cuid())
+  name              String
+  slug              String                @unique
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  venues            Venue[]
+  guests            Guest[]
+  reservations      Reservation[]
+  auditLogs         AuditLog[]
+  users             User[]                @relation("OrganizationUsers")
+  notifications     NotificationLog[]
+  adminRoles        AdminRoleAssignment[]
+  authInvites       AuthInvite[]
+  ReservationStatus ReservationStatus[]
 }
 
 model Venue {
-  id            String          @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
-  name          String
-  slug          String
-  timezone      String          @default("UTC")
-  currency      String          @default("USD")
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  name           String
+  slug           String
+  timezone       String   @default("UTC")
+  currency       String   @default("USD")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   areas         Area[]
   reservations  Reservation[]
   businessHours BusinessHours[]
@@ -88,32 +98,32 @@ model Venue {
 }
 
 model Area {
-  id         String    @id @default(cuid())
-  venueId     String
-  name       String
-  sortOrder  Int       @default(0)
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  venueId   String
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  venue      Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  tables     Table[]
+  venue  Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables Table[]
 
   @@unique([venueId, name])
   @@index([venueId])
 }
 
 model Table {
-  id           String             @id @default(cuid())
-  venueId      String
-  areaId       String
-  name         String
-  code         String?
-  capacityMin  Int?
-  capacityMax  Int
-  isActive     Boolean            @default(true)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id          String   @id @default(cuid())
+  venueId     String
+  areaId      String
+  name        String
+  code        String?
+  capacityMin Int?
+  capacityMax Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   venue        Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   area         Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
@@ -126,21 +136,21 @@ model Table {
 }
 
 model Guest {
-  id              String         @id @default(cuid())
-  organizationId  String
-  firstName       String?
-  lastName        String?
-  fullName        String?
-  email           String?
-  phone           String?
-  notes           String?
-  tags            Json?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String
+  firstName      String?
+  lastName       String?
+  fullName       String?
+  email          String?
+  phone          String?
+  notes          String?
+  tags           Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reservations    Reservation[]
-  notifications   NotificationLog[]
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservations  Reservation[]
+  notifications NotificationLog[]
 
   @@index([organizationId])
   @@index([email])
@@ -148,42 +158,42 @@ model Guest {
 }
 
 model ReservationStatus {
-  id            String         @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
-  code          String
-  label         String
-  color         String?
-  isDefault     Boolean        @default(false)
-  sortOrder     Int            @default(0)
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  code           String
+  label          String
+  color          String?
+  isDefault      Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reservations  Reservation[]
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
 }
 
 model Reservation {
-  id                String             @id @default(cuid())
-  organizationId    String
-  venueId           String
-  guestId           String
+  id                  String             @id @default(cuid())
+  organizationId      String
+  venueId             String
+  guestId             String
   reservationStatusId String
-  reservationDate   DateTime
-  startAt           DateTime
-  endAt             DateTime
-  partySize         Int
-  source            String?
-  internalNotes     String?
-  specialRequests   String?
-  depositRequired   Boolean            @default(false)
-  createdByUserId   String?
-  updatedByUserId   String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  reservationDate     DateTime
+  startAt             DateTime
+  endAt               DateTime
+  partySize           Int
+  source              ReservationSource?
+  internalNotes       String?
+  specialRequests     String?
+  depositRequired     Boolean            @default(false)
+  createdByUserId     String?
+  updatedByUserId     String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -203,90 +213,72 @@ model Reservation {
 }
 
 model ReservationTable {
-  id             String       @id @default(cuid())
-  reservationId  String
-  tableId        String
-  createdAt      DateTime     @default(now())
+  id            String   @id @default(cuid())
+  reservationId String
+  tableId       String
+  createdAt     DateTime @default(now())
 
-  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  table          Table        @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  table       Table       @relation(fields: [tableId], references: [id], onDelete: Restrict)
 
   @@unique([reservationId, tableId])
   @@index([tableId])
 }
 
 model Deposit {
-  id              String       @id @default(cuid())
-  reservationId   String       @unique
-  amountMinor     Int
-  currency        String       @default("USD")
-  status          String
-  paidAt          DateTime?
-  provider        String?
-  providerRef     String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id            String        @id @default(cuid())
+  reservationId String        @unique
+  amountMinor   Int
+  currency      String        @default("USD")
+  status        DepositStatus
+  paidAt        DateTime?
+  provider      String?
+  providerRef   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  reservation     Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
   @@index([status])
 }
 
 model User {
-  id                 String          @id @default(cuid())
-  organizationId     String?
-  email              String          @unique
-  firstName          String?
-  lastName           String?
-  isActive           Boolean         @default(true)
-  lastLoginAt        DateTime?
-  passwordHash       String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  id             String    @id @default(cuid())
+  organizationId String?
+  email          String    @unique
+  firstName      String?
+  lastName       String?
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  passwordHash   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  organization       Organization?   @relation("OrganizationUsers", fields: [organizationId], references: [id], onDelete: SetNull)
-  memberships        Membership[]
-  createdReservations Reservation[]  @relation("CreatedByUser")
-  updatedReservations Reservation[]  @relation("UpdatedByUser")
-  auditLogs          AuditLog[]      @relation("AuditActor")
-  adminRoles         AdminRoleAssignment[]
-  authSessions       AuthSession[]
-  sentInvites        AuthInvite[]    @relation("AuthInviteSender")
+  organization        Organization?         @relation("OrganizationUsers", fields: [organizationId], references: [id], onDelete: SetNull)
+  createdReservations Reservation[]         @relation("CreatedByUser")
+  updatedReservations Reservation[]         @relation("UpdatedByUser")
+  auditLogs           AuditLog[]            @relation("AuditActor")
+  adminRoles          AdminRoleAssignment[]
+  authSessions        AuthSession[]
+  sentInvites         AuthInvite[]          @relation("AuthInviteSender")
 
   @@index([organizationId])
-}
-
-model Membership {
-  id              String          @id @default(cuid())
-  organizationId  String
-  userId          String
-  role            MembershipRole
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, userId, role])
-  @@index([organizationId])
-  @@index([userId])
 }
 
 model AuditLog {
-  id              String          @id @default(cuid())
-  organizationId  String
-  venueId         String?
-  actorUserId     String?
-  entityType      String
-  entityId        String
-  action          AuditAction
-  changes         Json?
-  metadata        Json?
-  createdAt       DateTime        @default(now())
+  id             String      @id @default(cuid())
+  organizationId String
+  venueId        String?
+  actorUserId    String?
+  entityType     String
+  entityId       String
+  action         AuditAction
+  changes        Json?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
 
-  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actorUser       User?           @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser    User?        @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([venueId])
@@ -295,53 +287,52 @@ model AuditLog {
 }
 
 model BusinessHours {
-  id           String      @id @default(cuid())
-  venueId      String
-  dayOfWeek    Int
-  openTime     String
-  closeTime    String
-  isClosed     Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  venueId   String
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isClosed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  venue        Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@unique([venueId, dayOfWeek])
   @@index([venueId])
 }
 
 model BlackoutRule {
-  id             String      @id @default(cuid())
-  venueId        String
-  name           String
-  startsAt       DateTime
-  endsAt         DateTime
-  isFullDay      Boolean     @default(false)
-  reason         String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  venueId   String
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  isFullDay Boolean  @default(false)
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  venue          Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([venueId])
   @@index([startsAt, endsAt])
 }
 
-
 model AdminRoleAssignment {
-  id              String      @id @default(cuid())
-  userId          String
-  role            AdminRole
-  organizationId  String?
-  venueId         String?
-  isActive        Boolean     @default(true)
-  scopeKey        String      @unique
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String    @id @default(cuid())
+  userId         String
+  role           AdminRole
+  organizationId String?
+  venueId        String?
+  isActive       Boolean   @default(true)
+  scopeKey       String    @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue        Venue?        @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([userId, role])
   @@index([organizationId])
@@ -349,56 +340,56 @@ model AdminRoleAssignment {
 }
 
 model AuthInvite {
-  id              String      @id @default(cuid())
+  id              String    @id @default(cuid())
   email           String
-  tokenHash       String      @unique
+  tokenHash       String    @unique
   role            AdminRole
   organizationId  String?
   venueId         String?
   invitedByUserId String?
   expiresAt       DateTime
   acceptedAt      DateTime?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime  @default(now())
 
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  venue           Venue?      @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  invitedByUser   User?       @relation("AuthInviteSender", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  organization  Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue         Venue?        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  invitedByUser User?         @relation("AuthInviteSender", fields: [invitedByUserId], references: [id], onDelete: SetNull)
 
   @@index([email])
   @@index([expiresAt])
 }
 
 model AuthSession {
-  id              String      @id @default(cuid())
-  userId          String
-  tokenHash       String      @unique
-  expiresAt       DateTime
-  createdAt       DateTime    @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model NotificationLog {
-  id               String              @id @default(cuid())
-  organizationId   String
-  reservationId    String?
-  guestId          String?
-  channel          NotificationChannel
-  templateKey      String?
-  recipient        String
-  status           NotificationStatus  @default(QUEUED)
-  provider         String?
-  providerRef      String?
-  errorMessage     String?
-  sentAt           DateTime?
-  createdAt        DateTime            @default(now())
+  id             String              @id @default(cuid())
+  organizationId String
+  reservationId  String?
+  guestId        String?
+  channel        NotificationChannel
+  templateKey    String?
+  recipient      String
+  status         NotificationStatus  @default(QUEUED)
+  provider       String?
+  providerRef    String?
+  errorMessage   String?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
 
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  reservation      Reservation?        @relation(fields: [reservationId], references: [id], onDelete: SetNull)
-  guest            Guest?              @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reservation  Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  guest        Guest?       @relation(fields: [guestId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([reservationId])

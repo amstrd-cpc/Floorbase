@@ -49,7 +49,7 @@ npm run db:generate
 ### 4) Run migration(s)
 
 ```bash
-npm run db:migrate -- --name init
+npm run db:deploy
 ```
 
 ### 5) Seed local development data
@@ -97,6 +97,7 @@ The internal admin system uses **invite-only email/password auth** with server-m
 - `HOST`
 
 Role assignments are stored in `AdminRoleAssignment` and can be scoped to organization/venue.
+There is no separate membership role system in runtime auth checks.
 
 ## Role Enforcement
 

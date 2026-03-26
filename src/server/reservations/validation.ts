@@ -36,7 +36,8 @@ const baseMutationSchema = z
     venueId: z.string().cuid(),
     reservationDate: reservationDateTimeSchema,
     startAt: reservationDateTimeSchema,
-    endAt: reservationDateTimeSchema,
+    endAt: reservationDateTimeSchema.optional(),
+    durationMinutes: z.number().int().min(30).max(300).optional(),
     partySize: z.number().int().min(1).max(50),
     guest: z
       .object({
@@ -65,7 +66,15 @@ const baseMutationSchema = z
 
 export const createReservationSchema = baseMutationSchema.superRefine(
   (value, ctx) => {
-    if (value.endAt <= value.startAt) {
+    if (!value.endAt && !value.durationMinutes) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Either endAt or durationMinutes is required.',
+        path: ['endAt']
+      });
+    }
+
+    if (value.endAt && value.endAt <= value.startAt) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'endAt must be after startAt.',

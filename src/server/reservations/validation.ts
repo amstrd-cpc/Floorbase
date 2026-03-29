@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import {
+  MAX_PARTY_SIZE,
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES,
+  RESERVATION_SLOT_MINUTES,
+  validateSlotAligned
+} from '@/lib/reservations/rules';
 
 const optionalTrimmedString = z
   .string()
@@ -14,7 +21,11 @@ const reservationDateTimeSchema = z.coerce.date({
 
 const tableIdsSchema = z
   .array(z.string().cuid())
-  .min(1, 'At least one table must be assigned.');
+  .min(1, 'At least one table must be assigned.')
+  .refine(
+    (tableIds) => new Set(tableIds).size === tableIds.length,
+    'Assigned tables must be unique.'
+  );
 
 const depositSchema = z
   .object({
@@ -37,8 +48,13 @@ const baseMutationSchema = z
     reservationDate: reservationDateTimeSchema,
     startAt: reservationDateTimeSchema,
     endAt: reservationDateTimeSchema.optional(),
-    durationMinutes: z.number().int().min(30).max(300).optional(),
-    partySize: z.number().int().min(1).max(50),
+    durationMinutes: z
+      .number()
+      .int()
+      .min(MIN_RESERVATION_DURATION_MINUTES)
+      .max(MAX_RESERVATION_DURATION_MINUTES)
+      .optional(),
+    partySize: z.number().int().min(1).max(MAX_PARTY_SIZE),
     guest: z
       .object({
         firstName: z.string().trim().max(100).nullable().optional(),
@@ -63,6 +79,62 @@ const baseMutationSchema = z
     deposit: depositSchema.nullable().optional()
   })
   .strict();
+
+function validateTiming(
+  value: {
+    reservationDate?: Date;
+    startAt?: Date;
+    endAt?: Date;
+    durationMinutes?: number;
+  },
+  ctx: z.RefinementCtx
+) {
+  if (!value.startAt) {
+    return;
+  }
+
+  if (!validateSlotAligned(value.startAt)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `startAt must align to ${RESERVATION_SLOT_MINUTES}-minute reservation slots.`,
+      path: ['startAt']
+    });
+  }
+
+  if (value.endAt && !validateSlotAligned(value.endAt)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `endAt must align to ${RESERVATION_SLOT_MINUTES}-minute reservation slots.`,
+      path: ['endAt']
+    });
+  }
+
+  if (
+    value.durationMinutes !== undefined &&
+    value.durationMinutes % RESERVATION_SLOT_MINUTES !== 0
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `durationMinutes must be in ${RESERVATION_SLOT_MINUTES}-minute increments.`,
+      path: ['durationMinutes']
+    });
+  }
+
+  if (value.reservationDate) {
+    const expectedDate = new Date(value.startAt);
+    expectedDate.setUTCHours(0, 0, 0, 0);
+    const normalizedDate = new Date(value.reservationDate);
+    normalizedDate.setUTCHours(0, 0, 0, 0);
+
+    if (normalizedDate.getTime() !== expectedDate.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'reservationDate must match the calendar date of startAt.',
+        path: ['reservationDate']
+      });
+    }
+  }
+}
 
 export const createReservationSchema = baseMutationSchema.superRefine(
   (value, ctx) => {
@@ -98,6 +170,8 @@ export const createReservationSchema = baseMutationSchema.superRefine(
         path: ['deposit']
       });
     }
+
+    validateTiming(value, ctx);
   }
 );
 
@@ -108,7 +182,26 @@ export const updateReservationSchema = baseMutationSchema
     tableIds: tableIdsSchema.optional(),
     guest: baseMutationSchema.shape.guest.partial().optional()
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (Object.keys(value).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'At least one field is required for an update.',
+        path: ['root']
+      });
+    }
+
+    validateTiming(value, ctx);
+
+    if (value.deposit && value.depositRequired === false) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'deposit cannot be set when depositRequired is false.',
+        path: ['deposit']
+      });
+    }
+  });
 
 export const changeReservationStatusSchema = z
   .object({

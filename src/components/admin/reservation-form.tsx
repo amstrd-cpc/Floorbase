@@ -2,8 +2,27 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  MAX_PARTY_SIZE,
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES,
+  RESERVATION_SLOT_MINUTES
+} from '@/lib/reservations/rules';
 
 type Option = { id: string; label: string; code?: string };
+
+type ReservationFormValues = {
+  fullName: string;
+  email: string;
+  phone: string;
+  startAt: string;
+  durationMinutes: number;
+  partySize: number;
+  reservationStatusId: string;
+  tableIds: string[];
+  specialRequests: string;
+  internalNotes: string;
+};
 
 type ReservationFormProps = {
   mode: 'create' | 'edit';
@@ -12,30 +31,103 @@ type ReservationFormProps = {
   statuses: Option[];
   tables: Option[];
   reservationId?: string;
-  initialValues?: {
-    fullName: string;
-    email: string;
-    phone: string;
-    startAt: string;
-    durationMinutes: number;
-    partySize: number;
-    reservationStatusId: string;
-    tableIds: string[];
-    specialRequests: string;
-    internalNotes: string;
-  };
+  initialValues?: ReservationFormValues;
 };
+
+function roundToNextSlot(now: Date) {
+  const result = new Date(now);
+  result.setSeconds(0, 0);
+
+  const currentMinutes = result.getMinutes();
+  const roundedMinutes =
+    Math.ceil(currentMinutes / RESERVATION_SLOT_MINUTES) *
+    RESERVATION_SLOT_MINUTES;
+  result.setMinutes(roundedMinutes);
+
+  return result;
+}
+
+function validateForm(values: ReservationFormValues) {
+  const errors: string[] = [];
+
+  if (!values.fullName.trim()) {
+    errors.push('Guest name is required.');
+  }
+
+  if (!values.email.trim() && !values.phone.trim()) {
+    errors.push('Provide at least one guest contact method (email or phone).');
+  }
+
+  if (values.partySize < 1 || values.partySize > MAX_PARTY_SIZE) {
+    errors.push(`Party size must be between 1 and ${MAX_PARTY_SIZE}.`);
+  }
+
+  if (
+    values.durationMinutes < MIN_RESERVATION_DURATION_MINUTES ||
+    values.durationMinutes > MAX_RESERVATION_DURATION_MINUTES
+  ) {
+    errors.push(
+      `Duration must be between ${MIN_RESERVATION_DURATION_MINUTES} and ${MAX_RESERVATION_DURATION_MINUTES} minutes.`
+    );
+  }
+
+  if (values.durationMinutes % RESERVATION_SLOT_MINUTES !== 0) {
+    errors.push(
+      `Duration must be in ${RESERVATION_SLOT_MINUTES}-minute increments.`
+    );
+  }
+
+  if (values.tableIds.length === 0) {
+    errors.push('Assign at least one table.');
+  }
+
+  const startAt = new Date(values.startAt);
+  if (Number.isNaN(startAt.getTime())) {
+    errors.push('Start time is invalid.');
+  } else if (startAt.getUTCMinutes() % RESERVATION_SLOT_MINUTES !== 0) {
+    errors.push(
+      `Start time must align to ${RESERVATION_SLOT_MINUTES}-minute slots.`
+    );
+  }
+
+  return errors;
+}
+
+function formatApiError(body: Record<string, unknown>) {
+  if (!body) {
+    return 'Unable to save reservation.';
+  }
+
+  const details =
+    body.details && typeof body.details === 'object'
+      ? Object.values(body.details as Record<string, unknown>)
+      : [];
+
+  const detailText = details
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(' ');
+
+  if (typeof body.error === 'string' && detailText.length > 0) {
+    return `${body.error} ${detailText}`;
+  }
+
+  if (typeof body.error === 'string') {
+    return body.error;
+  }
+
+  return 'Unable to save reservation.';
+}
 
 export function ReservationForm(props: ReservationFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [values, setValues] = useState(
+  const [values, setValues] = useState<ReservationFormValues>(
     props.initialValues ?? {
       fullName: '',
       email: '',
       phone: '',
-      startAt: new Date().toISOString().slice(0, 16),
+      startAt: roundToNextSlot(new Date()).toISOString().slice(0, 16),
       durationMinutes: 90,
       partySize: 2,
       reservationStatusId: props.statuses[0]?.id ?? '',
@@ -50,6 +142,13 @@ export function ReservationForm(props: ReservationFormProps) {
     setSubmitting(true);
     setError(null);
 
+    const clientErrors = validateForm(values);
+    if (clientErrors.length > 0) {
+      setError(clientErrors.join(' '));
+      setSubmitting(false);
+      return;
+    }
+
     const startAt = new Date(values.startAt);
     const endAt = new Date(startAt.getTime() + values.durationMinutes * 60000);
 
@@ -58,8 +157,9 @@ export function ReservationForm(props: ReservationFormProps) {
       reservationDate: startAt.toISOString(),
       startAt: startAt.toISOString(),
       endAt: endAt.toISOString(),
+      durationMinutes: values.durationMinutes,
       partySize: values.partySize,
-      reservationStatusId: values.reservationStatusId,
+      reservationStatusId: values.reservationStatusId || undefined,
       tableIds: values.tableIds,
       guest: {
         fullName: values.fullName,
@@ -70,7 +170,10 @@ export function ReservationForm(props: ReservationFormProps) {
       internalNotes: values.internalNotes || null
     };
 
-    const url = props.mode === 'create' ? '/api/admin/reservations' : `/api/admin/reservations/${props.reservationId}?organizationId=${props.organizationId}`;
+    const url =
+      props.mode === 'create'
+        ? '/api/admin/reservations'
+        : `/api/admin/reservations/${props.reservationId}?organizationId=${props.organizationId}`;
     const method = props.mode === 'create' ? 'POST' : 'PUT';
 
     const response = await fetch(url, {
@@ -79,14 +182,15 @@ export function ReservationForm(props: ReservationFormProps) {
       body: JSON.stringify(payload)
     });
 
-    const body = await response.json().catch(() => ({}));
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
-      setError(body.error ?? 'Unable to save reservation.');
+      setError(formatApiError(body));
       setSubmitting(false);
       return;
     }
 
-    const reservationId = body.reservation?.id ?? props.reservationId;
+    const reservationId =
+      (body.reservation as { id?: string } | undefined)?.id ?? props.reservationId;
     router.push(`/admin/reservations/${reservationId}`);
     router.refresh();
   }
@@ -98,14 +202,14 @@ export function ReservationForm(props: ReservationFormProps) {
         <label className="text-sm">Guest Name<input required className="mt-1 w-full rounded border p-2" value={values.fullName} onChange={(e) => setValues({ ...values, fullName: e.target.value })} /></label>
         <label className="text-sm">Email<input type="email" className="mt-1 w-full rounded border p-2" value={values.email} onChange={(e) => setValues({ ...values, email: e.target.value })} /></label>
         <label className="text-sm">Phone<input className="mt-1 w-full rounded border p-2" value={values.phone} onChange={(e) => setValues({ ...values, phone: e.target.value })} /></label>
-        <label className="text-sm">Party Size<input required min={1} max={20} type="number" className="mt-1 w-full rounded border p-2" value={values.partySize} onChange={(e) => setValues({ ...values, partySize: Number(e.target.value) })} /></label>
-        <label className="text-sm">Start<input required type="datetime-local" className="mt-1 w-full rounded border p-2" value={values.startAt} onChange={(e) => setValues({ ...values, startAt: e.target.value })} /></label>
-        <label className="text-sm">Duration (min)<input required min={30} step={15} type="number" className="mt-1 w-full rounded border p-2" value={values.durationMinutes} onChange={(e) => setValues({ ...values, durationMinutes: Number(e.target.value) })} /></label>
+        <label className="text-sm">Party Size<input required min={1} max={MAX_PARTY_SIZE} type="number" className="mt-1 w-full rounded border p-2" value={values.partySize} onChange={(e) => setValues({ ...values, partySize: Number(e.target.value) })} /></label>
+        <label className="text-sm">Start<input required step={RESERVATION_SLOT_MINUTES * 60} type="datetime-local" className="mt-1 w-full rounded border p-2" value={values.startAt} onChange={(e) => setValues({ ...values, startAt: e.target.value })} /></label>
+        <label className="text-sm">Duration (min)<input required min={MIN_RESERVATION_DURATION_MINUTES} max={MAX_RESERVATION_DURATION_MINUTES} step={RESERVATION_SLOT_MINUTES} type="number" className="mt-1 w-full rounded border p-2" value={values.durationMinutes} onChange={(e) => setValues({ ...values, durationMinutes: Number(e.target.value) })} /></label>
         <label className="text-sm">Status<select className="mt-1 w-full rounded border p-2" value={values.reservationStatusId} onChange={(e) => setValues({ ...values, reservationStatusId: e.target.value })}>{props.statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
-        <label className="text-sm">Assigned Tables<select multiple className="mt-1 h-28 w-full rounded border p-2" value={values.tableIds} onChange={(e) => setValues({ ...values, tableIds: Array.from(e.target.selectedOptions).map((opt) => opt.value) })}>{props.tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select></label>
+        <label className="text-sm">Assigned Tables<select required multiple className="mt-1 h-28 w-full rounded border p-2" value={values.tableIds} onChange={(e) => setValues({ ...values, tableIds: Array.from(e.target.selectedOptions).map((opt) => opt.value) })}>{props.tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select></label>
       </div>
-      <label className="block text-sm">Special Requests<textarea className="mt-1 w-full rounded border p-2" value={values.specialRequests} onChange={(e) => setValues({ ...values, specialRequests: e.target.value })} /></label>
-      <label className="block text-sm">Internal Notes<textarea className="mt-1 w-full rounded border p-2" value={values.internalNotes} onChange={(e) => setValues({ ...values, internalNotes: e.target.value })} /></label>
+      <label className="block text-sm">Guest Notes / Special Requests<textarea className="mt-1 w-full rounded border p-2" value={values.specialRequests} onChange={(e) => setValues({ ...values, specialRequests: e.target.value })} /></label>
+      <label className="block text-sm">Internal Notes (staff only)<textarea className="mt-1 w-full rounded border p-2" value={values.internalNotes} onChange={(e) => setValues({ ...values, internalNotes: e.target.value })} /></label>
       <button disabled={submitting} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60" type="submit">{submitting ? 'Saving…' : props.mode === 'create' ? 'Create Reservation' : 'Save Changes'}</button>
     </form>
   );

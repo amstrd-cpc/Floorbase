@@ -1,7 +1,18 @@
-export const RESERVATION_SLOT_MINUTES = 15;
-export const DEFAULT_RESERVATION_DURATION_MINUTES = 120;
-export const MIN_RESERVATION_DURATION_MINUTES = 30;
-export const MAX_RESERVATION_DURATION_MINUTES = 300;
+import {
+  DEFAULT_RESERVATION_DURATION_MINUTES,
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES,
+  RESERVATION_SLOT_MINUTES,
+  validateSlotAligned
+} from '@/lib/reservations/rules';
+
+export {
+  DEFAULT_RESERVATION_DURATION_MINUTES,
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES,
+  RESERVATION_SLOT_MINUTES,
+  validateSlotAligned
+};
 
 export function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60_000);
@@ -40,8 +51,4 @@ export function hasOverlappingWindow(input: {
   return (
     input.compareStartAt < input.endAt && input.compareEndAt > input.startAt
   );
-}
-
-export function validateSlotAligned(date: Date) {
-  return date.getUTCMinutes() % RESERVATION_SLOT_MINUTES === 0;
 }

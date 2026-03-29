@@ -1,4 +1,5 @@
 import { Prisma, type ReservationStatus } from '@prisma/client';
+import { canTransitionReservationStatus } from '@/lib/reservations/rules';
 import { prisma } from '@/server/db/prisma/client';
 import {
   MAX_RESERVATION_DURATION_MINUTES,
@@ -261,6 +262,18 @@ async function assertNoTableConflicts(
   }
 }
 
+
+function assertStatusTransition(input: {
+  currentStatusCode: string;
+  nextStatusCode: string;
+}) {
+  if (!canTransitionReservationStatus(input.currentStatusCode, input.nextStatusCode)) {
+    throw new ReservationValidationError(
+      `Invalid reservation status transition from ${input.currentStatusCode} to ${input.nextStatusCode}.`
+    );
+  }
+}
+
 async function createOrUpdateGuest(
   tx: Prisma.TransactionClient,
   input: {
@@ -437,7 +450,7 @@ export async function createReservation(input: {
           venueId: parsed.data.venueId,
           guestId: guest.id,
           reservationStatusId: status.id,
-          reservationDate: parsed.data.reservationDate,
+          reservationDate: inferReservationDate(reservationWindow.startAt),
           startAt: reservationWindow.startAt,
           endAt: reservationWindow.endAt,
           partySize: parsed.data.partySize,
@@ -606,20 +619,15 @@ export async function updateReservation(input: {
     });
 
     if (parsed.data.reservationStatusId) {
-      await assertStatus(tx, {
+      const nextStatus = await assertStatus(tx, {
         organizationId: input.organizationId,
         reservationStatusId: parsed.data.reservationStatusId
       });
-    }
 
-    if (
-      current.status.code === 'CANCELED' &&
-      parsed.data.reservationStatusId &&
-      parsed.data.reservationStatusId !== current.status.id
-    ) {
-      throw new ReservationValidationError(
-        'Canceled reservations cannot transition to another status.'
-      );
+      assertStatusTransition({
+        currentStatusCode: current.status.code,
+        nextStatusCode: nextStatus.code
+      });
     }
 
     let guestId = current.guestId;
@@ -753,11 +761,10 @@ export async function changeReservationStatus(input: {
       reservationStatusId: parsed.data.reservationStatusId
     });
 
-    if (current.status.code === 'CANCELED' && nextStatus.code !== 'CANCELED') {
-      throw new ReservationValidationError(
-        'Canceled reservations cannot transition to another status.'
-      );
-    }
+    assertStatusTransition({
+      currentStatusCode: current.status.code,
+      nextStatusCode: nextStatus.code
+    });
 
     const updated = await tx.reservation.update({
       where: { id: current.id },

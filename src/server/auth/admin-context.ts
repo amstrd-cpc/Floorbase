@@ -178,6 +178,18 @@ export async function getAdminContext() {
   );
   const venueId = await resolveSingleActiveVenue(organizationId, allowedVenueIds);
 
+  if (venues.length === 0) {
+    throw new Error(
+      `Admin context resolution failed: no active venue available for organizationId "${organizationId}" within user scope.`
+    );
+  }
+
+  if (venues.length > 1) {
+    throw new Error(
+      `Admin context resolution failed: multiple active venues are available for organizationId "${organizationId}". Explicit venue selection is required.`
+    );
+  }
+
   return {
     user,
     venueId,

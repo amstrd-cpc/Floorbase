@@ -1,7 +1,27 @@
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'crypto';
-import { promisify } from 'util';
+import {
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+  type ScryptOptions
+} from 'crypto';
 
-const scrypt = promisify(scryptCallback);
+function scrypt(
+  password: string,
+  salt: string,
+  keylen: number,
+  options: ScryptOptions
+) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scryptCallback(password, salt, keylen, options, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(derivedKey as Buffer);
+    });
+  });
+}
 
 const SCRYPT_PARAMS = {
   N: 16384,
@@ -12,11 +32,11 @@ const SCRYPT_PARAMS = {
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
-  const derivedKey = (await scrypt(password, salt, SCRYPT_PARAMS.keylen, {
+  const derivedKey = await scrypt(password, salt, SCRYPT_PARAMS.keylen, {
     N: SCRYPT_PARAMS.N,
     r: SCRYPT_PARAMS.r,
     p: SCRYPT_PARAMS.p
-  })) as Buffer;
+  });
 
   return `scrypt$${SCRYPT_PARAMS.N}$${SCRYPT_PARAMS.r}$${SCRYPT_PARAMS.p}$${salt}$${derivedKey.toString('hex')}`;
 }
@@ -29,11 +49,11 @@ export async function verifyPassword(password: string, encodedHash: string) {
   }
 
   const expected = Buffer.from(hash, 'hex');
-  const actual = (await scrypt(password, salt, expected.length, {
+  const actual = await scrypt(password, salt, expected.length, {
     N: Number(n),
     r: Number(r),
     p: Number(p)
-  })) as Buffer;
+  });
 
   if (expected.length !== actual.length) {
     return false;

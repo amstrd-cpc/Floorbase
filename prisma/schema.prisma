@@ -54,6 +54,7 @@ model Organization {
   updatedAt      DateTime        @updatedAt
   venues         Venue[]
   guests         Guest[]
+  reservationStatuses ReservationStatus[]
   reservations   Reservation[]
   memberships    Membership[]
   auditLogs      AuditLog[]
@@ -118,11 +119,28 @@ model Table {
   venue        Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
   area         Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
   reservations ReservationTable[]
+  blocks       TableBlock[]
 
   @@unique([venueId, name])
   @@unique([venueId, code])
   @@index([venueId])
   @@index([areaId])
+}
+
+model TableBlock {
+  id         String    @id @default(cuid())
+  tableId    String
+  startsAt   DateTime
+  endsAt     DateTime
+  reason     String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  table      Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tableId])
+  @@index([startsAt, endsAt])
 }
 
 model Guest {

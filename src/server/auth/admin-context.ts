@@ -28,6 +28,40 @@ function getAllowedVenueIdsForOrganization(
     .filter((venueId): venueId is string => Boolean(venueId));
 }
 
+async function resolveSingleActiveVenue(
+  organizationId: string,
+  allowedVenueIds: string[] | null
+) {
+  const venues = await prisma.venue.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+      ...(allowedVenueIds
+        ? {
+            id: {
+              in: allowedVenueIds
+            }
+          }
+        : {})
+    },
+    select: { id: true }
+  });
+
+  if (venues.length === 0) {
+    throw new Error(
+      `Admin context resolution failed: no active venue available for organizationId "${organizationId}" within user scope.`
+    );
+  }
+
+  if (venues.length > 1) {
+    throw new Error(
+      `Admin context resolution failed: multiple active venues are available for organizationId "${organizationId}". Explicit venue selection is required.`
+    );
+  }
+
+  return venues[0].id;
+}
+
 export async function getAdminContext() {
   const user = await requireRole([
     'SUPER_ADMIN',
@@ -43,9 +77,39 @@ export async function getAdminContext() {
   );
 
   if (scopedAssignments.length === 0) {
-    throw new Error(
-      'Admin context resolution failed: no organization scope found. SUPER_ADMIN must explicitly select an organization and venue.'
-    );
+    const isSuperAdmin = roles.some((assignment) => assignment.role === 'SUPER_ADMIN');
+
+    if (!isSuperAdmin) {
+      throw new Error(
+        'Admin context resolution failed: no organization scope found for current user.'
+      );
+    }
+
+    const organizations = await prisma.organization.findMany({
+      where: { isActive: true },
+      select: { id: true }
+    });
+
+    if (organizations.length === 0) {
+      throw new Error(
+        'Admin context resolution failed: no active organizations are available.'
+      );
+    }
+
+    if (organizations.length > 1) {
+      throw new Error(
+        'Admin context resolution failed: multiple active organizations are available. Explicit organization selection is required.'
+      );
+    }
+
+    const organizationId = organizations[0].id;
+    const venueId = await resolveSingleActiveVenue(organizationId, null);
+
+    return {
+      user,
+      organizationId,
+      venueId
+    };
   }
 
   const explicitVenueAssignments = scopedAssignments.filter((assignment) =>
@@ -112,21 +176,7 @@ export async function getAdminContext() {
     scopedAssignments,
     organizationId
   );
-
-  const venues = await prisma.venue.findMany({
-    where: {
-      organizationId,
-      isActive: true,
-      ...(allowedVenueIds
-        ? {
-            id: {
-              in: allowedVenueIds
-            }
-          }
-        : {})
-    },
-    select: { id: true }
-  });
+  const venueId = await resolveSingleActiveVenue(organizationId, allowedVenueIds);
 
   if (venues.length === 0) {
     throw new Error(
@@ -142,7 +192,7 @@ export async function getAdminContext() {
 
   return {
     user,
-    venueId: venues[0].id,
+    venueId,
     organizationId
   };
 }

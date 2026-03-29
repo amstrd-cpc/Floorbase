@@ -121,6 +121,7 @@ function formatApiError(body: Record<string, unknown>) {
 export function ReservationForm(props: ReservationFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [availabilityNote, setAvailabilityNote] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState<ReservationFormValues>(
     props.initialValues ?? {
@@ -195,9 +196,60 @@ export function ReservationForm(props: ReservationFormProps) {
     router.refresh();
   }
 
+  async function checkAvailability() {
+    setAvailabilityNote(null);
+    const startAt = new Date(values.startAt);
+    if (Number.isNaN(startAt.getTime())) {
+      setAvailabilityNote('Choose a valid start time to check availability.');
+      return;
+    }
+
+    const params = new URLSearchParams({
+      venueId: props.venueId,
+      startAt: startAt.toISOString(),
+      durationMinutes: String(values.durationMinutes),
+      partySize: String(values.partySize)
+    });
+
+    if (props.mode === 'edit' && props.reservationId) {
+      params.set('reservationIdToExclude', props.reservationId);
+    }
+
+    const response = await fetch(
+      `/api/admin/reservations/availability?${params.toString()}`
+    );
+    const body = (await response.json().catch(() => ({}))) as {
+      reason?: string;
+      recommendedTableIds?: string[];
+      availableTables?: Array<{ id: string; name: string; capacityMax: number }>;
+      error?: string;
+    };
+
+    if (!response.ok) {
+      setAvailabilityNote(body.error ?? 'Unable to check availability right now.');
+      return;
+    }
+
+    if (body.recommendedTableIds && body.recommendedTableIds.length > 0) {
+      setValues((previous) => ({ ...previous, tableIds: body.recommendedTableIds ?? [] }));
+      setAvailabilityNote(
+        `Found availability. Recommended tables have been selected (${body.recommendedTableIds.length}).`
+      );
+      return;
+    }
+
+    const availableCount = body.availableTables?.length ?? 0;
+    setAvailabilityNote(
+      availableCount > 0
+        ? `No exact recommendation found, but ${availableCount} table(s) are free.`
+        : `No availability for this time. ${body.reason ? `Reason: ${body.reason}.` : ''}`
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-lg border bg-white p-4 md:p-6">
       {error ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
+      {availabilityNote ? <p className="rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">{availabilityNote}</p> : null}
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">Guest Name<input required className="mt-1 w-full rounded border p-2" value={values.fullName} onChange={(e) => setValues({ ...values, fullName: e.target.value })} /></label>
         <label className="text-sm">Email<input type="email" className="mt-1 w-full rounded border p-2" value={values.email} onChange={(e) => setValues({ ...values, email: e.target.value })} /></label>
@@ -208,6 +260,9 @@ export function ReservationForm(props: ReservationFormProps) {
         <label className="text-sm">Status<select className="mt-1 w-full rounded border p-2" value={values.reservationStatusId} onChange={(e) => setValues({ ...values, reservationStatusId: e.target.value })}>{props.statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
         <label className="text-sm">Assigned Tables<select required multiple className="mt-1 h-28 w-full rounded border p-2" value={values.tableIds} onChange={(e) => setValues({ ...values, tableIds: Array.from(e.target.selectedOptions).map((opt) => opt.value) })}>{props.tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select></label>
       </div>
+      <button type="button" onClick={checkAvailability} className="rounded border px-3 py-2 text-sm">
+        Check Availability / Suggest Tables
+      </button>
       <label className="block text-sm">Guest Notes / Special Requests<textarea className="mt-1 w-full rounded border p-2" value={values.specialRequests} onChange={(e) => setValues({ ...values, specialRequests: e.target.value })} /></label>
       <label className="block text-sm">Internal Notes (staff only)<textarea className="mt-1 w-full rounded border p-2" value={values.internalNotes} onChange={(e) => setValues({ ...values, internalNotes: e.target.value })} /></label>
       <button disabled={submitting} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60" type="submit">{submitting ? 'Saving…' : props.mode === 'create' ? 'Create Reservation' : 'Save Changes'}</button>

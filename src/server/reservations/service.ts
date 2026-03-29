@@ -7,6 +7,7 @@ import {
   computeReservationWindow,
   validateSlotAligned
 } from './availability';
+import { canPlaceReservation } from './availability-service';
 import {
   type CancelReservationInput,
   type ChangeReservationStatusInput,
@@ -208,61 +209,6 @@ function assertDurationAndSlot(input: {
   }
 }
 
-async function assertNoTableConflicts(
-  tx: Prisma.TransactionClient,
-  input: {
-    organizationId: string;
-    venueId: string;
-    reservationIdToExclude?: string;
-    tableIds: string[];
-    startAt: Date;
-    endAt: Date;
-  }
-) {
-  const overlaps = await tx.reservationTable.findMany({
-    where: {
-      tableId: { in: input.tableIds },
-      reservation: {
-        organizationId: input.organizationId,
-        venueId: input.venueId,
-        ...(input.reservationIdToExclude
-          ? { id: { not: input.reservationIdToExclude } }
-          : {}),
-        status: {
-          code: { not: 'CANCELED' }
-        },
-        startAt: { lt: input.endAt },
-        endAt: { gt: input.startAt }
-      }
-    },
-    select: {
-      tableId: true,
-      reservation: {
-        select: {
-          id: true,
-          startAt: true,
-          endAt: true
-        }
-      }
-    },
-    take: 1
-  });
-
-  if (overlaps.length > 0) {
-    const overlap = overlaps[0];
-    throw new ReservationValidationError(
-      'One or more assigned tables are unavailable for the selected time window.',
-      {
-        tableId: overlap.tableId,
-        conflictingReservationId: overlap.reservation.id,
-        conflictingStartAt: overlap.reservation.startAt.toISOString(),
-        conflictingEndAt: overlap.reservation.endAt.toISOString()
-      }
-    );
-  }
-}
-
-
 function assertStatusTransition(input: {
   currentStatusCode: string;
   nextStatusCode: string;
@@ -424,13 +370,20 @@ export async function createReservation(input: {
         tableIds: parsed.data.tableIds,
         partySize: parsed.data.partySize
       });
-      await assertNoTableConflicts(tx, {
+      const placementCheck = await canPlaceReservation({
         organizationId: input.organizationId,
         venueId: parsed.data.venueId,
+        partySize: parsed.data.partySize,
         tableIds: parsed.data.tableIds,
         startAt: reservationWindow.startAt,
         endAt: reservationWindow.endAt
       });
+      if (!placementCheck.ok) {
+        throw new ReservationValidationError(
+          'Reservation cannot be placed at the selected time with the selected tables.',
+          { availability: String(placementCheck.reason ?? 'UNKNOWN') }
+        );
+      }
 
       const status = parsed.data.reservationStatusId
         ? await assertStatus(tx, {
@@ -609,14 +562,21 @@ export async function updateReservation(input: {
 
     await assertVenue(tx, { venueId, organizationId: input.organizationId });
     await assertTableAssignments(tx, { venueId, tableIds, partySize });
-    await assertNoTableConflicts(tx, {
+    const placementCheck = await canPlaceReservation({
       organizationId: input.organizationId,
       venueId,
+      partySize,
       reservationIdToExclude: current.id,
       tableIds,
       startAt: reservationWindow.startAt,
       endAt: reservationWindow.endAt
     });
+    if (!placementCheck.ok) {
+      throw new ReservationValidationError(
+        'Reservation cannot be placed at the selected time with the selected tables.',
+        { availability: String(placementCheck.reason ?? 'UNKNOWN') }
+      );
+    }
 
     if (parsed.data.reservationStatusId) {
       const nextStatus = await assertStatus(tx, {

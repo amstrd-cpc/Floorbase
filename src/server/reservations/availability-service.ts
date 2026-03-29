@@ -18,6 +18,8 @@ type CandidateTable = {
   name: string;
   capacityMax: number;
   capacityMin: number | null;
+  canCombine: boolean;
+  combineGroup: string | null;
 };
 
 type BusyInterval = {
@@ -128,18 +130,40 @@ function chooseMinimalTableSet(
     return a.name.localeCompare(b.name);
   });
 
-  let remaining = partySize;
-  const selected: CandidateTable[] = [];
-  for (const table of sorted) {
-    if (remaining <= 0) {
-      break;
-    }
-
-    selected.push(table);
-    remaining -= table.capacityMax;
+  const singleTable = sorted.find((table) => partySize <= table.capacityMax);
+  if (singleTable) {
+    return [singleTable];
   }
 
-  return remaining <= 0 ? selected : [];
+  const groupedCombinable = new Map<string, CandidateTable[]>();
+  for (const table of sorted) {
+    if (!table.canCombine || !table.combineGroup) {
+      continue;
+    }
+
+    const key = table.combineGroup;
+    groupedCombinable.set(key, [...(groupedCombinable.get(key) ?? []), table]);
+  }
+
+  for (const [, groupTables] of groupedCombinable) {
+    let remaining = partySize;
+    const selected: CandidateTable[] = [];
+
+    for (const table of groupTables) {
+      if (remaining <= 0) {
+        break;
+      }
+
+      selected.push(table);
+      remaining -= table.capacityMax;
+    }
+
+    if (remaining <= 0) {
+      return selected;
+    }
+  }
+
+  return [];
 }
 
 export async function listAvailableTables(input: {
@@ -157,7 +181,10 @@ export async function listAvailableTables(input: {
     durationMinutes: input.durationMinutes
   });
 
-  if (!validateSlotAligned(window.startAt) || !validateSlotAligned(window.endAt)) {
+  if (
+    !validateSlotAligned(window.startAt) ||
+    !validateSlotAligned(window.endAt)
+  ) {
     return {
       availableTables: [],
       recommendedTableIds: [],
@@ -169,8 +196,9 @@ export async function listAvailableTables(input: {
 
   const { businessHours, blackoutRules } = await getVenuePolicy(input.venueId);
   const dayHours =
-    businessHours.find((hours) => hours.dayOfWeek === weekdayFor(window.startAt)) ??
-    null;
+    businessHours.find(
+      (hours) => hours.dayOfWeek === weekdayFor(window.startAt)
+    ) ?? null;
 
   if (!isWithinBusinessHours({ window, dayHours })) {
     return {
@@ -198,9 +226,17 @@ export async function listAvailableTables(input: {
         venueId: input.venueId,
         venue: { organizationId: input.organizationId },
         isActive: true,
-        capacityMax: { gte: 1 }
+        capacityMax: { gte: 1 },
+        area: { isActive: true }
       },
-      select: { id: true, name: true, capacityMax: true, capacityMin: true },
+      select: {
+        id: true,
+        name: true,
+        capacityMax: true,
+        capacityMin: true,
+        canCombine: true,
+        combineGroup: true
+      },
       orderBy: [{ capacityMax: 'asc' }, { name: 'asc' }]
     }),
     prisma.reservationTable.findMany({
@@ -209,7 +245,9 @@ export async function listAvailableTables(input: {
         reservation: {
           organizationId: input.organizationId,
           venueId: input.venueId,
-          ...(input.reservationIdToExclude ? { id: { not: input.reservationIdToExclude } } : {}),
+          ...(input.reservationIdToExclude
+            ? { id: { not: input.reservationIdToExclude } }
+            : {}),
           status: { code: { not: 'CANCELED' } },
           startAt: { lt: window.endAt },
           endAt: { gt: window.startAt }
@@ -252,7 +290,10 @@ export async function listAvailableTables(input: {
     return !isTableBlocked({ tableId: table.id, window, busyIntervals });
   });
 
-  const recommendedTables = chooseMinimalTableSet(availableTables, input.partySize);
+  const recommendedTables = chooseMinimalTableSet(
+    availableTables,
+    input.partySize
+  );
 
   return {
     allowed: recommendedTables.length > 0,
@@ -278,8 +319,12 @@ export async function canPlaceReservation(input: {
     return { ok: false, reason: availability.reason };
   }
 
-  const tableSet = new Set(availability.availableTables.map((table) => table.id));
-  const allRequestedAreAvailable = input.tableIds.every((tableId) => tableSet.has(tableId));
+  const tableSet = new Set(
+    availability.availableTables.map((table) => table.id)
+  );
+  const allRequestedAreAvailable = input.tableIds.every((tableId) =>
+    tableSet.has(tableId)
+  );
 
   return {
     ok: allRequestedAreAvailable,
@@ -294,12 +339,19 @@ export async function listAvailableSlots(input: {
   partySize: number;
   durationMinutes?: number;
 }) {
-  const durationMinutes = input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
+  const durationMinutes =
+    input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
   const { businessHours } = await getVenuePolicy(input.venueId);
-  const dayHours = businessHours.find((hours) => hours.dayOfWeek === weekdayFor(input.date));
+  const dayHours = businessHours.find(
+    (hours) => hours.dayOfWeek === weekdayFor(input.date)
+  );
 
   if (!dayHours || dayHours.isClosed) {
-    return [] as Array<{ startAt: Date; endAt: Date; recommendedTableIds: string[] }>;
+    return [] as Array<{
+      startAt: Date;
+      endAt: Date;
+      recommendedTableIds: string[];
+    }>;
   }
 
   const open = parseHourMinute(dayHours.openTime);
@@ -311,7 +363,11 @@ export async function listAvailableSlots(input: {
   const closeAt = new Date(input.date);
   closeAt.setUTCHours(close.hours, close.minutes, 0, 0);
 
-  const slots: Array<{ startAt: Date; endAt: Date; recommendedTableIds: string[] }> = [];
+  const slots: Array<{
+    startAt: Date;
+    endAt: Date;
+    recommendedTableIds: string[];
+  }> = [];
 
   while (addMinutes(cursor, durationMinutes) <= closeAt) {
     const slotStart = new Date(cursor);

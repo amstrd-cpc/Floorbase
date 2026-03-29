@@ -8,19 +8,45 @@ export default async function NewReservationPage() {
   if (!organizationId || !venueId) return <p>Missing admin scope.</p>;
 
   const [statuses, tables] = await Promise.all([
-    prisma.reservationStatus.findMany({ where: { organizationId, isActive: true }, orderBy: { sortOrder: 'asc' } }),
-    prisma.table.findMany({ where: { venueId, isActive: true }, orderBy: [{ name: 'asc' }] })
+    prisma.reservationStatus.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { sortOrder: 'asc' }
+    }),
+    prisma.table.findMany({
+      where: { venueId, isActive: true },
+      include: { area: true },
+      orderBy: [{ name: 'asc' }]
+    })
   ]);
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Create Reservation" description="Use this flow during calls, walk-ins, and manager overrides." />
+      <PageHeader
+        title="Create Reservation"
+        description="Use this flow during calls, walk-ins, and manager overrides."
+      />
       <ReservationForm
         mode="create"
         organizationId={organizationId}
         venueId={venueId}
-        statuses={statuses.map((status: { id: string; label: string }) => ({ id: status.id, label: status.label }))}
-        tables={tables.map((table: { id: string; name: string; capacityMax: number }) => ({ id: table.id, label: `${table.name} (${table.capacityMax})` }))}
+        statuses={statuses.map((status: { id: string; label: string }) => ({
+          id: status.id,
+          label: status.label
+        }))}
+        tables={tables.map(
+          (table: {
+            id: string;
+            name: string;
+            capacityMin: number | null;
+            capacityMax: number;
+            area: { name: string };
+          }) => ({
+            id: table.id,
+            label: `${table.name} · ${table.area.name} · ${table.capacityMin ?? 1}-${table.capacityMax}`,
+            capacityMin: table.capacityMin,
+            capacityMax: table.capacityMax
+          })
+        )}
       />
     </div>
   );

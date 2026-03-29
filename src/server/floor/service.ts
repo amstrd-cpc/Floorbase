@@ -72,6 +72,28 @@ function assertTableCapacity(input: {
   }
 }
 
+function normalizeCombineGroup(input: {
+  canCombine: boolean;
+  combineGroup?: string | null;
+}) {
+  if (!input.canCombine) {
+    return null;
+  }
+
+  return input.combineGroup ?? null;
+}
+
+function assertCombineRule(input: {
+  canCombine: boolean;
+  combineGroup?: string | null;
+}) {
+  if (input.combineGroup && !input.canCombine) {
+    throw new FloorValidationError(
+      'combineGroup can only be set when canCombine is true.'
+    );
+  }
+}
+
 export async function listAreasAndTables(input: { venueId: string }) {
   const parsed = listFloorEntitiesSchema.safeParse(input);
   if (!parsed.success) {
@@ -171,6 +193,10 @@ export async function createTable(payload: CreateTableInput) {
       capacityMin: parsed.data.capacityMin,
       capacityMax: parsed.data.capacityMax
     });
+    assertCombineRule({
+      canCombine: parsed.data.canCombine ?? false,
+      combineGroup: parsed.data.combineGroup
+    });
 
     return prisma.table.create({
       data: {
@@ -178,6 +204,13 @@ export async function createTable(payload: CreateTableInput) {
         areaId: parsed.data.areaId,
         name: parsed.data.name,
         code: parsed.data.code ?? null,
+        shape: parsed.data.shape ?? 'SQUARE',
+        tableType: parsed.data.tableType ?? 'STANDARD',
+        canCombine: parsed.data.canCombine ?? false,
+        combineGroup: normalizeCombineGroup({
+          canCombine: parsed.data.canCombine ?? false,
+          combineGroup: parsed.data.combineGroup
+        }),
         capacityMin: parsed.data.capacityMin ?? null,
         capacityMax: parsed.data.capacityMax,
         isActive: parsed.data.isActive ?? true
@@ -217,7 +250,14 @@ export async function updateTable(input: {
 
     const capacityMin = parsed.data.capacityMin ?? current.capacityMin;
     const capacityMax = parsed.data.capacityMax ?? current.capacityMax;
+    const canCombine = parsed.data.canCombine ?? current.canCombine;
+    const combineGroup =
+      parsed.data.combineGroup === undefined
+        ? current.combineGroup
+        : parsed.data.combineGroup;
+
     assertTableCapacity({ capacityMin, capacityMax });
+    assertCombineRule({ canCombine, combineGroup });
 
     return prisma.table.update({
       where: { id: current.id },
@@ -225,6 +265,10 @@ export async function updateTable(input: {
         areaId: parsed.data.areaId ?? current.areaId,
         name: parsed.data.name ?? current.name,
         code: parsed.data.code === undefined ? current.code : parsed.data.code,
+        shape: parsed.data.shape ?? current.shape,
+        tableType: parsed.data.tableType ?? current.tableType,
+        canCombine,
+        combineGroup: normalizeCombineGroup({ canCombine, combineGroup }),
         capacityMin,
         capacityMax,
         isActive: parsed.data.isActive ?? current.isActive

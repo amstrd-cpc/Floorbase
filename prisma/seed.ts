@@ -1,9 +1,29 @@
-import { scrypt as scryptCallback, randomBytes } from 'crypto';
-import { promisify } from 'util';
+import {
+  randomBytes,
+  scrypt as scryptCallback,
+  type ScryptOptions
+} from 'crypto';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-const scrypt = promisify(scryptCallback);
+
+function scrypt(
+  password: string,
+  salt: string,
+  keylen: number,
+  options: ScryptOptions
+) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scryptCallback(password, salt, keylen, options, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(derivedKey as Buffer);
+    });
+  });
+}
 
 const DEFAULT_STATUSES = [
   {

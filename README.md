@@ -46,10 +46,10 @@ Set these auth values in `.env`:
 npm run db:generate
 ```
 
-### 4) Run migration(s)
+### 4) Apply existing migration(s)
 
 ```bash
-npm run db:migrate -- --name init
+npm run db:deploy
 ```
 
 ### 5) Seed local development data
@@ -63,7 +63,6 @@ Seed includes one organization, one venue, areas/tables, business hours, staff u
 ### 6) Reset and reseed quickly
 
 ```bash
-npm run db:reset
 npm run db:reseed
 ```
 

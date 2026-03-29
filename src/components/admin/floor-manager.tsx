@@ -95,6 +95,17 @@ export function FloorManager({
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  async function refreshAreas() {
+    const res = await fetch(`/api/admin/areas?venueId=${venueId}`);
+    const body = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(body.error ?? 'Failed to refresh floor data.');
+    }
+
+    setAreas(body.areas as Area[]);
+  }
+
   const activeAreaCount = useMemo(
     () => areas.filter((area) => area.isActive).length,
     [areas]
@@ -119,7 +130,7 @@ export function FloorManager({
       return setError(body.error ?? 'Failed to create area.');
     }
 
-    window.location.reload();
+    await refreshAreas();
   }
 
   async function createTable(formData: FormData) {
@@ -151,7 +162,7 @@ export function FloorManager({
       return setError(body.error ?? 'Failed to create table.');
     }
 
-    window.location.reload();
+    await refreshAreas();
   }
 
   async function patchArea(areaId: string, payload: Record<string, unknown>) {

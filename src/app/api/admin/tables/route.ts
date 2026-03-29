@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import {
   FloorNotFoundError,
   FloorValidationError
 } from '@/server/floor/errors';
 import { createTable } from '@/server/floor/service';
 import { prisma } from '@/server/db/prisma/client';
+import { getVenueScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof FloorValidationError) {
@@ -23,7 +24,7 @@ function toErrorResponse(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  await requireRole([
+  const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
     'VENUE_MANAGER',
@@ -39,6 +40,23 @@ export async function GET(request: Request) {
   }
 
   try {
+    const venue = await getVenueScope(venueId);
+    if (!venue) {
+      return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: venue.organizationId,
+        venueId: venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested venue scope.' },
+        { status: 403 }
+      );
+    }
+
     const tables = await prisma.table.findMany({
       where: { venueId },
       include: { area: true },
@@ -52,11 +70,32 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN', 'VENUE_MANAGER']);
+  const user = await requireRole([
+    'SUPER_ADMIN',
+    'ORGANIZATION_ADMIN',
+    'VENUE_MANAGER'
+  ]);
 
   const payload = await request.json();
 
   try {
+    const venue = await getVenueScope(String(payload?.venueId ?? ''));
+    if (!venue) {
+      return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: venue.organizationId,
+        venueId: venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested venue scope.' },
+        { status: 403 }
+      );
+    }
+
     const table = await createTable(payload);
     return NextResponse.json({ table }, { status: 201 });
   } catch (error) {

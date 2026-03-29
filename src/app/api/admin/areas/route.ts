@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import {
   FloorNotFoundError,
   FloorValidationError
 } from '@/server/floor/errors';
 import { createArea, listAreasAndTables } from '@/server/floor/service';
+import { getVenueScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof FloorValidationError) {
@@ -22,7 +23,7 @@ function toErrorResponse(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  await requireRole([
+  const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
     'VENUE_MANAGER',
@@ -38,6 +39,23 @@ export async function GET(request: Request) {
   }
 
   try {
+    const venue = await getVenueScope(venueId);
+    if (!venue) {
+      return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: venue.organizationId,
+        venueId: venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested venue scope.' },
+        { status: 403 }
+      );
+    }
+
     const areas = await listAreasAndTables({ venueId });
     return NextResponse.json({ areas });
   } catch (error) {
@@ -46,11 +64,32 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN', 'VENUE_MANAGER']);
+  const user = await requireRole([
+    'SUPER_ADMIN',
+    'ORGANIZATION_ADMIN',
+    'VENUE_MANAGER'
+  ]);
 
   const payload = await request.json();
 
   try {
+    const venue = await getVenueScope(String(payload?.venueId ?? ''));
+    if (!venue) {
+      return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: venue.organizationId,
+        venueId: venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested venue scope.' },
+        { status: 403 }
+      );
+    }
+
     const area = await createArea(payload);
     return NextResponse.json({ area }, { status: 201 });
   } catch (error) {

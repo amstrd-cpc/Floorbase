@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import {
   ReservationNotFoundError,
@@ -9,24 +9,6 @@ import {
   createReservation,
   listReservations
 } from '@/server/reservations/service';
-
-function userHasScope(
-  user: Awaited<ReturnType<typeof requireRole>>,
-  organizationId: string,
-  venueId?: string
-) {
-  return user.adminRoles.some((assignment) => {
-    if (assignment.role === 'SUPER_ADMIN') {
-      return true;
-    }
-
-    if (assignment.organizationId !== organizationId) {
-      return false;
-    }
-
-    return !venueId || !assignment.venueId || assignment.venueId === venueId;
-  });
-}
 
 async function resolveOrganizationIdForVenue(venueId: string) {
   const venue = await prisma.venue.findUnique({
@@ -86,7 +68,9 @@ export async function GET(request: Request) {
       organizationId ??
       (await resolveOrganizationIdForVenue(venueId as string));
 
-    if (!userHasScope(user, scopedOrganizationId, venueId)) {
+    if (
+      !hasAdminScope(user, { organizationId: scopedOrganizationId, venueId })
+    ) {
       return NextResponse.json(
         { error: 'Forbidden for requested reservation scope.' },
         { status: 403 }
@@ -127,7 +111,7 @@ export async function POST(request: Request) {
   try {
     const organizationId = await resolveOrganizationIdForVenue(payload.venueId);
 
-    if (!userHasScope(user, organizationId, payload.venueId)) {
+    if (!hasAdminScope(user, { organizationId, venueId: payload.venueId })) {
       return NextResponse.json(
         { error: 'Forbidden for requested reservation scope.' },
         { status: 403 }

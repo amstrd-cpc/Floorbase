@@ -6,6 +6,10 @@ type RoleScope = {
   venueId?: string;
 };
 
+export type AdminSessionUser = Awaited<
+  ReturnType<typeof requireAuthenticatedUser>
+>;
+
 function roleMatchesScope(
   assignment: { organizationId: string | null; venueId: string | null },
   scope?: RoleScope
@@ -14,7 +18,8 @@ function roleMatchesScope(
     return true;
   }
 
-  const organizationMatches = !scope.organizationId || assignment.organizationId === scope.organizationId;
+  const organizationMatches =
+    !scope.organizationId || assignment.organizationId === scope.organizationId;
   const venueMatches = !scope.venueId || assignment.venueId === scope.venueId;
 
   return organizationMatches && venueMatches;
@@ -31,7 +36,9 @@ export async function requireAuthenticatedUser() {
 }
 
 export async function requireRole(
-  requiredRoles: ReadonlyArray<'SUPER_ADMIN' | 'ORGANIZATION_ADMIN' | 'VENUE_MANAGER' | 'HOST'>,
+  requiredRoles: ReadonlyArray<
+    'SUPER_ADMIN' | 'ORGANIZATION_ADMIN' | 'VENUE_MANAGER' | 'HOST'
+  >,
   scope?: RoleScope
 ) {
   const user = await requireAuthenticatedUser();
@@ -53,4 +60,25 @@ export async function requireRole(
   }
 
   return user;
+}
+
+export function hasAdminScope(
+  user: AdminSessionUser,
+  scope: { organizationId: string; venueId?: string }
+) {
+  return user.adminRoles.some((assignment) => {
+    if (assignment.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    if (assignment.organizationId !== scope.organizationId) {
+      return false;
+    }
+
+    if (!scope.venueId) {
+      return true;
+    }
+
+    return !assignment.venueId || assignment.venueId === scope.venueId;
+  });
 }

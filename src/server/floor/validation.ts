@@ -1,5 +1,25 @@
 import { z } from 'zod';
 
+export const tableShapeSchema = z.enum([
+  'SQUARE',
+  'ROUND',
+  'RECTANGLE',
+  'BOOTH',
+  'HIGH_TOP',
+  'BAR',
+  'COUNTER',
+  'CUSTOM'
+]);
+
+export const tableTypeSchema = z.enum([
+  'STANDARD',
+  'OUTDOOR',
+  'BAR',
+  'PRIVATE',
+  'ACCESSIBLE',
+  'FLEX'
+]);
+
 export const listFloorEntitiesSchema = z
   .object({
     venueId: z.string().cuid()
@@ -23,12 +43,24 @@ export const updateAreaSchema = z
   })
   .strict();
 
+const combineGroupSchema = z
+  .string()
+  .trim()
+  .max(40)
+  .transform((value) => (value.length === 0 ? null : value.toUpperCase()))
+  .nullable()
+  .optional();
+
 export const createTableSchema = z
   .object({
     venueId: z.string().cuid(),
     areaId: z.string().cuid(),
     name: z.string().trim().min(1).max(120),
     code: z.string().trim().min(1).max(32).nullable().optional(),
+    shape: tableShapeSchema.optional(),
+    tableType: tableTypeSchema.optional(),
+    canCombine: z.boolean().optional(),
+    combineGroup: combineGroupSchema,
     capacityMin: z.number().int().min(1).max(20).nullable().optional(),
     capacityMax: z.number().int().min(1).max(20),
     isActive: z.boolean().optional()
@@ -40,6 +72,10 @@ export const updateTableSchema = z
     areaId: z.string().cuid().optional(),
     name: z.string().trim().min(1).max(120).optional(),
     code: z.string().trim().min(1).max(32).nullable().optional(),
+    shape: tableShapeSchema.optional(),
+    tableType: tableTypeSchema.optional(),
+    canCombine: z.boolean().optional(),
+    combineGroup: combineGroupSchema,
     capacityMin: z.number().int().min(1).max(20).nullable().optional(),
     capacityMax: z.number().int().min(1).max(20).optional(),
     isActive: z.boolean().optional()

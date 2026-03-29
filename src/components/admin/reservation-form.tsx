@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   MAX_PARTY_SIZE,
@@ -9,7 +9,14 @@ import {
   RESERVATION_SLOT_MINUTES
 } from '@/lib/reservations/rules';
 
-type Option = { id: string; label: string; code?: string };
+type Option = {
+  id: string;
+  label: string;
+  code?: string;
+  capacityMin?: number | null;
+  capacityMax?: number;
+  isActive?: boolean;
+};
 
 type ReservationFormValues = {
   fullName: string;
@@ -104,7 +111,9 @@ function formatApiError(body: Record<string, unknown>) {
       : [];
 
   const detailText = details
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .filter(
+      (value): value is string => typeof value === 'string' && value.length > 0
+    )
     .join(' ');
 
   if (typeof body.error === 'string' && detailText.length > 0) {
@@ -116,6 +125,13 @@ function formatApiError(body: Record<string, unknown>) {
   }
 
   return 'Unable to save reservation.';
+}
+
+function isTableCompatible(option: Option, partySize: number) {
+  const min = option.capacityMin ?? 1;
+  const max = option.capacityMax ?? MAX_PARTY_SIZE;
+
+  return partySize >= min && partySize <= max;
 }
 
 export function ReservationForm(props: ReservationFormProps) {
@@ -136,6 +152,14 @@ export function ReservationForm(props: ReservationFormProps) {
       specialRequests: '',
       internalNotes: ''
     }
+  );
+
+  const incompatibleSelected = useMemo(
+    () =>
+      props.tables
+        .filter((table) => values.tableIds.includes(table.id))
+        .filter((table) => !isTableCompatible(table, values.partySize)),
+    [props.tables, values.partySize, values.tableIds]
   );
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -183,7 +207,10 @@ export function ReservationForm(props: ReservationFormProps) {
       body: JSON.stringify(payload)
     });
 
-    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const body = (await response.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
     if (!response.ok) {
       setError(formatApiError(body));
       setSubmitting(false);
@@ -191,7 +218,8 @@ export function ReservationForm(props: ReservationFormProps) {
     }
 
     const reservationId =
-      (body.reservation as { id?: string } | undefined)?.id ?? props.reservationId;
+      (body.reservation as { id?: string } | undefined)?.id ??
+      props.reservationId;
     router.push(`/admin/reservations/${reservationId}`);
     router.refresh();
   }
@@ -221,17 +249,26 @@ export function ReservationForm(props: ReservationFormProps) {
     const body = (await response.json().catch(() => ({}))) as {
       reason?: string;
       recommendedTableIds?: string[];
-      availableTables?: Array<{ id: string; name: string; capacityMax: number }>;
+      availableTables?: Array<{
+        id: string;
+        name: string;
+        capacityMax: number;
+      }>;
       error?: string;
     };
 
     if (!response.ok) {
-      setAvailabilityNote(body.error ?? 'Unable to check availability right now.');
+      setAvailabilityNote(
+        body.error ?? 'Unable to check availability right now.'
+      );
       return;
     }
 
     if (body.recommendedTableIds && body.recommendedTableIds.length > 0) {
-      setValues((previous) => ({ ...previous, tableIds: body.recommendedTableIds ?? [] }));
+      setValues((previous) => ({
+        ...previous,
+        tableIds: body.recommendedTableIds ?? []
+      }));
       setAvailabilityNote(
         `Found availability. Recommended tables have been selected (${body.recommendedTableIds.length}).`
       );
@@ -247,25 +284,175 @@ export function ReservationForm(props: ReservationFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border bg-white p-4 md:p-6">
-      {error ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
-      {availabilityNote ? <p className="rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">{availabilityNote}</p> : null}
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4 rounded-lg border bg-white p-4 md:p-6"
+    >
+      {error ? (
+        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+      {availabilityNote ? (
+        <p className="rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">
+          {availabilityNote}
+        </p>
+      ) : null}
+      {incompatibleSelected.length > 0 ? (
+        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+          Selected table(s) outside party-size range:{' '}
+          {incompatibleSelected.map((table) => table.label).join(', ')}.
+        </p>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="text-sm">Guest Name<input required className="mt-1 w-full rounded border p-2" value={values.fullName} onChange={(e) => setValues({ ...values, fullName: e.target.value })} /></label>
-        <label className="text-sm">Email<input type="email" className="mt-1 w-full rounded border p-2" value={values.email} onChange={(e) => setValues({ ...values, email: e.target.value })} /></label>
-        <label className="text-sm">Phone<input className="mt-1 w-full rounded border p-2" value={values.phone} onChange={(e) => setValues({ ...values, phone: e.target.value })} /></label>
-        <label className="text-sm">Party Size<input required min={1} max={MAX_PARTY_SIZE} type="number" className="mt-1 w-full rounded border p-2" value={values.partySize} onChange={(e) => setValues({ ...values, partySize: Number(e.target.value) })} /></label>
-        <label className="text-sm">Start<input required step={RESERVATION_SLOT_MINUTES * 60} type="datetime-local" className="mt-1 w-full rounded border p-2" value={values.startAt} onChange={(e) => setValues({ ...values, startAt: e.target.value })} /></label>
-        <label className="text-sm">Duration (min)<input required min={MIN_RESERVATION_DURATION_MINUTES} max={MAX_RESERVATION_DURATION_MINUTES} step={RESERVATION_SLOT_MINUTES} type="number" className="mt-1 w-full rounded border p-2" value={values.durationMinutes} onChange={(e) => setValues({ ...values, durationMinutes: Number(e.target.value) })} /></label>
-        <label className="text-sm">Status<select className="mt-1 w-full rounded border p-2" value={values.reservationStatusId} onChange={(e) => setValues({ ...values, reservationStatusId: e.target.value })}>{props.statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
-        <label className="text-sm">Assigned Tables<select required multiple className="mt-1 h-28 w-full rounded border p-2" value={values.tableIds} onChange={(e) => setValues({ ...values, tableIds: Array.from(e.target.selectedOptions).map((opt) => opt.value) })}>{props.tables.map((table) => <option key={table.id} value={table.id}>{table.label}</option>)}</select></label>
+        <label className="text-sm">
+          Guest Name
+          <input
+            required
+            className="mt-1 w-full rounded border p-2"
+            value={values.fullName}
+            onChange={(e) => setValues({ ...values, fullName: e.target.value })}
+          />
+        </label>
+        <label className="text-sm">
+          Email
+          <input
+            type="email"
+            className="mt-1 w-full rounded border p-2"
+            value={values.email}
+            onChange={(e) => setValues({ ...values, email: e.target.value })}
+          />
+        </label>
+        <label className="text-sm">
+          Phone
+          <input
+            className="mt-1 w-full rounded border p-2"
+            value={values.phone}
+            onChange={(e) => setValues({ ...values, phone: e.target.value })}
+          />
+        </label>
+        <label className="text-sm">
+          Party Size
+          <input
+            required
+            min={1}
+            max={MAX_PARTY_SIZE}
+            type="number"
+            className="mt-1 w-full rounded border p-2"
+            value={values.partySize}
+            onChange={(e) =>
+              setValues({ ...values, partySize: Number(e.target.value) })
+            }
+          />
+        </label>
+        <label className="text-sm">
+          Start
+          <input
+            required
+            step={RESERVATION_SLOT_MINUTES * 60}
+            type="datetime-local"
+            className="mt-1 w-full rounded border p-2"
+            value={values.startAt}
+            onChange={(e) => setValues({ ...values, startAt: e.target.value })}
+          />
+        </label>
+        <label className="text-sm">
+          Duration (min)
+          <input
+            required
+            min={MIN_RESERVATION_DURATION_MINUTES}
+            max={MAX_RESERVATION_DURATION_MINUTES}
+            step={RESERVATION_SLOT_MINUTES}
+            type="number"
+            className="mt-1 w-full rounded border p-2"
+            value={values.durationMinutes}
+            onChange={(e) =>
+              setValues({ ...values, durationMinutes: Number(e.target.value) })
+            }
+          />
+        </label>
+        <label className="text-sm">
+          Status
+          <select
+            className="mt-1 w-full rounded border p-2"
+            value={values.reservationStatusId}
+            onChange={(e) =>
+              setValues({ ...values, reservationStatusId: e.target.value })
+            }
+          >
+            {props.statuses.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          Assigned Tables
+          <select
+            required
+            multiple
+            className="mt-1 h-36 w-full rounded border p-2"
+            value={values.tableIds}
+            onChange={(e) =>
+              setValues({
+                ...values,
+                tableIds: Array.from(e.target.selectedOptions).map(
+                  (opt) => opt.value
+                )
+              })
+            }
+          >
+            {props.tables.map((table) => {
+              const compatible = isTableCompatible(table, values.partySize);
+
+              return (
+                <option key={table.id} value={table.id}>
+                  {compatible ? '' : '⚠ '} {table.label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
       </div>
-      <button type="button" onClick={checkAvailability} className="rounded border px-3 py-2 text-sm">
+      <button
+        type="button"
+        onClick={checkAvailability}
+        className="rounded border px-3 py-2 text-sm"
+      >
         Check Availability / Suggest Tables
       </button>
-      <label className="block text-sm">Guest Notes / Special Requests<textarea className="mt-1 w-full rounded border p-2" value={values.specialRequests} onChange={(e) => setValues({ ...values, specialRequests: e.target.value })} /></label>
-      <label className="block text-sm">Internal Notes (staff only)<textarea className="mt-1 w-full rounded border p-2" value={values.internalNotes} onChange={(e) => setValues({ ...values, internalNotes: e.target.value })} /></label>
-      <button disabled={submitting} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60" type="submit">{submitting ? 'Saving…' : props.mode === 'create' ? 'Create Reservation' : 'Save Changes'}</button>
+      <label className="block text-sm">
+        Guest Notes / Special Requests
+        <textarea
+          className="mt-1 w-full rounded border p-2"
+          value={values.specialRequests}
+          onChange={(e) =>
+            setValues({ ...values, specialRequests: e.target.value })
+          }
+        />
+      </label>
+      <label className="block text-sm">
+        Internal Notes (staff only)
+        <textarea
+          className="mt-1 w-full rounded border p-2"
+          value={values.internalNotes}
+          onChange={(e) =>
+            setValues({ ...values, internalNotes: e.target.value })
+          }
+        />
+      </label>
+      <button
+        disabled={submitting}
+        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        type="submit"
+      >
+        {submitting
+          ? 'Saving…'
+          : props.mode === 'create'
+            ? 'Create Reservation'
+            : 'Save Changes'}
+      </button>
     </form>
   );
 }

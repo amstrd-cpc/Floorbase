@@ -15,15 +15,29 @@ export default async function FloorManagementPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Areas & Tables" description="Manage the floor map entities used during assignment." />
+      <PageHeader
+        title="Areas & Tables"
+        description="Operational floor setup for zoning, capacities, and reservation assignment constraints."
+      />
       <FloorManager
         venueId={venueId}
-        initialAreas={areas.map((area: { id: string; name: string; sortOrder: number; isActive: boolean; tables: Array<{ id: string; name: string; capacityMax: number; isActive: boolean }> }) => ({
+        initialAreas={areas.map((area) => ({
           id: area.id,
           name: area.name,
           sortOrder: area.sortOrder,
           isActive: area.isActive,
-          tables: area.tables.map((table: { id: string; name: string; capacityMax: number; isActive: boolean }) => ({ id: table.id, name: table.name, capacityMax: table.capacityMax, isActive: table.isActive }))
+          tables: area.tables.map((table) => ({
+            id: table.id,
+            name: table.name,
+            code: table.code,
+            shape: table.shape,
+            tableType: table.tableType,
+            canCombine: table.canCombine,
+            combineGroup: table.combineGroup,
+            capacityMin: table.capacityMin,
+            capacityMax: table.capacityMax,
+            isActive: table.isActive
+          }))
         }))}
       />
     </div>

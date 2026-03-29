@@ -152,13 +152,39 @@ async function assertTableAssignments(
       venueId: input.venueId,
       isActive: true
     },
-    select: { id: true, capacityMax: true, capacityMin: true }
+    select: {
+      id: true,
+      capacityMax: true,
+      capacityMin: true,
+      canCombine: true,
+      combineGroup: true,
+      area: { select: { isActive: true } }
+    }
   });
 
   if (tables.length !== input.tableIds.length) {
     throw new ReservationValidationError(
       'One or more assigned tables are invalid for this venue.'
     );
+  }
+
+  if (tables.some((table) => !table.area.isActive)) {
+    throw new ReservationValidationError(
+      'Assigned table belongs to an inactive area and cannot be reserved.'
+    );
+  }
+
+  if (tables.length > 1) {
+    const combineGroups = new Set(
+      tables.map((table) => table.combineGroup).filter(Boolean)
+    );
+    const anyNotCombinable = tables.some((table) => !table.canCombine);
+
+    if (anyNotCombinable || combineGroups.size !== 1) {
+      throw new ReservationValidationError(
+        'Multiple table assignments must be combinable and share the same combine group.'
+      );
+    }
   }
 
   const totalCapacityMax = tables.reduce(
@@ -213,7 +239,12 @@ function assertStatusTransition(input: {
   currentStatusCode: string;
   nextStatusCode: string;
 }) {
-  if (!canTransitionReservationStatus(input.currentStatusCode, input.nextStatusCode)) {
+  if (
+    !canTransitionReservationStatus(
+      input.currentStatusCode,
+      input.nextStatusCode
+    )
+  ) {
     throw new ReservationValidationError(
       `Invalid reservation status transition from ${input.currentStatusCode} to ${input.nextStatusCode}.`
     );

@@ -175,12 +175,13 @@ async function assertTableAssignments(
   }
 
   if (tables.length > 1) {
-    const combineGroups = new Set(
-      tables.map((table) => table.combineGroup).filter(Boolean)
-    );
     const anyNotCombinable = tables.some((table) => !table.canCombine);
+    const anyMissingCombineGroup = tables.some((table) => !table.combineGroup);
+    const combineGroups = new Set(
+      tables.map((table) => table.combineGroup)
+    );
 
-    if (anyNotCombinable || combineGroups.size !== 1) {
+    if (anyNotCombinable || anyMissingCombineGroup || combineGroups.size !== 1) {
       throw new ReservationValidationError(
         'Multiple table assignments must be combinable and share the same combine group.'
       );

@@ -62,8 +62,14 @@ const TABLE_TYPES: TableType[] = [
   'FLEX'
 ];
 
-function toLabel(value: string) {
-  return value
+function toLabel(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim();
+
+  if (!normalized) {
+    return 'Unknown';
+  }
+
+  return normalized
     .toLowerCase()
     .split('_')
     .map((part) => part[0]?.toUpperCase() + part.slice(1))

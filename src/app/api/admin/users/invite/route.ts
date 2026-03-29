@@ -34,7 +34,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only super admins can invite super admins.' }, { status: 403 });
   }
 
-  const organizationId = isSuperAdmin ? requestedOrganizationId : currentUser.organizationId ?? requestedOrganizationId;
+  const organizationId =
+    role === 'SUPER_ADMIN'
+      ? undefined
+      : isSuperAdmin
+        ? requestedOrganizationId
+        : currentUser.organizationId ?? requestedOrganizationId;
+  const venueId = role === 'SUPER_ADMIN' ? undefined : requestedVenueId;
 
   if (!organizationId && role !== 'SUPER_ADMIN') {
     return NextResponse.json({ error: 'organizationId is required for non-global roles.' }, { status: 400 });
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
     role,
     invitedByUserId: currentUser.id,
     organizationId,
-    venueId: requestedVenueId
+    venueId
   });
 
   return NextResponse.json(invite, { status: 201 });

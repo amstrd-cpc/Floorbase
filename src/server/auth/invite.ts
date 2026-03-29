@@ -15,17 +15,26 @@ export async function createInvite(input: {
   organizationId?: string;
   venueId?: string;
 }) {
+  const email = String(input.email ?? '').trim().toLowerCase();
+
+  if (!email) {
+    throw new Error('Email is required to create an invite.');
+  }
+
+  const organizationId = input.role === 'SUPER_ADMIN' ? undefined : input.organizationId;
+  const venueId = input.role === 'SUPER_ADMIN' ? undefined : input.venueId;
+
   const rawToken = randomBytes(24).toString('hex');
   const tokenHash = hashInviteToken(rawToken);
   const expiresAt = new Date(Date.now() + env.AUTH_INVITE_TTL_HOURS * 60 * 60 * 1000);
 
   await prisma.authInvite.create({
     data: {
-      email: input.email.toLowerCase(),
+      email,
       role: input.role,
       invitedByUserId: input.invitedByUserId,
-      organizationId: input.organizationId,
-      venueId: input.venueId,
+      organizationId,
+      venueId,
       tokenHash,
       expiresAt
     }

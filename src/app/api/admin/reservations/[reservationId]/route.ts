@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import {
   ReservationNotFoundError,
   ReservationValidationError
@@ -10,19 +10,7 @@ import {
   getReservationById,
   updateReservation
 } from '@/server/reservations/service';
-
-function userHasOrganizationScope(
-  user: Awaited<ReturnType<typeof requireRole>>,
-  organizationId: string
-) {
-  return user.adminRoles.some((assignment) => {
-    if (assignment.role === 'SUPER_ADMIN') {
-      return true;
-    }
-
-    return assignment.organizationId === organizationId;
-  });
-}
+import { getReservationScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof ReservationValidationError) {
@@ -60,14 +48,27 @@ export async function GET(
     );
   }
 
-  if (!userHasOrganizationScope(user, organizationId)) {
-    return NextResponse.json(
-      { error: 'Forbidden for requested reservation scope.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const scope = await getReservationScope(params.reservationId);
+    if (!scope || scope.organizationId !== organizationId) {
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: scope.organizationId,
+        venueId: scope.venueId
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested reservation scope.' },
+        { status: 403 }
+      );
+    }
+
     const reservation = await getReservationById({
       reservationId: params.reservationId,
       organizationId
@@ -100,16 +101,29 @@ export async function PUT(
     );
   }
 
-  if (!userHasOrganizationScope(user, organizationId)) {
-    return NextResponse.json(
-      { error: 'Forbidden for requested reservation scope.' },
-      { status: 403 }
-    );
-  }
-
   const payload = await request.json();
 
   try {
+    const scope = await getReservationScope(params.reservationId);
+    if (!scope || scope.organizationId !== organizationId) {
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: scope.organizationId,
+        venueId: scope.venueId
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested reservation scope.' },
+        { status: 403 }
+      );
+    }
+
     const reservation = await updateReservation({
       reservationId: params.reservationId,
       organizationId,
@@ -148,14 +162,27 @@ export async function PATCH(
     );
   }
 
-  if (!userHasOrganizationScope(user, payload.organizationId)) {
-    return NextResponse.json(
-      { error: 'Forbidden for requested reservation scope.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const scope = await getReservationScope(params.reservationId);
+    if (!scope || scope.organizationId !== payload.organizationId) {
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: scope.organizationId,
+        venueId: scope.venueId
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested reservation scope.' },
+        { status: 403 }
+      );
+    }
+
     const reservation =
       payload.action === 'cancel'
         ? await cancelReservation({
@@ -201,14 +228,27 @@ export async function DELETE(
     );
   }
 
-  if (!userHasOrganizationScope(user, payload.organizationId)) {
-    return NextResponse.json(
-      { error: 'Forbidden for requested reservation scope.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const scope = await getReservationScope(params.reservationId);
+    if (!scope || scope.organizationId !== payload.organizationId) {
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: scope.organizationId,
+        venueId: scope.venueId
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested reservation scope.' },
+        { status: 403 }
+      );
+    }
+
     const reservation = await cancelReservation({
       reservationId: params.reservationId,
       organizationId: payload.organizationId,

@@ -9,7 +9,11 @@ export async function getAdminContext() {
     'HOST'
   ]);
 
-  const roles = user.adminRoles as Array<{ role: string; organizationId: string | null; venueId: string | null }>
+  const roles = user.adminRoles as Array<{
+    role: string;
+    organizationId: string | null;
+    venueId: string | null;
+  }>;
 
   const orgRole =
     roles.find((role) => role.organizationId) ??
@@ -21,29 +25,10 @@ export async function getAdminContext() {
     roles.find((role) => role.venueId) ??
     roles.find((role) => role.organizationId === organizationId);
 
-  let venueId = venueRole?.venueId;
+  const venueId = venueRole?.venueId;
 
-  if (!venueId && organizationId) {
-    const firstVenue = await prisma.venue.findFirst({
-      where: { organizationId, isActive: true },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true }
-    });
-    venueId = firstVenue?.id;
-  }
-
-  if (!venueId) {
-    const firstVenue = await prisma.venue.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, organizationId: true }
-    });
-    venueId = firstVenue?.id;
-    return {
-      user,
-      venueId,
-      organizationId: organizationId ?? firstVenue?.organizationId
-    };
+  if (!organizationId || !venueId) {
+    throw new Error('Unable to resolve scoped admin context for current user.');
   }
 
   const venue = await prisma.venue.findUnique({

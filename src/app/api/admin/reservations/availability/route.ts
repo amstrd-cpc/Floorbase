@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import {
   canPlaceReservation,
   listAvailableSlots,
   listAvailableTables
 } from '@/server/reservations/availability-service';
-
-type ScopeUser = Awaited<ReturnType<typeof requireRole>>;
-
-function userHasScope(user: ScopeUser, organizationId: string, venueId?: string) {
-  return user.adminRoles.some((assignment) => {
-    if (assignment.role === 'SUPER_ADMIN') return true;
-    if (assignment.organizationId !== organizationId) return false;
-    return !venueId || !assignment.venueId || assignment.venueId === venueId;
-  });
-}
 
 async function resolveOrganizationIdForVenue(venueId: string) {
   const venue = await prisma.venue.findUnique({
@@ -44,7 +34,8 @@ export async function GET(request: Request) {
     ? Number(searchParams.get('durationMinutes'))
     : undefined;
   const tableIds = searchParams.getAll('tableId');
-  const reservationIdToExclude = searchParams.get('reservationIdToExclude') ?? undefined;
+  const reservationIdToExclude =
+    searchParams.get('reservationIdToExclude') ?? undefined;
 
   if (!venueId || !partySize || partySize < 1) {
     return NextResponse.json(
@@ -58,7 +49,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
   }
 
-  if (!userHasScope(user, organizationId, venueId)) {
+  if (!hasAdminScope(user, { organizationId, venueId })) {
     return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
   }
 

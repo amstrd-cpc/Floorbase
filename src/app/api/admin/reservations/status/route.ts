@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/server/auth/authorization';
+import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import {
   ReservationNotFoundError,
   ReservationValidationError
 } from '@/server/reservations/errors';
 import { changeReservationStatus } from '@/server/reservations/service';
+import { getReservationScope } from '@/server/auth/scope-resolvers';
 
 export async function POST(request: Request) {
   const user = await requireRole([
@@ -35,6 +36,27 @@ export async function POST(request: Request) {
   }
 
   try {
+    const reservationScope = await getReservationScope(payload.reservationId);
+    if (!reservationScope) {
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (
+      reservationScope.organizationId !== payload.organizationId ||
+      !hasAdminScope(user, {
+        organizationId: reservationScope.organizationId,
+        venueId: reservationScope.venueId
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested reservation scope.' },
+        { status: 403 }
+      );
+    }
+
     const reservation = await changeReservationStatus({
       reservationId: payload.reservationId,
       organizationId: payload.organizationId,

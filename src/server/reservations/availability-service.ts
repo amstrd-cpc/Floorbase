@@ -28,6 +28,25 @@ type BusyInterval = {
   endAt: Date;
 };
 
+type ZonedDateTimeParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  weekday: number;
+};
+
+const weekdayIndexMap: Record<string, number> = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6
+};
+
 function parseHourMinute(value: string) {
   const [hourText, minuteText] = value.split(':');
   const hours = Number(hourText);
@@ -47,26 +66,115 @@ function parseHourMinute(value: string) {
   return { hours, minutes };
 }
 
-function toUtcMinutes(date: Date) {
-  return date.getUTCHours() * 60 + date.getUTCMinutes();
+function getZonedDateTimeParts(
+  date: Date,
+  timeZone: string
+): ZonedDateTimeParts {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    weekday: 'short'
+  });
+
+  const parts = formatter.formatToParts(date);
+  const lookup = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+  const weekdayText = String(lookup.weekday ?? '')
+    .slice(0, 3)
+    .toLowerCase();
+
+  return {
+    year: Number(lookup.year),
+    month: Number(lookup.month),
+    day: Number(lookup.day),
+    hour: Number(lookup.hour),
+    minute: Number(lookup.minute),
+    weekday: weekdayIndexMap[weekdayText]
+  };
 }
 
-function weekdayFor(date: Date) {
-  return date.getUTCDay();
+function toZonedMinutes(date: Date, timeZone: string) {
+  const parts = getZonedDateTimeParts(date, timeZone);
+  return parts.hour * 60 + parts.minute;
+}
+
+function weekdayFor(date: Date, timeZone: string) {
+  return getZonedDateTimeParts(date, timeZone).weekday;
+}
+
+function zonedTimeToUtc(input: {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  timeZone: string;
+}) {
+  let guessUtc = Date.UTC(
+    input.year,
+    input.month - 1,
+    input.day,
+    input.hour,
+    input.minute,
+    0,
+    0
+  );
+
+  for (let index = 0; index < 3; index += 1) {
+    const parts = getZonedDateTimeParts(new Date(guessUtc), input.timeZone);
+    const localAsUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      0,
+      0
+    );
+    const targetAsUtc = Date.UTC(
+      input.year,
+      input.month - 1,
+      input.day,
+      input.hour,
+      input.minute,
+      0,
+      0
+    );
+
+    guessUtc += targetAsUtc - localAsUtc;
+  }
+
+  return new Date(guessUtc);
 }
 
 async function getVenuePolicy(venueId: string) {
+  const venue = await prisma.venue.findUnique({
+    where: { id: venueId },
+    select: { timezone: true }
+  });
+
+  if (!venue) {
+    throw new Error('Venue not found for availability policy resolution.');
+  }
+
   const [businessHours, blackoutRules] = await Promise.all([
     prisma.businessHours.findMany({ where: { venueId } }),
     prisma.blackoutRule.findMany({ where: { venueId } })
   ]);
 
-  return { businessHours, blackoutRules };
+  return { businessHours, blackoutRules, timezone: venue.timezone || 'UTC' };
 }
 
 function isWithinBusinessHours(input: {
   window: AvailabilityWindow;
   dayHours: { openTime: string; closeTime: string; isClosed: boolean } | null;
+  timeZone: string;
 }) {
   if (!input.dayHours || input.dayHours.isClosed) {
     return false;
@@ -75,12 +183,15 @@ function isWithinBusinessHours(input: {
   const open = parseHourMinute(input.dayHours.openTime);
   const close = parseHourMinute(input.dayHours.closeTime);
 
-  const startMinutes = toUtcMinutes(input.window.startAt);
-  const endMinutes = toUtcMinutes(input.window.endAt);
+  const startMinutes = toZonedMinutes(input.window.startAt, input.timeZone);
+  const endMinutes = toZonedMinutes(input.window.endAt, input.timeZone);
   const openMinutes = open.hours * 60 + open.minutes;
   const closeMinutes = close.hours * 60 + close.minutes;
 
-  if (weekdayFor(input.window.startAt) !== weekdayFor(input.window.endAt)) {
+  if (
+    weekdayFor(input.window.startAt, input.timeZone) !==
+    weekdayFor(input.window.endAt, input.timeZone)
+  ) {
     return false;
   }
 
@@ -194,13 +305,15 @@ export async function listAvailableTables(input: {
     };
   }
 
-  const { businessHours, blackoutRules } = await getVenuePolicy(input.venueId);
+  const { businessHours, blackoutRules, timezone } = await getVenuePolicy(
+    input.venueId
+  );
   const dayHours =
     businessHours.find(
-      (hours) => hours.dayOfWeek === weekdayFor(window.startAt)
+      (hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)
     ) ?? null;
 
-  if (!isWithinBusinessHours({ window, dayHours })) {
+  if (!isWithinBusinessHours({ window, dayHours, timeZone: timezone })) {
     return {
       availableTables: [],
       recommendedTableIds: [],
@@ -341,9 +454,10 @@ export async function listAvailableSlots(input: {
 }) {
   const durationMinutes =
     input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
-  const { businessHours } = await getVenuePolicy(input.venueId);
+  const { businessHours, timezone } = await getVenuePolicy(input.venueId);
+  const zonedDate = getZonedDateTimeParts(input.date, timezone);
   const dayHours = businessHours.find(
-    (hours) => hours.dayOfWeek === weekdayFor(input.date)
+    (hours) => hours.dayOfWeek === zonedDate.weekday
   );
 
   if (!dayHours || dayHours.isClosed) {
@@ -357,11 +471,23 @@ export async function listAvailableSlots(input: {
   const open = parseHourMinute(dayHours.openTime);
   const close = parseHourMinute(dayHours.closeTime);
 
-  const cursor = new Date(input.date);
-  cursor.setUTCHours(open.hours, open.minutes, 0, 0);
+  const cursor = zonedTimeToUtc({
+    year: zonedDate.year,
+    month: zonedDate.month,
+    day: zonedDate.day,
+    hour: open.hours,
+    minute: open.minutes,
+    timeZone: timezone
+  });
 
-  const closeAt = new Date(input.date);
-  closeAt.setUTCHours(close.hours, close.minutes, 0, 0);
+  const closeAt = zonedTimeToUtc({
+    year: zonedDate.year,
+    month: zonedDate.month,
+    day: zonedDate.day,
+    hour: close.hours,
+    minute: close.minutes,
+    timeZone: timezone
+  });
 
   const slots: Array<{
     startAt: Date;

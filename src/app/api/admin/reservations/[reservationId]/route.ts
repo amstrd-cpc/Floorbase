@@ -11,6 +11,19 @@ import {
   updateReservation
 } from '@/server/reservations/service';
 
+function userHasOrganizationScope(
+  user: Awaited<ReturnType<typeof requireRole>>,
+  organizationId: string
+) {
+  return user.adminRoles.some((assignment) => {
+    if (assignment.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    return assignment.organizationId === organizationId;
+  });
+}
+
 function toErrorResponse(error: unknown) {
   if (error instanceof ReservationValidationError) {
     return NextResponse.json(
@@ -30,7 +43,7 @@ export async function GET(
   request: Request,
   { params }: { params: { reservationId: string } }
 ) {
-  await requireRole([
+  const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
     'VENUE_MANAGER',
@@ -44,6 +57,13 @@ export async function GET(
     return NextResponse.json(
       { error: 'organizationId query param is required.' },
       { status: 400 }
+    );
+  }
+
+  if (!userHasOrganizationScope(user, organizationId)) {
+    return NextResponse.json(
+      { error: 'Forbidden for requested reservation scope.' },
+      { status: 403 }
     );
   }
 
@@ -77,6 +97,13 @@ export async function PUT(
     return NextResponse.json(
       { error: 'organizationId query param is required.' },
       { status: 400 }
+    );
+  }
+
+  if (!userHasOrganizationScope(user, organizationId)) {
+    return NextResponse.json(
+      { error: 'Forbidden for requested reservation scope.' },
+      { status: 403 }
     );
   }
 
@@ -118,6 +145,13 @@ export async function PATCH(
     return NextResponse.json(
       { error: 'organizationId and action are required.' },
       { status: 400 }
+    );
+  }
+
+  if (!userHasOrganizationScope(user, payload.organizationId)) {
+    return NextResponse.json(
+      { error: 'Forbidden for requested reservation scope.' },
+      { status: 403 }
     );
   }
 
@@ -164,6 +198,13 @@ export async function DELETE(
     return NextResponse.json(
       { error: 'organizationId is required.' },
       { status: 400 }
+    );
+  }
+
+  if (!userHasOrganizationScope(user, payload.organizationId)) {
+    return NextResponse.json(
+      { error: 'Forbidden for requested reservation scope.' },
+      { status: 403 }
     );
   }
 

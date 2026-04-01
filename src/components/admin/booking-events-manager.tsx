@@ -53,15 +53,21 @@ function toDateInputValue(value: string | null) {
   return value?.slice(0, 10) ?? '';
 }
 
+
+function toCalendarDate(value: string | null) {
+  if (!value) return null;
+  return value.slice(0, 10);
+}
+
 function fromEventToForm(event: BookingEvent): Omit<BookingEvent, 'id'> {
   return {
     isActive: event.isActive,
     name: event.name,
     priority: event.priority,
     eventType: event.eventType,
-    singleDate: event.singleDate,
-    dateStart: event.dateStart,
-    dateEnd: event.dateEnd,
+    singleDate: toCalendarDate(event.singleDate),
+    dateStart: toCalendarDate(event.dateStart),
+    dateEnd: toCalendarDate(event.dateEnd),
     weekdays: event.weekdays,
     confirmationMode: event.confirmationMode,
     placementMode: event.placementMode,

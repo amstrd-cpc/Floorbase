@@ -53,7 +53,7 @@ export async function GET(
     const venue = await getPublicVenueBySlug(params.venueSlug);
     const slots = await getPublicSlots({
       venue,
-      date: new Date(date),
+      dateText: date,
       partySize
     });
 

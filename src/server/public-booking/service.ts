@@ -7,6 +7,7 @@ import {
 import { createReservation } from '@/server/reservations/service';
 import { ReservationValidationError } from '@/server/reservations/errors';
 import {
+  publicSlotQuerySchema,
   createPublicBookingSchema,
   type CreatePublicBookingInput
 } from './validation';
@@ -65,6 +66,116 @@ function splitName(fullName: string) {
 
 function resolveTargetStatusCode(mode: VenueBookingMode) {
   return mode === 'REQUEST_ONLY' ? 'PENDING' : 'CONFIRMED';
+}
+
+type ZonedDateTimeParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+};
+
+function getZonedDateTimeParts(
+  date: Date,
+  timeZone: string
+): ZonedDateTimeParts {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  });
+  const parts = formatter.formatToParts(date);
+  const lookup = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+  return {
+    year: Number(lookup.year),
+    month: Number(lookup.month),
+    day: Number(lookup.day),
+    hour: Number(lookup.hour),
+    minute: Number(lookup.minute)
+  };
+}
+
+function zonedTimeToUtc(input: {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  timeZone: string;
+}) {
+  let guessUtc = Date.UTC(
+    input.year,
+    input.month - 1,
+    input.day,
+    input.hour,
+    input.minute,
+    0,
+    0
+  );
+
+  for (let index = 0; index < 3; index += 1) {
+    const parts = getZonedDateTimeParts(new Date(guessUtc), input.timeZone);
+    const localAsUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      0,
+      0
+    );
+    const targetAsUtc = Date.UTC(
+      input.year,
+      input.month - 1,
+      input.day,
+      input.hour,
+      input.minute,
+      0,
+      0
+    );
+
+    guessUtc += targetAsUtc - localAsUtc;
+  }
+
+  return new Date(guessUtc);
+}
+
+function parseVenueCalendarDate(dateText: string, timeZone: string) {
+  const [yearText, monthText, dayText] = dateText.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      'Please provide a valid date.'
+    );
+  }
+
+  return zonedTimeToUtc({
+    year,
+    month,
+    day,
+    hour: 12,
+    minute: 0,
+    timeZone
+  });
 }
 
 function assertBookingWindow(input: {
@@ -135,9 +246,20 @@ export async function getPublicVenueBySlug(
 
 export async function getPublicSlots(input: {
   venue: PublicVenue;
-  date: Date;
+  dateText: string;
   partySize: number;
 }) {
+  const parsed = publicSlotQuerySchema.safeParse({
+    date: input.dateText,
+    partySize: input.partySize
+  });
+  if (!parsed.success) {
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      'Please provide a valid date and party size.'
+    );
+  }
+
   if (input.partySize > input.venue.maxOnlinePartySize) {
     throw new PublicBookingError(
       'PARTY_SIZE_TOO_LARGE',
@@ -148,7 +270,7 @@ export async function getPublicSlots(input: {
   const slots = await listAvailableSlots({
     organizationId: input.venue.organizationId,
     venueId: input.venue.id,
-    date: input.date,
+    date: parseVenueCalendarDate(input.dateText, input.venue.timezone),
     partySize: input.partySize,
     durationMinutes: input.venue.defaultReservationDurationMinutes
   });
@@ -164,7 +286,6 @@ export async function getPublicSlots(input: {
   return slots.filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt);
 }
 
-
 async function resolveSystemActorUserId(organizationId: string) {
   const user = await prisma.user.findFirst({
     where: { organizationId, isActive: true },
@@ -173,7 +294,11 @@ async function resolveSystemActorUserId(organizationId: string) {
   });
 
   if (!user) {
-    throw new PublicBookingError('UNKNOWN', 'Booking is temporarily unavailable.', 503);
+    throw new PublicBookingError(
+      'UNKNOWN',
+      'Booking is temporarily unavailable.',
+      503
+    );
   }
 
   return user.id;
@@ -254,7 +379,9 @@ export async function createPublicBooking(input: {
     );
   }
 
-  const actorUserId = await resolveSystemActorUserId(input.venue.organizationId);
+  const actorUserId = await resolveSystemActorUserId(
+    input.venue.organizationId
+  );
 
   try {
     const reservation = await createReservation({

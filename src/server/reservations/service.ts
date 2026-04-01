@@ -277,8 +277,22 @@ async function createOrUpdateGuest(
   };
 
   if (input.existingGuestId) {
+    const existingGuest = await tx.guest.findFirst({
+      where: {
+        id: input.existingGuestId,
+        organizationId: input.organizationId
+      },
+      select: { id: true }
+    });
+
+    if (!existingGuest) {
+      throw new ReservationValidationError(
+        'Guest does not exist in this organization.'
+      );
+    }
+
     return tx.guest.update({
-      where: { id: input.existingGuestId },
+      where: { id: existingGuest.id },
       data: guestData,
       select: { id: true }
     });

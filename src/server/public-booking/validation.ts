@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const publicSlotQuerySchema = z
   .object({
-    date: z.coerce.date(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     partySize: z.coerce.number().int().min(1)
   })
   .strict();

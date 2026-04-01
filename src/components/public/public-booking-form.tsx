@@ -1,15 +1,18 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatDateForTimeZone } from '@/lib/timezone';
 
-type Slot = { startAt: string; endAt: string };
+type Slot = { startAt: string; endAt: string; localStartAt: string };
 
 export function PublicBookingForm({
   venueSlug,
-  maxOnlinePartySize
+  maxOnlinePartySize,
+  venueTimezone
 }: {
   venueSlug: string;
   maxOnlinePartySize: number;
+  venueTimezone: string;
 }) {
   const [date, setDate] = useState('');
   const [partySize, setPartySize] = useState(2);
@@ -24,7 +27,10 @@ export function PublicBookingForm({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const dateMin = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const dateMin = useMemo(
+    () => formatDateForTimeZone(new Date(), venueTimezone),
+    [venueTimezone]
+  );
 
   async function fetchSlots() {
     if (!date || !partySize) {
@@ -72,7 +78,7 @@ export function PublicBookingForm({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        startAt: slot,
+        startAtLocal: slot,
         partySize,
         fullName,
         email,
@@ -141,19 +147,16 @@ export function PublicBookingForm({
 
       {slots.length > 0 ? (
         <div>
-          <p className="mb-2 text-sm font-medium">Available times</p>
+          <p className="mb-2 text-sm font-medium">Available times ({venueTimezone})</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {slots.map((availableSlot) => {
-              const label = new Date(availableSlot.startAt).toLocaleTimeString(
-                [],
-                { hour: 'numeric', minute: '2-digit' }
-              );
+              const label = availableSlot.localStartAt.slice(11, 16);
               return (
                 <button
-                  key={availableSlot.startAt}
+                  key={availableSlot.localStartAt}
                   type="button"
-                  className={`rounded border px-3 py-2 text-sm ${slot === availableSlot.startAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
-                  onClick={() => setSlot(availableSlot.startAt)}
+                  className={`rounded border px-3 py-2 text-sm ${slot === availableSlot.localStartAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
+                  onClick={() => setSlot(availableSlot.localStartAt)}
                 >
                   {label}
                 </button>

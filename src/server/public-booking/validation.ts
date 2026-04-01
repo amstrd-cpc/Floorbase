@@ -9,7 +9,7 @@ export const publicSlotQuerySchema = z
 
 export const createPublicBookingSchema = z
   .object({
-    startAt: z.coerce.date(),
+    startAtLocal: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
     partySize: z.number().int().min(1),
     fullName: z.string().trim().min(1).max(200),
     email: z.string().trim().email().max(320),

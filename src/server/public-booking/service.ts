@@ -7,6 +7,11 @@ import {
 import { createReservation } from '@/server/reservations/service';
 import { ReservationValidationError } from '@/server/reservations/errors';
 import {
+  formatDateTimeForTimeZone,
+  parseLocalDateTimeInTimeZone,
+  zonedTimeToUtc
+} from '@/lib/timezone';
+import {
   publicSlotQuerySchema,
   createPublicBookingSchema,
   type CreatePublicBookingInput
@@ -66,85 +71,6 @@ function splitName(fullName: string) {
 
 function resolveTargetStatusCode(mode: VenueBookingMode) {
   return mode === 'REQUEST_ONLY' ? 'PENDING' : 'CONFIRMED';
-}
-
-type ZonedDateTimeParts = {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-};
-
-function getZonedDateTimeParts(
-  date: Date,
-  timeZone: string
-): ZonedDateTimeParts {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  });
-  const parts = formatter.formatToParts(date);
-  const lookup = Object.fromEntries(
-    parts.map((part) => [part.type, part.value])
-  );
-  return {
-    year: Number(lookup.year),
-    month: Number(lookup.month),
-    day: Number(lookup.day),
-    hour: Number(lookup.hour),
-    minute: Number(lookup.minute)
-  };
-}
-
-function zonedTimeToUtc(input: {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  timeZone: string;
-}) {
-  let guessUtc = Date.UTC(
-    input.year,
-    input.month - 1,
-    input.day,
-    input.hour,
-    input.minute,
-    0,
-    0
-  );
-
-  for (let index = 0; index < 3; index += 1) {
-    const parts = getZonedDateTimeParts(new Date(guessUtc), input.timeZone);
-    const localAsUtc = Date.UTC(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      0,
-      0
-    );
-    const targetAsUtc = Date.UTC(
-      input.year,
-      input.month - 1,
-      input.day,
-      input.hour,
-      input.minute,
-      0,
-      0
-    );
-
-    guessUtc += targetAsUtc - localAsUtc;
-  }
-
-  return new Date(guessUtc);
 }
 
 function parseVenueCalendarDate(dateText: string, timeZone: string) {
@@ -283,7 +209,12 @@ export async function getPublicSlots(input: {
     now.getTime() + input.venue.minAdvanceNoticeMinutes * 60_000
   );
 
-  return slots.filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt);
+  return slots
+    .filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt)
+    .map((slot) => ({
+      ...slot,
+      localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
+    }));
 }
 
 async function resolveSystemActorUserId(organizationId: string) {
@@ -330,16 +261,25 @@ export async function createPublicBooking(input: {
     );
   }
 
+  const startAtUtc = parseLocalDateTimeInTimeZone(
+    parsed.data.startAtLocal,
+    input.venue.timezone
+  );
+
+  if (!startAtUtc) {
+    throw new PublicBookingError('INVALID_INPUT', 'Please select a valid time slot.');
+  }
+
   assertBookingWindow({
     venue: input.venue,
     partySize: parsed.data.partySize,
-    startAt: parsed.data.startAt
+    startAt: startAtUtc
   });
 
   const availability = await listAvailableTables({
     organizationId: input.venue.organizationId,
     venueId: input.venue.id,
-    startAt: parsed.data.startAt,
+    startAt: startAtUtc,
     partySize: parsed.data.partySize,
     durationMinutes: input.venue.defaultReservationDurationMinutes
   });
@@ -388,8 +328,8 @@ export async function createPublicBooking(input: {
       organizationId: input.venue.organizationId,
       payload: {
         venueId: input.venue.id,
-        reservationDate: parsed.data.startAt,
-        startAt: parsed.data.startAt,
+        reservationDate: startAtUtc,
+        startAt: startAtUtc,
         durationMinutes: input.venue.defaultReservationDurationMinutes,
         partySize: parsed.data.partySize,
         existingGuestId: existingGuest?.id,

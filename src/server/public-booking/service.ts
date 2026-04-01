@@ -241,11 +241,22 @@ export async function getPublicSlots(input: {
   return {
     resolvedConfig: resolved.config,
     slots: slots
-    .filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt)
-    .map((slot) => ({
-      ...slot,
-      localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
-    }))
+      .filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt)
+      .map((slot) => ({
+        ...slot,
+        availableTables:
+          resolved.config.placementMode === 'TABLE_SELECTION'
+            ? slot.availableTables.filter(
+                (table) => table.capacityMax >= input.partySize
+              )
+            : slot.availableTables,
+        localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
+      }))
+      .filter(
+        (slot) =>
+          resolved.config.placementMode !== 'TABLE_SELECTION' ||
+          slot.availableTables.length > 0
+      )
   };
 }
 

@@ -3,6 +3,7 @@ import { BookingEventType } from '@prisma/client';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import { getVenueScope } from '@/server/auth/scope-resolvers';
+import { zonedTimeToUtc } from '@/lib/timezone';
 
 type EventPayload = {
   id?: string;
@@ -61,27 +62,69 @@ function normalizeNullableString(value?: string | null) {
   return trimmed.length ? trimmed : null;
 }
 
-function toDate(value?: string | null) {
+function parseCalendarDateInVenueTimeZone(
+  value: string | null | undefined,
+  venueTimeZone: string
+) {
   if (!value) {
     return null;
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+
+  return zonedTimeToUtc({
+    year,
+    month,
+    day,
+    hour: 12,
+    minute: 0,
+    timeZone: venueTimeZone
+  });
 }
 
-function validateEventPayload(payload: EventPayload) {
+async function resolveVenueTimeZone(venueId: string) {
+  const venue = await prisma.venue.findUnique({
+    where: { id: venueId },
+    select: { timezone: true }
+  });
+  if (!venue) {
+    return null;
+  }
+
+  return venue.timezone;
+}
+
+function validateEventPayload(payload: EventPayload, venueTimeZone: string) {
   if (!payload.name?.trim()) {
     return 'name is required.';
   }
   if (!payload.eventType) {
     return 'eventType is required.';
   }
-  if (payload.eventType === 'SINGLE_DATE' && !toDate(payload.singleDate)) {
+  if (
+    payload.eventType === 'SINGLE_DATE' &&
+    !parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone)
+  ) {
     return 'singleDate is required for single-date events.';
   }
   if (
     payload.eventType === 'DATE_RANGE' &&
-    (!toDate(payload.dateStart) || !toDate(payload.dateEnd))
+    (!parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone) ||
+      !parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone))
   ) {
     return 'dateStart and dateEnd are required for date-range events.';
   }
@@ -116,9 +159,13 @@ export async function POST(
 ) {
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
+  const venueTimeZone = await resolveVenueTimeZone(params.venueId);
+  if (!venueTimeZone) {
+    return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+  }
 
   const payload = (await request.json()) as EventPayload;
-  const error = validateEventPayload(payload);
+  const error = validateEventPayload(payload, venueTimeZone);
   if (error) {
     return NextResponse.json({ error }, { status: 400 });
   }
@@ -130,9 +177,9 @@ export async function POST(
       name: payload.name!.trim(),
       priority: payload.priority ?? 100,
       eventType: payload.eventType!,
-      singleDate: toDate(payload.singleDate),
-      dateStart: toDate(payload.dateStart),
-      dateEnd: toDate(payload.dateEnd),
+      singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
+      dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),
+      dateEnd: parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone),
       weekdays: payload.weekdays ?? [],
       confirmationMode: payload.confirmationMode ?? null,
       placementMode: payload.placementMode ?? null,
@@ -157,13 +204,17 @@ export async function PUT(
 ) {
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
+  const venueTimeZone = await resolveVenueTimeZone(params.venueId);
+  if (!venueTimeZone) {
+    return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
+  }
 
   const payload = (await request.json()) as EventPayload;
   if (!payload.id) {
     return NextResponse.json({ error: 'id is required.' }, { status: 400 });
   }
 
-  const error = validateEventPayload(payload);
+  const error = validateEventPayload(payload, venueTimeZone);
   if (error) {
     return NextResponse.json({ error }, { status: 400 });
   }
@@ -182,9 +233,9 @@ export async function PUT(
       name: payload.name!.trim(),
       priority: payload.priority ?? 100,
       eventType: payload.eventType!,
-      singleDate: toDate(payload.singleDate),
-      dateStart: toDate(payload.dateStart),
-      dateEnd: toDate(payload.dateEnd),
+      singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
+      dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),
+      dateEnd: parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone),
       weekdays: payload.weekdays ?? [],
       confirmationMode: payload.confirmationMode ?? null,
       placementMode: payload.placementMode ?? null,

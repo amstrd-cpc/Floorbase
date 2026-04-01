@@ -70,6 +70,17 @@ enum VenueBookingMode {
   REQUEST_ONLY
 }
 
+enum VenuePlacementMode {
+  AUTO_ASSIGN
+  TABLE_SELECTION
+}
+
+enum BookingEventType {
+  SINGLE_DATE
+  WEEKLY_RECURRING
+  DATE_RANGE
+}
+
 model Organization {
   id                  String                @id @default(cuid())
   name                String
@@ -99,10 +110,13 @@ model Venue {
   isActive       Boolean          @default(true)
   publicBookingEnabled Boolean    @default(false)
   bookingMode    VenueBookingMode @default(AUTO_CONFIRM)
+  placementMode  VenuePlacementMode @default(AUTO_ASSIGN)
+  minPartySize   Int              @default(1)
   maxOnlinePartySize Int          @default(12)
   minAdvanceNoticeMinutes Int     @default(120)
   maxDaysAhead   Int              @default(60)
   defaultReservationDurationMinutes Int @default(120)
+  publicInstructions String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -112,11 +126,42 @@ model Venue {
   businessHours BusinessHours[]
   blackoutRules BlackoutRule[]
   tables        Table[]
+  bookingEvents BookingEvent[]
   adminRoles    AdminRoleAssignment[]
   authInvites   AuthInvite[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
+}
+
+model BookingEvent {
+  id          String   @id @default(cuid())
+  venueId     String
+  isActive    Boolean  @default(true)
+  name        String
+  priority    Int      @default(100)
+  eventType   BookingEventType
+  singleDate  DateTime?
+  dateStart   DateTime?
+  dateEnd     DateTime?
+  weekdays    Int[]    @default([])
+  confirmationMode VenueBookingMode?
+  placementMode VenuePlacementMode?
+  minPartySize Int?
+  maxOnlinePartySize Int?
+  minAdvanceNoticeMinutes Int?
+  maxDaysAhead Int?
+  durationMinutes Int?
+  publicInstructions String?
+  publicLabel String?
+  allowedAreaIds String[] @default([])
+  allowedTableIds String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, isActive, priority])
 }
 
 model Area {

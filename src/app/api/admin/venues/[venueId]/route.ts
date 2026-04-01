@@ -77,10 +77,13 @@ export async function PUT(
     isActive?: boolean;
     publicBookingEnabled?: boolean;
     bookingMode?: 'AUTO_CONFIRM' | 'REQUEST_ONLY';
+    placementMode?: 'AUTO_ASSIGN' | 'TABLE_SELECTION';
+    minPartySize?: number;
     maxOnlinePartySize?: number;
     minAdvanceNoticeMinutes?: number;
     maxDaysAhead?: number;
     defaultReservationDurationMinutes?: number;
+    publicInstructions?: string | null;
   };
 
   if (
@@ -102,9 +105,25 @@ export async function PUT(
       { status: 400 }
     );
   }
+  if ((payload.minPartySize ?? 1) < 1) {
+    return NextResponse.json(
+      { error: 'minPartySize must be at least 1.' },
+      { status: 400 }
+    );
+  }
+
   if ((payload.maxOnlinePartySize ?? 1) < 1) {
     return NextResponse.json(
       { error: 'maxOnlinePartySize must be at least 1.' },
+      { status: 400 }
+    );
+  }
+  if (
+    (payload.minPartySize ?? 1) >
+    (payload.maxOnlinePartySize ?? 12)
+  ) {
+    return NextResponse.json(
+      { error: 'minPartySize cannot exceed maxOnlinePartySize.' },
       { status: 400 }
     );
   }
@@ -146,11 +165,14 @@ export async function PUT(
       isActive: payload.isActive ?? true,
       publicBookingEnabled: payload.publicBookingEnabled ?? false,
       bookingMode: payload.bookingMode ?? 'AUTO_CONFIRM',
+      placementMode: payload.placementMode ?? 'AUTO_ASSIGN',
+      minPartySize: payload.minPartySize ?? 1,
       maxOnlinePartySize: payload.maxOnlinePartySize ?? 12,
       minAdvanceNoticeMinutes: payload.minAdvanceNoticeMinutes ?? 120,
       maxDaysAhead: payload.maxDaysAhead ?? 60,
       defaultReservationDurationMinutes:
-        payload.defaultReservationDurationMinutes ?? 120
+        payload.defaultReservationDurationMinutes ?? 120,
+      publicInstructions: payload.publicInstructions?.trim() || null
     }
   });
 

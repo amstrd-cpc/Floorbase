@@ -285,6 +285,8 @@ export async function listAvailableTables(input: {
   durationMinutes?: number;
   partySize: number;
   reservationIdToExclude?: string;
+  allowedAreaIds?: string[];
+  allowedTableIds?: string[];
 }) {
   const window = computeReservationWindow({
     startAt: input.startAt,
@@ -340,7 +342,15 @@ export async function listAvailableTables(input: {
         venue: { organizationId: input.organizationId },
         isActive: true,
         capacityMax: { gte: 1 },
-        area: { isActive: true }
+        area: {
+          isActive: true,
+          ...(input.allowedAreaIds && input.allowedAreaIds.length > 0
+            ? { id: { in: input.allowedAreaIds } }
+            : {})
+        },
+        ...(input.allowedTableIds && input.allowedTableIds.length > 0
+          ? { id: { in: input.allowedTableIds } }
+          : {})
       },
       select: {
         id: true,
@@ -451,6 +461,8 @@ export async function listAvailableSlots(input: {
   date: Date;
   partySize: number;
   durationMinutes?: number;
+  allowedAreaIds?: string[];
+  allowedTableIds?: string[];
 }) {
   const durationMinutes =
     input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
@@ -465,6 +477,7 @@ export async function listAvailableSlots(input: {
       startAt: Date;
       endAt: Date;
       recommendedTableIds: string[];
+      availableTables: Array<{ id: string; name: string; capacityMax: number }>;
     }>;
   }
 
@@ -493,6 +506,7 @@ export async function listAvailableSlots(input: {
     startAt: Date;
     endAt: Date;
     recommendedTableIds: string[];
+    availableTables: Array<{ id: string; name: string; capacityMax: number }>;
   }> = [];
 
   while (addMinutes(cursor, durationMinutes) <= closeAt) {
@@ -502,14 +516,21 @@ export async function listAvailableSlots(input: {
       venueId: input.venueId,
       startAt: slotStart,
       durationMinutes,
-      partySize: input.partySize
+      partySize: input.partySize,
+      allowedAreaIds: input.allowedAreaIds,
+      allowedTableIds: input.allowedTableIds
     });
 
     if (slotAvailability.allowed) {
       slots.push({
         startAt: slotAvailability.window.startAt,
         endAt: slotAvailability.window.endAt,
-        recommendedTableIds: slotAvailability.recommendedTableIds
+        recommendedTableIds: slotAvailability.recommendedTableIds,
+        availableTables: slotAvailability.availableTables.map((table) => ({
+          id: table.id,
+          name: table.name,
+          capacityMax: table.capacityMax
+        }))
       });
     }
 

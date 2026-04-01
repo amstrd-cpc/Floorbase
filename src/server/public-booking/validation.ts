@@ -14,6 +14,7 @@ export const createPublicBookingSchema = z
     fullName: z.string().trim().min(1).max(200),
     email: z.string().trim().email().max(320),
     phone: z.string().trim().min(7).max(40),
+    selectedTableId: z.string().trim().min(1).max(64).optional(),
     note: z.string().trim().max(1000).optional()
   })
   .strict();

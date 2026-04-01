@@ -23,6 +23,8 @@ export default async function PublicBookingPage({
           <PublicBookingForm
             venueSlug={venue.slug}
             maxOnlinePartySize={venue.maxOnlinePartySize}
+            minPartySize={venue.minPartySize}
+            publicInstructions={venue.publicInstructions}
             venueTimezone={venue.timezone}
           />
         </div>

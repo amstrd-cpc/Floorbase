@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/admin/page-header';
 import { VenueSettingsForm } from '@/components/admin/venue-settings-form';
+import { BookingEventsManager } from '@/components/admin/booking-events-manager';
 import { getAdminContext } from '@/server/auth/admin-context';
 import { prisma } from '@/server/db/prisma/client';
 
@@ -26,13 +27,17 @@ export default async function SettingsPage() {
           isActive: venue.isActive,
           publicBookingEnabled: venue.publicBookingEnabled,
           bookingMode: venue.bookingMode,
+          placementMode: venue.placementMode,
+          minPartySize: venue.minPartySize,
           maxOnlinePartySize: venue.maxOnlinePartySize,
           minAdvanceNoticeMinutes: venue.minAdvanceNoticeMinutes,
           maxDaysAhead: venue.maxDaysAhead,
           defaultReservationDurationMinutes:
-            venue.defaultReservationDurationMinutes
+            venue.defaultReservationDurationMinutes,
+          publicInstructions: venue.publicInstructions
         }}
       />
+      <BookingEventsManager venueId={venue.id} />
     </div>
   );
 }

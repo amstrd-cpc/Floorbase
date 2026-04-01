@@ -177,11 +177,13 @@ async function assertTableAssignments(
   if (tables.length > 1) {
     const anyNotCombinable = tables.some((table) => !table.canCombine);
     const anyMissingCombineGroup = tables.some((table) => !table.combineGroup);
-    const combineGroups = new Set(
-      tables.map((table) => table.combineGroup)
-    );
+    const combineGroups = new Set(tables.map((table) => table.combineGroup));
 
-    if (anyNotCombinable || anyMissingCombineGroup || combineGroups.size !== 1) {
+    if (
+      anyNotCombinable ||
+      anyMissingCombineGroup ||
+      combineGroups.size !== 1
+    ) {
       throw new ReservationValidationError(
         'Multiple table assignments must be combinable and share the same combine group.'
       );
@@ -426,7 +428,8 @@ export async function createReservation(input: {
 
       const guest = await createOrUpdateGuest(tx, {
         organizationId: input.organizationId,
-        guest: parsed.data.guest
+        guest: parsed.data.guest,
+        existingGuestId: parsed.data.existingGuestId
       });
 
       const reservation = await tx.reservation.create({

@@ -74,6 +74,12 @@ export async function PUT(
     timezone?: string;
     currency?: string;
     isActive?: boolean;
+    publicBookingEnabled?: boolean;
+    bookingMode?: 'AUTO_CONFIRM' | 'REQUEST_ONLY';
+    maxOnlinePartySize?: number;
+    minAdvanceNoticeMinutes?: number;
+    maxDaysAhead?: number;
+    defaultReservationDurationMinutes?: number;
   };
 
   if (
@@ -88,6 +94,40 @@ export async function PUT(
     );
   }
 
+  if ((payload.maxOnlinePartySize ?? 1) < 1) {
+    return NextResponse.json(
+      { error: 'maxOnlinePartySize must be at least 1.' },
+      { status: 400 }
+    );
+  }
+
+  if ((payload.maxDaysAhead ?? 1) < 1) {
+    return NextResponse.json(
+      { error: 'maxDaysAhead must be at least 1.' },
+      { status: 400 }
+    );
+  }
+
+  if ((payload.minAdvanceNoticeMinutes ?? 0) < 0) {
+    return NextResponse.json(
+      { error: 'minAdvanceNoticeMinutes must be 0 or greater.' },
+      { status: 400 }
+    );
+  }
+
+  if (
+    (payload.defaultReservationDurationMinutes ?? 0) < 30 ||
+    (payload.defaultReservationDurationMinutes ?? 0) % 15 !== 0
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          'defaultReservationDurationMinutes must be at least 30 and in 15-minute increments.'
+      },
+      { status: 400 }
+    );
+  }
+
   const venue = await prisma.venue.update({
     where: { id: params.venueId },
     data: {
@@ -95,7 +135,14 @@ export async function PUT(
       slug: payload.slug.trim(),
       timezone: payload.timezone.trim(),
       currency: payload.currency.trim().toUpperCase(),
-      isActive: payload.isActive ?? true
+      isActive: payload.isActive ?? true,
+      publicBookingEnabled: payload.publicBookingEnabled ?? false,
+      bookingMode: payload.bookingMode ?? 'AUTO_CONFIRM',
+      maxOnlinePartySize: payload.maxOnlinePartySize ?? 12,
+      minAdvanceNoticeMinutes: payload.minAdvanceNoticeMinutes ?? 120,
+      maxDaysAhead: payload.maxDaysAhead ?? 60,
+      defaultReservationDurationMinutes:
+        payload.defaultReservationDurationMinutes ?? 120
     }
   });
 

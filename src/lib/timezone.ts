@@ -145,3 +145,15 @@ export function startOfZonedDayUtc(date: Date, timeZone: string) {
     timeZone
   });
 }
+
+export function addZonedDaysUtc(date: Date, timeZone: string, days: number) {
+  const parts = getZonedDateTimeParts(date, timeZone);
+  return zonedTimeToUtc({
+    year: parts.year,
+    month: parts.month,
+    day: parts.day + days,
+    hour: parts.hour,
+    minute: parts.minute,
+    timeZone
+  });
+}

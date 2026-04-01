@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PageHeader } from '@/components/admin/page-header';
 import { SectionCard } from '@/components/admin/section-card';
-import { startOfZonedDayUtc } from '@/lib/timezone';
+import { addZonedDaysUtc, startOfZonedDayUtc } from '@/lib/timezone';
 import { getAdminContext } from '@/server/auth/admin-context';
 import { prisma } from '@/server/db/prisma/client';
 
@@ -33,10 +33,8 @@ export default async function AdminHomePage() {
   const timezone = venue?.timezone ?? 'UTC';
 
   const start = startOfZonedDayUtc(new Date(), timezone);
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  const nextWeek = new Date(start);
-  nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
+  const end = addZonedDaysUtc(start, timezone, 1);
+  const nextWeek = addZonedDaysUtc(start, timezone, 7);
 
   const [todayReservations, upcomingReservations] = await Promise.all([
     prisma.reservation.findMany({

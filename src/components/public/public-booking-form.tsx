@@ -17,7 +17,7 @@ export function PublicBookingForm({
   const [date, setDate] = useState('');
   const [partySize, setPartySize] = useState(2);
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [slot, setSlot] = useState('');
+  const [slotId, setSlotId] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -40,7 +40,7 @@ export function PublicBookingForm({
     setLoadingSlots(true);
     setError(null);
     setMessage(null);
-    setSlot('');
+    setSlotId('');
 
     const res = await fetch(
       `/api/public/book/${venueSlug}/slots?date=${encodeURIComponent(date)}&partySize=${partySize}`
@@ -67,7 +67,7 @@ export function PublicBookingForm({
     setError(null);
     setMessage(null);
 
-    if (!slot) {
+    if (!slotId) {
       setError('Please select a time slot.');
       return;
     }
@@ -78,7 +78,7 @@ export function PublicBookingForm({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        startAtLocal: slot,
+        slotId,
         partySize,
         fullName,
         email,
@@ -153,10 +153,10 @@ export function PublicBookingForm({
               const label = availableSlot.localStartAt.slice(11, 16);
               return (
                 <button
-                  key={availableSlot.localStartAt}
+                  key={availableSlot.startAt}
                   type="button"
-                  className={`rounded border px-3 py-2 text-sm ${slot === availableSlot.localStartAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
-                  onClick={() => setSlot(availableSlot.localStartAt)}
+                  className={`rounded border px-3 py-2 text-sm ${slotId === availableSlot.startAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
+                  onClick={() => setSlotId(availableSlot.startAt)}
                 >
                   {label}
                 </button>

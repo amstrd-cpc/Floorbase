@@ -8,7 +8,6 @@ import { createReservation } from '@/server/reservations/service';
 import { ReservationValidationError } from '@/server/reservations/errors';
 import {
   formatDateTimeForTimeZone,
-  parseLocalDateTimeInTimeZone,
   zonedTimeToUtc
 } from '@/lib/timezone';
 import {
@@ -261,12 +260,9 @@ export async function createPublicBooking(input: {
     );
   }
 
-  const startAtUtc = parseLocalDateTimeInTimeZone(
-    parsed.data.startAtLocal,
-    input.venue.timezone
-  );
+  const startAtUtc = new Date(parsed.data.slotId);
 
-  if (!startAtUtc) {
+  if (Number.isNaN(startAtUtc.getTime())) {
     throw new PublicBookingError('INVALID_INPUT', 'Please select a valid time slot.');
   }
 

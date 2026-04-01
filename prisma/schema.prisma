@@ -105,6 +105,9 @@ model Venue {
   organizationId String
   name           String
   slug           String
+  country        String?
+  city           String?
+  addressLine    String?
   timezone       String           @default("UTC")
   currency       String           @default("USD")
   isActive       Boolean          @default(true)

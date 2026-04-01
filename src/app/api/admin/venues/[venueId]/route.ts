@@ -74,6 +74,9 @@ export async function PUT(
     slug?: string;
     timezone?: string;
     currency?: string;
+    country?: string | null;
+    city?: string | null;
+    addressLine?: string | null;
     isActive?: boolean;
     publicBookingEnabled?: boolean;
     bookingMode?: 'AUTO_CONFIRM' | 'REQUEST_ONLY';
@@ -162,6 +165,9 @@ export async function PUT(
       slug: payload.slug.trim(),
       timezone: payload.timezone.trim(),
       currency: payload.currency.trim().toUpperCase(),
+      country: payload.country?.trim() || null,
+      city: payload.city?.trim() || null,
+      addressLine: payload.addressLine?.trim() || null,
       isActive: payload.isActive ?? true,
       publicBookingEnabled: payload.publicBookingEnabled ?? false,
       bookingMode: payload.bookingMode ?? 'AUTO_CONFIRM',

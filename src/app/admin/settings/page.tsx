@@ -1,6 +1,5 @@
 import { PageHeader } from '@/components/admin/page-header';
 import { VenueSettingsForm } from '@/components/admin/venue-settings-form';
-import { BookingEventsManager } from '@/components/admin/booking-events-manager';
 import { getAdminContext } from '@/server/auth/admin-context';
 import { prisma } from '@/server/db/prisma/client';
 
@@ -15,13 +14,16 @@ export default async function SettingsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Venue Settings"
-        description="Basic properties for daily operations configuration."
+        description="Manage your venue identity, location, regional details, and default booking behavior for normal service days."
       />
       <VenueSettingsForm
         venue={{
           id: venue.id,
           name: venue.name,
           slug: venue.slug,
+          country: venue.country,
+          city: venue.city,
+          addressLine: venue.addressLine,
           timezone: venue.timezone,
           currency: venue.currency,
           isActive: venue.isActive,
@@ -37,7 +39,6 @@ export default async function SettingsPage() {
           publicInstructions: venue.publicInstructions
         }}
       />
-      <BookingEventsManager venueId={venue.id} />
     </div>
   );
 }

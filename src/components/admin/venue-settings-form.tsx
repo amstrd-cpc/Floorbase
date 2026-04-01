@@ -11,10 +11,13 @@ type VenueSettings = {
   isActive: boolean;
   publicBookingEnabled: boolean;
   bookingMode: 'AUTO_CONFIRM' | 'REQUEST_ONLY';
+  placementMode: 'AUTO_ASSIGN' | 'TABLE_SELECTION';
+  minPartySize: number;
   maxOnlinePartySize: number;
   minAdvanceNoticeMinutes: number;
   maxDaysAhead: number;
   defaultReservationDurationMinutes: number;
+  publicInstructions: string | null;
 };
 
 const TIMEZONE_SUGGESTIONS = [
@@ -124,6 +127,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
         Venue is active
       </label>
       <hr />
+      <p className="text-sm font-medium">Booking Defaults</p>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -136,7 +140,7 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
       </label>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">
-          Booking mode
+          Confirmation mode
           <select
             className="mt-1 w-full rounded border p-2"
             value={values.bookingMode}
@@ -150,6 +154,39 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
             <option value="AUTO_CONFIRM">Auto confirm</option>
             <option value="REQUEST_ONLY">Request only</option>
           </select>
+        </label>
+        <label className="text-sm">
+          Placement mode
+          <select
+            className="mt-1 w-full rounded border p-2"
+            value={values.placementMode}
+            onChange={(e) =>
+              setValues({
+                ...values,
+                placementMode: e.target.value as VenueSettings['placementMode']
+              })
+            }
+          >
+            <option value="AUTO_ASSIGN">Auto assign</option>
+            <option value="TABLE_SELECTION">Guest table selection</option>
+          </select>
+        </label>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="text-sm">
+          Min party size
+          <input
+            type="number"
+            min={1}
+            className="mt-1 w-full rounded border p-2"
+            value={values.minPartySize}
+            onChange={(e) =>
+              setValues({
+                ...values,
+                minPartySize: Number(e.target.value)
+              })
+            }
+          />
         </label>
         <label className="text-sm">
           Max online party size
@@ -167,6 +204,17 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
           />
         </label>
       </div>
+      <label className="block text-sm">
+        Public instructions
+        <textarea
+          className="mt-1 w-full rounded border p-2"
+          rows={3}
+          value={values.publicInstructions ?? ''}
+          onChange={(e) =>
+            setValues({ ...values, publicInstructions: e.target.value })
+          }
+        />
+      </label>
       <div className="grid gap-3 md:grid-cols-3">
         <label className="text-sm">
           Min advance notice (mins)

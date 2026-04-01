@@ -3,21 +3,40 @@
 import { useMemo, useState } from 'react';
 import { formatDateForTimeZone } from '@/lib/timezone';
 
-type Slot = { startAt: string; endAt: string; localStartAt: string };
+type Slot = {
+  startAt: string;
+  endAt: string;
+  localStartAt: string;
+  availableTables: Array<{ id: string; name: string; capacityMax: number }>;
+};
+
+type ResolvedConfig = {
+  minPartySize: number;
+  maxOnlinePartySize: number;
+  placementMode: 'AUTO_ASSIGN' | 'TABLE_SELECTION';
+  publicInstructions: string | null;
+  publicLabel: string | null;
+};
 
 export function PublicBookingForm({
   venueSlug,
   maxOnlinePartySize,
+  minPartySize,
+  publicInstructions,
   venueTimezone
 }: {
   venueSlug: string;
   maxOnlinePartySize: number;
+  minPartySize: number;
+  publicInstructions: string | null;
   venueTimezone: string;
 }) {
   const [date, setDate] = useState('');
-  const [partySize, setPartySize] = useState(2);
+  const [partySize, setPartySize] = useState(Math.max(2, minPartySize));
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotId, setSlotId] = useState('');
+  const [selectedTableId, setSelectedTableId] = useState('');
+  const [resolvedConfig, setResolvedConfig] = useState<ResolvedConfig | null>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -41,6 +60,7 @@ export function PublicBookingForm({
     setError(null);
     setMessage(null);
     setSlotId('');
+    setSelectedTableId('');
 
     const res = await fetch(
       `/api/public/book/${venueSlug}/slots?date=${encodeURIComponent(date)}&partySize=${partySize}`
@@ -55,6 +75,7 @@ export function PublicBookingForm({
     }
 
     const nextSlots = (body.slots ?? []) as Slot[];
+    setResolvedConfig((body.config ?? null) as ResolvedConfig | null);
     setSlots(nextSlots);
     if (nextSlots.length === 0) {
       setError('No available slots for this date and party size.');
@@ -83,6 +104,7 @@ export function PublicBookingForm({
         fullName,
         email,
         phone,
+        selectedTableId: selectedTableId || undefined,
         note: note.trim() || undefined
       })
     });
@@ -127,14 +149,23 @@ export function PublicBookingForm({
           Party size
           <input
             type="number"
-            min={1}
-            max={maxOnlinePartySize}
+            min={resolvedConfig?.minPartySize ?? minPartySize}
+            max={resolvedConfig?.maxOnlinePartySize ?? maxOnlinePartySize}
             className="mt-1 w-full rounded border p-2"
             value={partySize}
             onChange={(event) => setPartySize(Number(event.target.value))}
           />
         </label>
       </div>
+      <p className="text-xs text-slate-500">
+        {resolvedConfig?.publicLabel ??
+          `Online bookings support ${resolvedConfig?.minPartySize ?? minPartySize} to ${resolvedConfig?.maxOnlinePartySize ?? maxOnlinePartySize} guests.`}
+      </p>
+      {(resolvedConfig?.publicInstructions ?? publicInstructions) ? (
+        <p className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
+          {resolvedConfig?.publicInstructions ?? publicInstructions}
+        </p>
+      ) : null}
 
       <button
         type="button"
@@ -156,7 +187,10 @@ export function PublicBookingForm({
                   key={availableSlot.startAt}
                   type="button"
                   className={`rounded border px-3 py-2 text-sm ${slotId === availableSlot.startAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
-                  onClick={() => setSlotId(availableSlot.startAt)}
+                  onClick={() => {
+                    setSlotId(availableSlot.startAt);
+                    setSelectedTableId('');
+                  }}
                 >
                   {label}
                 </button>
@@ -164,6 +198,26 @@ export function PublicBookingForm({
             })}
           </div>
         </div>
+      ) : null}
+      {resolvedConfig?.placementMode === 'TABLE_SELECTION' && slotId ? (
+        <label className="block text-sm">
+          Select table
+          <select
+            className="mt-1 w-full rounded border p-2"
+            value={selectedTableId}
+            onChange={(event) => setSelectedTableId(event.target.value)}
+            required
+          >
+            <option value="">Choose a table</option>
+            {(slots.find((slot) => slot.startAt === slotId)?.availableTables ?? []).map(
+              (table) => (
+                <option key={table.id} value={table.id}>
+                  {table.name} (up to {table.capacityMax})
+                </option>
+              )
+            )}
+          </select>
+        </label>
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">

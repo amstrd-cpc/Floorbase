@@ -51,7 +51,7 @@ export async function GET(
 
   try {
     const venue = await getPublicVenueBySlug(params.venueSlug);
-    const slots = await getPublicSlots({
+    const resolved = await getPublicSlots({
       venue,
       dateText: date,
       partySize
@@ -59,10 +59,12 @@ export async function GET(
 
     return NextResponse.json({
       timezone: venue.timezone,
-      slots: slots.map((slot) => ({
+      config: resolved.resolvedConfig,
+      slots: resolved.slots.map((slot) => ({
         startAt: slot.startAt.toISOString(),
         endAt: slot.endAt.toISOString(),
-        localStartAt: slot.localStartAt
+        localStartAt: slot.localStartAt,
+        availableTables: slot.availableTables
       }))
     });
   } catch (error) {

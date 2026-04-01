@@ -1,4 +1,4 @@
-import { type VenueBookingMode } from '@prisma/client';
+import { type VenueBookingMode, type VenuePlacementMode } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
 import {
   listAvailableSlots,
@@ -15,6 +15,10 @@ import {
   createPublicBookingSchema,
   type CreatePublicBookingInput
 } from './validation';
+import {
+  resolveBookingConfig,
+  type PublicVenueWithEvents
+} from './config-resolver';
 
 type PublicVenue = {
   id: string;
@@ -24,10 +28,14 @@ type PublicVenue = {
   timezone: string;
   publicBookingEnabled: boolean;
   bookingMode: VenueBookingMode;
+  placementMode: VenuePlacementMode;
+  minPartySize: number;
   maxOnlinePartySize: number;
   minAdvanceNoticeMinutes: number;
   maxDaysAhead: number;
   defaultReservationDurationMinutes: number;
+  publicInstructions: string | null;
+  bookingEvents: PublicVenueWithEvents['bookingEvents'];
 };
 
 type PublicErrorCode =
@@ -104,21 +112,27 @@ function parseVenueCalendarDate(dateText: string, timeZone: string) {
 }
 
 function assertBookingWindow(input: {
-  venue: PublicVenue;
+  config: ReturnType<typeof resolveBookingConfig>['config'];
   partySize: number;
   startAt: Date;
   now?: Date;
 }) {
-  if (input.partySize > input.venue.maxOnlinePartySize) {
+  if (input.partySize < input.config.minPartySize) {
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      `Party size must be at least ${input.config.minPartySize}.`
+    );
+  }
+  if (input.partySize > input.config.maxOnlinePartySize) {
     throw new PublicBookingError(
       'PARTY_SIZE_TOO_LARGE',
-      `Online booking currently supports up to ${input.venue.maxOnlinePartySize} guests.`
+      `Online booking currently supports up to ${input.config.maxOnlinePartySize} guests.`
     );
   }
 
   const now = input.now ?? new Date();
   const minAt = new Date(
-    now.getTime() + input.venue.minAdvanceNoticeMinutes * 60_000
+    now.getTime() + input.config.minAdvanceNoticeMinutes * 60_000
   );
   if (input.startAt < minAt) {
     throw new PublicBookingError(
@@ -128,12 +142,12 @@ function assertBookingWindow(input: {
   }
 
   const maxAt = new Date(
-    now.getTime() + input.venue.maxDaysAhead * 24 * 60 * 60_000
+    now.getTime() + input.config.maxDaysAhead * 24 * 60 * 60_000
   );
   if (input.startAt > maxAt) {
     throw new PublicBookingError(
       'TOO_FAR',
-      `Bookings are only available up to ${input.venue.maxDaysAhead} days ahead.`
+      `Bookings are only available up to ${input.config.maxDaysAhead} days ahead.`
     );
   }
 }
@@ -151,10 +165,14 @@ export async function getPublicVenueBySlug(
       timezone: true,
       publicBookingEnabled: true,
       bookingMode: true,
+      placementMode: true,
+      minPartySize: true,
       maxOnlinePartySize: true,
       minAdvanceNoticeMinutes: true,
       maxDaysAhead: true,
-      defaultReservationDurationMinutes: true
+      defaultReservationDurationMinutes: true,
+      publicInstructions: true,
+      bookingEvents: true
     }
   });
 
@@ -185,10 +203,20 @@ export async function getPublicSlots(input: {
     );
   }
 
-  if (input.partySize > input.venue.maxOnlinePartySize) {
+  const resolved = resolveBookingConfig({
+    venue: input.venue,
+    bookingDate: parseVenueCalendarDate(input.dateText, input.venue.timezone)
+  });
+  if (input.partySize < resolved.config.minPartySize) {
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      `Party size must be at least ${resolved.config.minPartySize}.`
+    );
+  }
+  if (input.partySize > resolved.config.maxOnlinePartySize) {
     throw new PublicBookingError(
       'PARTY_SIZE_TOO_LARGE',
-      `Online booking currently supports up to ${input.venue.maxOnlinePartySize} guests.`
+      `Online booking currently supports up to ${resolved.config.maxOnlinePartySize} guests.`
     );
   }
 
@@ -197,23 +225,28 @@ export async function getPublicSlots(input: {
     venueId: input.venue.id,
     date: parseVenueCalendarDate(input.dateText, input.venue.timezone),
     partySize: input.partySize,
-    durationMinutes: input.venue.defaultReservationDurationMinutes
+    durationMinutes: resolved.config.durationMinutes,
+    allowedAreaIds: resolved.config.allowedAreaIds,
+    allowedTableIds: resolved.config.allowedTableIds
   });
 
   const now = new Date();
   const maxAt = new Date(
-    now.getTime() + input.venue.maxDaysAhead * 24 * 60 * 60_000
+    now.getTime() + resolved.config.maxDaysAhead * 24 * 60 * 60_000
   );
   const minAt = new Date(
-    now.getTime() + input.venue.minAdvanceNoticeMinutes * 60_000
+    now.getTime() + resolved.config.minAdvanceNoticeMinutes * 60_000
   );
 
-  return slots
+  return {
+    resolvedConfig: resolved.config,
+    slots: slots
     .filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt)
     .map((slot) => ({
       ...slot,
       localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
-    }));
+    }))
+  };
 }
 
 async function resolveSystemActorUserId(organizationId: string) {
@@ -266,8 +299,13 @@ export async function createPublicBooking(input: {
     throw new PublicBookingError('INVALID_INPUT', 'Please select a valid time slot.');
   }
 
-  assertBookingWindow({
+  const resolved = resolveBookingConfig({
     venue: input.venue,
+    bookingDate: startAtUtc
+  });
+
+  assertBookingWindow({
+    config: resolved.config,
     partySize: parsed.data.partySize,
     startAt: startAtUtc
   });
@@ -277,7 +315,9 @@ export async function createPublicBooking(input: {
     venueId: input.venue.id,
     startAt: startAtUtc,
     partySize: parsed.data.partySize,
-    durationMinutes: input.venue.defaultReservationDurationMinutes
+    durationMinutes: resolved.config.durationMinutes,
+    allowedAreaIds: resolved.config.allowedAreaIds,
+    allowedTableIds: resolved.config.allowedTableIds
   });
 
   if (!availability.allowed || availability.recommendedTableIds.length === 0) {
@@ -286,6 +326,32 @@ export async function createPublicBooking(input: {
       'That time just became unavailable. Please select a different slot.',
       409
     );
+  }
+
+  const requestedTableId = parsed.data.selectedTableId?.trim();
+  if (
+    resolved.config.placementMode === 'TABLE_SELECTION' &&
+    !requestedTableId
+  ) {
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      'Please select a table for this booking.'
+    );
+  }
+
+  let tableIds = availability.recommendedTableIds;
+  if (resolved.config.placementMode === 'TABLE_SELECTION' && requestedTableId) {
+    const selectedTable = availability.availableTables.find(
+      (table) => table.id === requestedTableId
+    );
+    if (!selectedTable || parsed.data.partySize > selectedTable.capacityMax) {
+      throw new PublicBookingError(
+        'SLOT_UNAVAILABLE',
+        'The selected table is not available for this party size.',
+        409
+      );
+    }
+    tableIds = [selectedTable.id];
   }
 
   const normalizedEmail = normalizeEmail(parsed.data.email);
@@ -297,7 +363,7 @@ export async function createPublicBooking(input: {
     phone: normalizedPhone
   });
 
-  const targetCode = resolveTargetStatusCode(input.venue.bookingMode);
+  const targetCode = resolveTargetStatusCode(resolved.config.confirmationMode);
   const status = await prisma.reservationStatus.findFirst({
     where: {
       organizationId: input.venue.organizationId,
@@ -326,7 +392,7 @@ export async function createPublicBooking(input: {
         venueId: input.venue.id,
         reservationDate: startAtUtc,
         startAt: startAtUtc,
-        durationMinutes: input.venue.defaultReservationDurationMinutes,
+        durationMinutes: resolved.config.durationMinutes,
         partySize: parsed.data.partySize,
         existingGuestId: existingGuest?.id,
         guest: {
@@ -337,7 +403,7 @@ export async function createPublicBooking(input: {
           phone: normalizedPhone
         },
         reservationStatusId: status.id,
-        tableIds: availability.recommendedTableIds,
+        tableIds,
         specialRequests: parsed.data.note,
         source: 'PUBLIC_ONLINE',
         depositRequired: false

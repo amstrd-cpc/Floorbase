@@ -177,11 +177,13 @@ async function assertTableAssignments(
   if (tables.length > 1) {
     const anyNotCombinable = tables.some((table) => !table.canCombine);
     const anyMissingCombineGroup = tables.some((table) => !table.combineGroup);
-    const combineGroups = new Set(
-      tables.map((table) => table.combineGroup)
-    );
+    const combineGroups = new Set(tables.map((table) => table.combineGroup));
 
-    if (anyNotCombinable || anyMissingCombineGroup || combineGroups.size !== 1) {
+    if (
+      anyNotCombinable ||
+      anyMissingCombineGroup ||
+      combineGroups.size !== 1
+    ) {
       throw new ReservationValidationError(
         'Multiple table assignments must be combinable and share the same combine group.'
       );
@@ -275,8 +277,22 @@ async function createOrUpdateGuest(
   };
 
   if (input.existingGuestId) {
+    const existingGuest = await tx.guest.findFirst({
+      where: {
+        id: input.existingGuestId,
+        organizationId: input.organizationId
+      },
+      select: { id: true }
+    });
+
+    if (!existingGuest) {
+      throw new ReservationValidationError(
+        'Guest does not exist in this organization.'
+      );
+    }
+
     return tx.guest.update({
-      where: { id: input.existingGuestId },
+      where: { id: existingGuest.id },
       data: guestData,
       select: { id: true }
     });
@@ -426,7 +442,8 @@ export async function createReservation(input: {
 
       const guest = await createOrUpdateGuest(tx, {
         organizationId: input.organizationId,
-        guest: parsed.data.guest
+        guest: parsed.data.guest,
+        existingGuestId: parsed.data.existingGuestId
       });
 
       const reservation = await tx.reservation.create({

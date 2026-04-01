@@ -55,6 +55,7 @@ const baseMutationSchema = z
       .max(MAX_RESERVATION_DURATION_MINUTES)
       .optional(),
     partySize: z.number().int().min(1).max(MAX_PARTY_SIZE),
+    existingGuestId: z.string().cuid().optional(),
     guest: z
       .object({
         firstName: z.string().trim().max(100).nullable().optional(),

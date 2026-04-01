@@ -1,0 +1,11 @@
+-- CreateEnum
+CREATE TYPE "VenueBookingMode" AS ENUM ('AUTO_CONFIRM', 'REQUEST_ONLY');
+
+-- AlterTable
+ALTER TABLE "Venue"
+ADD COLUMN "publicBookingEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "bookingMode" "VenueBookingMode" NOT NULL DEFAULT 'AUTO_CONFIRM',
+ADD COLUMN "maxOnlinePartySize" INTEGER NOT NULL DEFAULT 12,
+ADD COLUMN "minAdvanceNoticeMinutes" INTEGER NOT NULL DEFAULT 120,
+ADD COLUMN "maxDaysAhead" INTEGER NOT NULL DEFAULT 60,
+ADD COLUMN "defaultReservationDurationMinutes" INTEGER NOT NULL DEFAULT 120;

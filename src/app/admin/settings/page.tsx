@@ -12,8 +12,27 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Venue Settings" description="Basic properties for daily operations configuration." />
-      <VenueSettingsForm venue={{ id: venue.id, name: venue.name, slug: venue.slug, timezone: venue.timezone, currency: venue.currency, isActive: venue.isActive }} />
+      <PageHeader
+        title="Venue Settings"
+        description="Basic properties for daily operations configuration."
+      />
+      <VenueSettingsForm
+        venue={{
+          id: venue.id,
+          name: venue.name,
+          slug: venue.slug,
+          timezone: venue.timezone,
+          currency: venue.currency,
+          isActive: venue.isActive,
+          publicBookingEnabled: venue.publicBookingEnabled,
+          bookingMode: venue.bookingMode,
+          maxOnlinePartySize: venue.maxOnlinePartySize,
+          minAdvanceNoticeMinutes: venue.minAdvanceNoticeMinutes,
+          maxDaysAhead: venue.maxDaysAhead,
+          defaultReservationDurationMinutes:
+            venue.defaultReservationDurationMinutes
+        }}
+      />
     </div>
   );
 }

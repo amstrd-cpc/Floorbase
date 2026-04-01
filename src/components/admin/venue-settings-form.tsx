@@ -51,18 +51,14 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (values.timezone.trim()) {
-      return;
-    }
-
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (browserTimezone) {
+    if (browserTimezone && !venue.timezone.trim()) {
       setValues((current) => ({
         ...current,
         timezone: current.timezone.trim() || browserTimezone
       }));
     }
-  }, [values.timezone]);
+  }, [venue.timezone]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

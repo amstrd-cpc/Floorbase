@@ -6,7 +6,6 @@ type BookingEvent = {
   id: string;
   isActive: boolean;
   name: string;
-  priority: number;
   eventType: 'SINGLE_DATE' | 'WEEKLY_RECURRING' | 'DATE_RANGE';
   singleDate: string | null;
   dateStart: string | null;
@@ -30,7 +29,6 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const EMPTY_EVENT: Omit<BookingEvent, 'id'> = {
   isActive: true,
   name: '',
-  priority: 100,
   eventType: 'SINGLE_DATE',
   singleDate: null,
   dateStart: null,
@@ -63,7 +61,6 @@ function fromEventToForm(event: BookingEvent): Omit<BookingEvent, 'id'> {
   return {
     isActive: event.isActive,
     name: event.name,
-    priority: event.priority,
     eventType: event.eventType,
     singleDate: toCalendarDate(event.singleDate),
     dateStart: toCalendarDate(event.dateStart),
@@ -219,6 +216,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   return (
     <section className="space-y-4 rounded-lg border bg-white p-4">
       {message ? <p className="rounded border p-2 text-sm">{message}</p> : null}
+      <p className="text-xs text-slate-500">
+        Event overrides always take precedence over default venue settings. If multiple events match the same booking date, precedence is: Single Date, then Date Range, then Weekly Recurring. For the same type, the most recently created event wins.
+      </p>
 
       <div className="space-y-3 rounded border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -237,13 +237,12 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
           ) : null}
         </div>
         <input className="w-full rounded border p-2 text-sm" placeholder="Event name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-2">
           <select className="rounded border p-2 text-sm" value={form.eventType} onChange={(e) => setForm({ ...form, eventType: e.target.value as BookingEvent['eventType'] })}>
             <option value="SINGLE_DATE">Single date</option>
             <option value="WEEKLY_RECURRING">Weekly recurring</option>
             <option value="DATE_RANGE">Date range</option>
           </select>
-          <input type="number" className="rounded border p-2 text-sm" value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} placeholder="Priority" />
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />Active</label>
         </div>
         {form.eventType === 'SINGLE_DATE' ? <input type="date" className="rounded border p-2 text-sm" value={toDateInputValue(form.singleDate)} onChange={(e) => setForm({ ...form, singleDate: e.target.value || null })} /> : null}
@@ -281,7 +280,7 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="font-medium">{event.name}</p>
-                <p className="text-xs text-slate-600">{event.isActive ? 'Active' : 'Inactive'} · {eventTypeLabel(event.eventType)} · Priority {event.priority}</p>
+                <p className="text-xs text-slate-600">{event.isActive ? 'Active' : 'Inactive'} · {eventTypeLabel(event.eventType)}</p>
               </div>
             </div>
             <p className="mt-1 text-xs text-slate-600">When: {describeWhen(event)}</p>

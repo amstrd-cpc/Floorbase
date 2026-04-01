@@ -124,6 +124,12 @@ function applyEventOverrides(config: ResolvedBookingConfig, event: BookingEvent)
   }
 }
 
+function eventSpecificity(type: BookingEventType) {
+  if (type === BookingEventType.SINGLE_DATE) return 3;
+  if (type === BookingEventType.DATE_RANGE) return 2;
+  return 1;
+}
+
 export function resolveBookingConfig(input: {
   venue: PublicVenueWithEvents;
   bookingDate: Date;
@@ -151,17 +157,23 @@ export function resolveBookingConfig(input: {
         bookingDate: input.bookingDate,
         timeZone: input.venue.timezone
       })
-    )
-    .sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
+    );
 
-      return a.createdAt.getTime() - b.createdAt.getTime();
-    });
+  const winningEvent =
+    matched.length > 0
+      ? [...matched].sort((a, b) => {
+          const specificityDelta =
+            eventSpecificity(b.eventType) - eventSpecificity(a.eventType);
+          if (specificityDelta !== 0) {
+            return specificityDelta;
+          }
 
-  for (const event of matched) {
-    applyEventOverrides(base, event);
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        })[0]
+      : null;
+
+  if (winningEvent) {
+    applyEventOverrides(base, winningEvent);
   }
 
   if (base.maxOnlinePartySize < base.minPartySize) {
@@ -170,6 +182,6 @@ export function resolveBookingConfig(input: {
 
   return {
     config: base,
-    matchedEvents: matched
+    matchedEvents: winningEvent ? [winningEvent] : []
   };
 }

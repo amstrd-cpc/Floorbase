@@ -9,7 +9,7 @@ export const publicSlotQuerySchema = z
 
 export const createPublicBookingSchema = z
   .object({
-    startAt: z.coerce.date(),
+    slotId: z.string().datetime({ offset: true }),
     partySize: z.number().int().min(1),
     fullName: z.string().trim().min(1).max(200),
     email: z.string().trim().email().max(320),

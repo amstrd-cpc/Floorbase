@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import { getVenueScope } from '@/server/auth/scope-resolvers';
+import { isValidIanaTimeZone } from '@/lib/timezone';
 
 export async function GET(
   _request: Request,
@@ -94,6 +95,13 @@ export async function PUT(
     );
   }
 
+
+  if (!isValidIanaTimeZone(payload.timezone.trim())) {
+    return NextResponse.json(
+      { error: 'timezone must be a valid IANA timezone, for example Europe/Berlin.' },
+      { status: 400 }
+    );
+  }
   if ((payload.maxOnlinePartySize ?? 1) < 1) {
     return NextResponse.json(
       { error: 'maxOnlinePartySize must be at least 1.' },

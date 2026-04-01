@@ -58,9 +58,11 @@ export async function GET(
     });
 
     return NextResponse.json({
+      timezone: venue.timezone,
       slots: slots.map((slot) => ({
         startAt: slot.startAt.toISOString(),
-        endAt: slot.endAt.toISOString()
+        endAt: slot.endAt.toISOString(),
+        localStartAt: slot.localStartAt
       }))
     });
   } catch (error) {

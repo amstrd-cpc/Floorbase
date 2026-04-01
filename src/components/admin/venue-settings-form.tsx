@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type VenueSettings = {
   id: string;
@@ -17,9 +17,34 @@ type VenueSettings = {
   defaultReservationDurationMinutes: number;
 };
 
+const TIMEZONE_SUGGESTIONS = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/Berlin',
+  'Europe/Tbilisi',
+  'Asia/Yerevan'
+];
+
 export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
   const [values, setValues] = useState(venue);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (values.timezone.trim()) {
+      return;
+    }
+
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserTimezone) {
+      setValues((current) => ({
+        ...current,
+        timezone: current.timezone.trim() || browserTimezone
+      }));
+    }
+  }, [values.timezone]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,10 +88,20 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
         <label className="text-sm">
           Timezone
           <input
+            list="timezone-suggestions"
+            placeholder="e.g. America/New_York"
             className="mt-1 w-full rounded border p-2"
             value={values.timezone}
             onChange={(e) => setValues({ ...values, timezone: e.target.value })}
           />
+          <datalist id="timezone-suggestions">
+            {TIMEZONE_SUGGESTIONS.map((timezone) => (
+              <option key={timezone} value={timezone} />
+            ))}
+          </datalist>
+          <span className="mt-1 block text-xs text-slate-500">
+            Uses IANA timezone values. Browser timezone is only a default suggestion.
+          </span>
         </label>
         <label className="text-sm">
           Currency

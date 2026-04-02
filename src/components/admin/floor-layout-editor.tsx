@@ -244,18 +244,16 @@ export function FloorLayoutEditor({
               />
             ) : null}
 
-            {draft.tables.map((table) => (
+            {selectedTable ? (
               <div
-                key={`${table.id}-drag`}
                 className="absolute cursor-move"
-                style={{ left: table.x, top: table.y, width: table.width, height: table.height }}
+                style={{ left: selectedTable.x, top: selectedTable.y, width: selectedTable.width, height: selectedTable.height }}
                 onMouseDown={(event) => {
-                  if (selectedTableId !== table.id) return;
                   event.preventDefault();
                   const startX = event.clientX;
                   const startY = event.clientY;
-                  const initialX = table.x;
-                  const initialY = table.y;
+                  const initialX = selectedTable.x;
+                  const initialY = selectedTable.y;
 
                   const onMove = (moveEvent: MouseEvent) => {
                     const nextX = Math.max(0, initialX + (moveEvent.clientX - startX));
@@ -263,7 +261,7 @@ export function FloorLayoutEditor({
                     markDirty({
                       ...draft,
                       tables: draft.tables.map((item) =>
-                        item.id === table.id
+                        item.id === selectedTable.id
                           ? {
                               ...item,
                               x: Math.round(nextX / draft.gridSize) * draft.gridSize,
@@ -283,7 +281,7 @@ export function FloorLayoutEditor({
                   window.addEventListener('mouseup', onUp);
                 }}
               />
-            ))}
+            ) : null}
           </FloorLayoutRenderer>
         </SectionCard>
 

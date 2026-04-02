@@ -24,10 +24,10 @@ function mapLayout(layout: LayoutWithEntities): FloorLayoutDto {
   return {
     ...layout,
     updatedAt: layout.updatedAt.toISOString(),
-    tables: layout.tables.map((table) => ({ ...table, combinableMeta:
-          table.combinableMeta == null
-            ? Prisma.JsonNull
-            : (table.combinableMeta as Prisma.InputJsonValue) }))
+    tables: layout.tables.map((table) => ({
+      ...table,
+      combinableMeta: table.combinableMeta
+    }))
   };
 }
 
@@ -142,6 +142,33 @@ export async function saveDraftLayout(payload: unknown) {
       throw new FloorNotFoundError('Draft layout not found. Refresh and try again.');
     }
 
+    const tableIds = parsed.tables.map((table) => table.tableId);
+    const venueTables = tableIds.length
+      ? await prisma.table.findMany({
+          where: { venueId: parsed.venueId, id: { in: tableIds } },
+          select: { id: true }
+        })
+      : [];
+
+    if (venueTables.length !== new Set(tableIds).size) {
+      throw new FloorValidationError('Layout contains table IDs outside the venue scope.');
+    }
+
+    const referencedAreaIds = parsed.areas
+      .map((area) => area.areaId)
+      .filter((areaId): areaId is string => Boolean(areaId));
+
+    const venueAreas = referencedAreaIds.length
+      ? await prisma.area.findMany({
+          where: { venueId: parsed.venueId, id: { in: referencedAreaIds } },
+          select: { id: true }
+        })
+      : [];
+
+    if (venueAreas.length !== new Set(referencedAreaIds).size) {
+      throw new FloorValidationError('Layout contains area IDs outside the venue scope.');
+    }
+
     const areaIds = new Set(parsed.areas.map((area) => area.id));
     for (const table of parsed.tables) {
       if (table.floorLayoutAreaId && !areaIds.has(table.floorLayoutAreaId)) {
@@ -192,9 +219,9 @@ export async function saveDraftLayout(payload: unknown) {
           rotation: table.rotation,
           isActive: table.isActive,
           combinableMeta:
-          table.combinableMeta == null
-            ? Prisma.JsonNull
-            : (table.combinableMeta as Prisma.InputJsonValue) == null ? Prisma.JsonNull : (table.combinableMeta as Prisma.InputJsonValue)
+            table.combinableMeta == null
+              ? Prisma.JsonNull
+              : (table.combinableMeta as Prisma.InputJsonValue)
         }))
       });
     });
@@ -221,13 +248,13 @@ export async function publishDraftLayout(venueId: string) {
     select: { version: true }
   });
 
-  const published = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     await tx.floorLayout.updateMany({
       where: { venueId, status: 'PUBLISHED', isCurrent: true },
       data: { isCurrent: false }
     });
 
-    return tx.floorLayout.create({
+    const published = await tx.floorLayout.create({
       data: {
         venueId,
         status: 'PUBLISHED',
@@ -249,37 +276,37 @@ export async function publishDraftLayout(venueId: string) {
       },
       include: { areas: true }
     });
+
+    const areaMap = new Map(
+      published.areas.map((area, idx) => [draft.areas[idx]?.id, area.id] as const)
+    );
+
+    if (draft.tables.length > 0) {
+      await tx.floorLayoutTable.createMany({
+        data: draft.tables.map((table) => ({
+          floorLayoutId: published.id,
+          floorLayoutAreaId: table.floorLayoutAreaId
+            ? (areaMap.get(table.floorLayoutAreaId) ?? null)
+            : null,
+          tableId: table.tableId,
+          label: table.label,
+          capacityMin: table.capacityMin,
+          capacityMax: table.capacityMax,
+          shape: table.shape,
+          x: table.x,
+          y: table.y,
+          width: table.width,
+          height: table.height,
+          rotation: table.rotation,
+          isActive: table.isActive,
+          combinableMeta:
+            table.combinableMeta == null
+              ? Prisma.JsonNull
+              : (table.combinableMeta as Prisma.InputJsonValue)
+        }))
+      });
+    }
   });
-
-  const areaMap = new Map(
-    published.areas.map((area, idx) => [draft.areas[idx]?.id, area.id] as const)
-  );
-
-  if (draft.tables.length > 0) {
-    await prisma.floorLayoutTable.createMany({
-      data: draft.tables.map((table) => ({
-        floorLayoutId: published.id,
-        floorLayoutAreaId: table.floorLayoutAreaId
-          ? (areaMap.get(table.floorLayoutAreaId) ?? null)
-          : null,
-        tableId: table.tableId,
-        label: table.label,
-        capacityMin: table.capacityMin,
-        capacityMax: table.capacityMax,
-        shape: table.shape,
-        x: table.x,
-        y: table.y,
-        width: table.width,
-        height: table.height,
-        rotation: table.rotation,
-        isActive: table.isActive,
-        combinableMeta:
-          table.combinableMeta == null
-            ? Prisma.JsonNull
-            : (table.combinableMeta as Prisma.InputJsonValue)
-      }))
-    });
-  }
 
   return getPublishedLayout(venueId);
 }

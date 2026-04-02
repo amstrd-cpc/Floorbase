@@ -4,7 +4,7 @@ import {
   FloorNotFoundError,
   FloorValidationError
 } from '@/server/floor/errors';
-import { updateTable } from '@/server/floor/service';
+import { deleteTable, updateTable } from '@/server/floor/service';
 import { getTableScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
@@ -54,6 +54,41 @@ export async function PUT(
 
     const table = await updateTable({ tableId: params.tableId, payload });
     return NextResponse.json({ table });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { tableId: string } }
+) {
+  const user = await requireRole([
+    'SUPER_ADMIN',
+    'ORGANIZATION_ADMIN',
+    'VENUE_MANAGER'
+  ]);
+
+  try {
+    const tableScope = await getTableScope(params.tableId);
+    if (!tableScope) {
+      return NextResponse.json({ error: 'Table not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: tableScope.venue.organizationId,
+        venueId: tableScope.venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested table scope.' },
+        { status: 403 }
+      );
+    }
+
+    await deleteTable({ tableId: params.tableId });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return toErrorResponse(error);
   }

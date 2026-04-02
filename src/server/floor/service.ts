@@ -35,6 +35,11 @@ function toValidationError(error: unknown) {
         'Name or code already exists in this venue.'
       );
     }
+    if (error.code === 'P2003') {
+      return new FloorValidationError(
+        'Table cannot be deleted while it is referenced by reservations.'
+      );
+    }
   }
 
   return new FloorValidationError('Invalid floor payload.');
@@ -273,6 +278,25 @@ export async function updateTable(input: {
         capacityMax,
         isActive: parsed.data.isActive ?? current.isActive
       }
+    });
+  } catch (error) {
+    throw toValidationError(error);
+  }
+}
+
+export async function deleteTable(input: { tableId: string }) {
+  try {
+    const current = await prisma.table.findUnique({
+      where: { id: input.tableId },
+      select: { id: true }
+    });
+
+    if (!current) {
+      throw new FloorNotFoundError('Table not found.');
+    }
+
+    await prisma.table.delete({
+      where: { id: current.id }
     });
   } catch (error) {
     throw toValidationError(error);

@@ -1,5 +1,5 @@
 import { prisma } from '@/server/db/prisma/client';
-import { chooseBestTable, type AssignableTable } from './table-assignment';
+import { chooseBestTableSet, type AssignableTable } from './table-assignment';
 import {
   DEFAULT_RESERVATION_DURATION_MINUTES,
   RESERVATION_SLOT_MINUTES,
@@ -186,7 +186,9 @@ async function getPublishedFloorTables(input: {
           table: {
             select: {
               name: true,
-              areaId: true
+              areaId: true,
+              canCombine: true,
+              combineGroup: true
             }
           },
           floorLayoutArea: {
@@ -208,7 +210,9 @@ async function getPublishedFloorTables(input: {
     capacityMin: table.capacityMin,
     capacityMax: table.capacityMax,
     isActive: table.isActive,
-    areaId: table.floorLayoutArea?.areaId ?? table.table.areaId
+    areaId: table.floorLayoutArea?.areaId ?? table.table.areaId,
+    canCombine: table.table.canCombine,
+    combineGroup: table.table.combineGroup
   }));
 }
 
@@ -360,14 +364,16 @@ export async function listAvailableTables(input: {
     }))
   ];
 
-  const availableTables = tables.filter((table) => !isTableBlocked({ tableId: table.id, window, busyIntervals }));
-  const bestTable = chooseBestTable(availableTables, input.partySize);
+  const availableTables = tables
+    .filter((table) => !table.capacityMin || input.partySize >= table.capacityMin)
+    .filter((table) => !isTableBlocked({ tableId: table.id, window, busyIntervals }));
+  const recommendedTables = chooseBestTableSet(availableTables, input.partySize);
 
   return {
-    allowed: Boolean(bestTable),
-    reason: bestTable ? null : ('NO_CAPACITY' as const),
+    allowed: recommendedTables.length > 0,
+    reason: recommendedTables.length > 0 ? null : ('NO_CAPACITY' as const),
     availableTables,
-    recommendedTableIds: bestTable ? [bestTable.id] : [],
+    recommendedTableIds: recommendedTables.map((table) => table.id),
     window
   };
 }

@@ -18,7 +18,7 @@ export default async function FloorManagementPage() {
   ]);
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-[1400px] space-y-4">
       <PageHeader
         title="Visual Floor Layout"
         description="Create and publish the seating plan used by operations today and by visual booking workflows in upcoming phases."

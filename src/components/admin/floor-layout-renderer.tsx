@@ -20,9 +20,9 @@ export function FloorLayoutRenderer({
   children
 }: Props) {
   return (
-    <div className="overflow-auto rounded border bg-slate-50 p-3">
+    <div className="max-h-[70vh] w-full min-w-0 overflow-auto rounded border bg-slate-50 p-3">
       <div
-        className="relative bg-white"
+        className="relative inline-block bg-white"
         style={{
           width: `${layout.canvasWidth}px`,
           height: `${layout.canvasHeight}px`,

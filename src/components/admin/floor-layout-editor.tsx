@@ -194,7 +194,7 @@ export function FloorLayoutEditor({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4">
       {error ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
       {success ? <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">{success}</p> : null}
 
@@ -206,8 +206,12 @@ export function FloorLayoutEditor({
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-        <SectionCard title="Draft Canvas" description="Drag tables to position. Use the sidebar to fine-tune dimensions and zone assignment.">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <SectionCard
+          className="min-w-0"
+          title="Draft Canvas"
+          description="Drag tables to position. Use the sidebar to fine-tune dimensions and zone assignment."
+        >
           <FloorLayoutRenderer
             layout={draft}
             selectedTableId={selectedTableId}
@@ -285,7 +289,7 @@ export function FloorLayoutEditor({
           </FloorLayoutRenderer>
         </SectionCard>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4 lg:w-[320px]">
           <SectionCard title="Zones" description="Zones are backed by existing areas for compatibility with current reservation logic.">
             <form action={createZone} className="mb-2 flex gap-2">
               <input name="name" className="w-full rounded border p-2 text-sm" placeholder="New zone name" required />

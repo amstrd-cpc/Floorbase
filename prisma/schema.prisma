@@ -81,6 +81,12 @@ enum BookingEventType {
   DATE_RANGE
 }
 
+
+enum FloorLayoutStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model Organization {
   id                  String                @id @default(cuid())
   name                String
@@ -130,6 +136,7 @@ model Venue {
   blackoutRules BlackoutRule[]
   tables        Table[]
   bookingEvents BookingEvent[]
+  floorLayouts FloorLayout[]
   adminRoles    AdminRoleAssignment[]
   authInvites   AuthInvite[]
 
@@ -178,6 +185,7 @@ model Area {
 
   venue  Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
   tables Table[]
+  floorLayoutAreas FloorLayoutArea[]
 
   @@unique([venueId, name])
   @@index([venueId])
@@ -203,6 +211,7 @@ model Table {
   area         Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
   reservations ReservationTable[]
   blocks       TableBlock[]
+  floorLayoutTables FloorLayoutTable[]
 
   @@unique([venueId, name])
   @@unique([venueId, code])
@@ -505,4 +514,76 @@ model NotificationLog {
   @@index([guestId])
   @@index([status])
   @@index([createdAt])
+}
+
+
+model FloorLayout {
+  id                    String            @id @default(cuid())
+  venueId               String
+  status                FloorLayoutStatus
+  version               Int               @default(1)
+  name                  String?
+  canvasWidth           Int               @default(1600)
+  canvasHeight          Int               @default(900)
+  gridSize              Int               @default(24)
+  isCurrent             Boolean           @default(true)
+  publishedFromLayoutId String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  venue                 Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  publishedFromLayout   FloorLayout?      @relation("FloorLayoutPublishSource", fields: [publishedFromLayoutId], references: [id], onDelete: SetNull)
+  publishChildren       FloorLayout[]     @relation("FloorLayoutPublishSource")
+  areas                 FloorLayoutArea[]
+  tables                FloorLayoutTable[]
+
+  @@unique([venueId, status, version])
+  @@index([venueId, status, isCurrent])
+}
+
+model FloorLayoutArea {
+  id            String      @id @default(cuid())
+  floorLayoutId String
+  areaId        String?
+  name          String
+  sortOrder     Int         @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  floorLayout   FloorLayout @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
+  area          Area?       @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  tables        FloorLayoutTable[]
+
+  @@index([floorLayoutId])
+  @@index([areaId])
+}
+
+model FloorLayoutTable {
+  id                String           @id @default(cuid())
+  floorLayoutId     String
+  floorLayoutAreaId String?
+  tableId           String
+  label             String
+  capacityMin       Int?
+  capacityMax       Int
+  shape             TableShape       @default(SQUARE)
+  x                 Int              @default(0)
+  y                 Int              @default(0)
+  width             Int              @default(96)
+  height            Int              @default(96)
+  rotation          Int              @default(0)
+  isActive          Boolean          @default(true)
+  combinableMeta    Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  floorLayout       FloorLayout      @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
+  floorLayoutArea   FloorLayoutArea? @relation(fields: [floorLayoutAreaId], references: [id], onDelete: SetNull)
+  table             Table            @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@unique([floorLayoutId, tableId])
+  @@index([floorLayoutId])
+  @@index([floorLayoutAreaId])
+  @@index([tableId])
 }

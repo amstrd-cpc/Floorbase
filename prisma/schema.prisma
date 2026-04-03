@@ -81,6 +81,21 @@ enum BookingEventType {
   DATE_RANGE
 }
 
+enum BookingLifecycleStatus {
+  PENDING
+  CONFIRMED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+  FAILED
+}
 
 enum FloorLayoutStatus {
   DRAFT
@@ -149,7 +164,6 @@ model BookingEvent {
   venueId     String
   isActive    Boolean  @default(true)
   name        String
-  priority    Int      @default(100)
   eventType   BookingEventType
   singleDate  DateTime?
   dateStart   DateTime?
@@ -171,7 +185,7 @@ model BookingEvent {
 
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
-  @@index([venueId, isActive, priority])
+  @@index([venueId, isActive])
 }
 
 model Area {
@@ -290,6 +304,8 @@ model Reservation {
   internalNotes       String?
   specialRequests     String?
   depositRequired     Boolean  @default(false)
+  bookingStatus       BookingLifecycleStatus @default(PENDING)
+  paymentStatus       PaymentStatus @default(UNPAID)
   createdByUserId     String?
   updatedByUserId     String?
   createdAt           DateTime @default(now())
@@ -310,6 +326,8 @@ model Reservation {
   @@index([guestId])
   @@index([reservationStatusId])
   @@index([startAt, endAt])
+  @@index([bookingStatus])
+  @@index([paymentStatus])
 }
 
 model ReservationTable {

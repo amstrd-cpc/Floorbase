@@ -1,5 +1,9 @@
 import { Prisma, type ReservationStatus } from '@prisma/client';
-import { canTransitionReservationStatus } from '@/lib/reservations/rules';
+import {
+  canTransitionReservationStatus,
+  normalizeBookingStatusCode,
+  toBookingLifecycleStatus
+} from '@/lib/reservations/rules';
 import { prisma } from '@/server/db/prisma/client';
 import {
   MAX_RESERVATION_DURATION_MINUTES,
@@ -456,6 +460,8 @@ export async function createReservation(input: {
           startAt: reservationWindow.startAt,
           endAt: reservationWindow.endAt,
           partySize: parsed.data.partySize,
+          bookingStatus: toBookingLifecycleStatus(status.code),
+          paymentStatus: 'UNPAID',
           source: parsed.data.source,
           internalNotes: parsed.data.internalNotes,
           specialRequests: parsed.data.specialRequests,
@@ -627,15 +633,17 @@ export async function updateReservation(input: {
       );
     }
 
-    if (parsed.data.reservationStatusId) {
-      const nextStatus = await assertStatus(tx, {
-        organizationId: input.organizationId,
-        reservationStatusId: parsed.data.reservationStatusId
-      });
+    const nextStatusForUpdate = parsed.data.reservationStatusId
+      ? await assertStatus(tx, {
+          organizationId: input.organizationId,
+          reservationStatusId: parsed.data.reservationStatusId
+        })
+      : null;
 
+    if (nextStatusForUpdate) {
       assertStatusTransition({
         currentStatusCode: current.status.code,
-        nextStatusCode: nextStatus.code
+        nextStatusCode: nextStatusForUpdate.code
       });
     }
 
@@ -671,6 +679,9 @@ export async function updateReservation(input: {
         guestId,
         reservationStatusId:
           parsed.data.reservationStatusId ?? current.reservationStatusId,
+        bookingStatus: nextStatusForUpdate
+          ? toBookingLifecycleStatus(nextStatusForUpdate.code)
+          : current.bookingStatus,
         reservationDate:
           parsed.data.reservationDate ??
           inferReservationDate(reservationWindow.startAt),
@@ -779,6 +790,7 @@ export async function changeReservationStatus(input: {
       where: { id: current.id },
       data: {
         reservationStatusId: nextStatus.id,
+        bookingStatus: toBookingLifecycleStatus(nextStatus.code),
         updatedByUserId: input.context.actorUserId
       },
       select: { id: true, venueId: true }
@@ -821,14 +833,14 @@ export async function cancelReservation(input: {
       input.organizationId
     );
 
-    if (current.status.code === 'CANCELED') {
+    if (normalizeBookingStatusCode(current.status.code) === 'CANCELLED') {
       return current;
     }
 
     const canceledStatus = await tx.reservationStatus.findFirst({
       where: {
         organizationId: input.organizationId,
-        code: 'CANCELED',
+        code: { in: ['CANCELLED', 'CANCELED'] },
         isActive: true
       }
     });
@@ -843,6 +855,7 @@ export async function cancelReservation(input: {
       where: { id: current.id },
       data: {
         reservationStatusId: canceledStatus.id,
+        bookingStatus: 'CANCELLED',
         updatedByUserId: input.context.actorUserId,
         internalNotes: [
           current.internalNotes,

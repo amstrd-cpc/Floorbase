@@ -1,4 +1,5 @@
 import { prisma } from '@/server/db/prisma/client';
+import { chooseBestTableSet, type AssignableTable } from './table-assignment';
 import {
   DEFAULT_RESERVATION_DURATION_MINUTES,
   RESERVATION_SLOT_MINUTES,
@@ -13,13 +14,9 @@ type AvailabilityWindow = {
   endAt: Date;
 };
 
-type CandidateTable = {
-  id: string;
+type CandidateTable = AssignableTable & {
   name: string;
-  capacityMax: number;
-  capacityMin: number | null;
-  canCombine: boolean;
-  combineGroup: string | null;
+  areaId: string | null;
 };
 
 type BusyInterval = {
@@ -66,10 +63,7 @@ function parseHourMinute(value: string) {
   return { hours, minutes };
 }
 
-function getZonedDateTimeParts(
-  date: Date,
-  timeZone: string
-): ZonedDateTimeParts {
+function getZonedDateTimeParts(date: Date, timeZone: string): ZonedDateTimeParts {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -82,9 +76,7 @@ function getZonedDateTimeParts(
   });
 
   const parts = formatter.formatToParts(date);
-  const lookup = Object.fromEntries(
-    parts.map((part) => [part.type, part.value])
-  );
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   const weekdayText = String(lookup.weekday ?? '')
     .slice(0, 3)
     .toLowerCase();
@@ -128,24 +120,8 @@ function zonedTimeToUtc(input: {
 
   for (let index = 0; index < 3; index += 1) {
     const parts = getZonedDateTimeParts(new Date(guessUtc), input.timeZone);
-    const localAsUtc = Date.UTC(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      0,
-      0
-    );
-    const targetAsUtc = Date.UTC(
-      input.year,
-      input.month - 1,
-      input.day,
-      input.hour,
-      input.minute,
-      0,
-      0
-    );
+    const localAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
+    const targetAsUtc = Date.UTC(input.year, input.month - 1, input.day, input.hour, input.minute, 0, 0);
 
     guessUtc += targetAsUtc - localAsUtc;
   }
@@ -171,6 +147,75 @@ async function getVenuePolicy(venueId: string) {
   return { businessHours, blackoutRules, timezone: venue.timezone || 'UTC' };
 }
 
+async function getPublishedFloorTables(input: {
+  organizationId: string;
+  venueId: string;
+  allowedAreaIds?: string[];
+  allowedTableIds?: string[];
+}) {
+  const publishedLayout = await prisma.floorLayout.findFirst({
+    where: {
+      venueId: input.venueId,
+      venue: { organizationId: input.organizationId },
+      status: 'PUBLISHED',
+      isCurrent: true
+    },
+    select: {
+      tables: {
+        where: {
+          isActive: true,
+          ...(input.allowedTableIds && input.allowedTableIds.length > 0
+            ? { tableId: { in: input.allowedTableIds } }
+            : {}),
+          table: {
+            isActive: true,
+            area: {
+              isActive: true,
+              ...(input.allowedAreaIds && input.allowedAreaIds.length > 0
+                ? { id: { in: input.allowedAreaIds } }
+                : {})
+            }
+          }
+        },
+        select: {
+          tableId: true,
+          label: true,
+          capacityMin: true,
+          capacityMax: true,
+          isActive: true,
+          table: {
+            select: {
+              name: true,
+              areaId: true,
+              canCombine: true,
+              combineGroup: true
+            }
+          },
+          floorLayoutArea: {
+            select: { areaId: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!publishedLayout) {
+    return [] as CandidateTable[];
+  }
+
+  return publishedLayout.tables.map((table) => ({
+    id: table.tableId,
+    label: table.label || table.table.name,
+    name: table.table.name,
+    capacityMin: table.capacityMin,
+    capacityMax: table.capacityMax,
+    isActive: table.isActive,
+    areaId: table.floorLayoutArea?.areaId ?? table.table.areaId,
+    canCombine: table.table.canCombine,
+    combineGroup: table.table.combineGroup
+  }));
+}
+
 function isWithinBusinessHours(input: {
   window: AvailabilityWindow;
   dayHours: { openTime: string; closeTime: string; isClosed: boolean } | null;
@@ -188,10 +233,7 @@ function isWithinBusinessHours(input: {
   const openMinutes = open.hours * 60 + open.minutes;
   const closeMinutes = close.hours * 60 + close.minutes;
 
-  if (
-    weekdayFor(input.window.startAt, input.timeZone) !==
-    weekdayFor(input.window.endAt, input.timeZone)
-  ) {
+  if (weekdayFor(input.window.startAt, input.timeZone) !== weekdayFor(input.window.endAt, input.timeZone)) {
     return false;
   }
 
@@ -229,54 +271,6 @@ function isTableBlocked(input: {
   );
 }
 
-function chooseMinimalTableSet(
-  tables: CandidateTable[],
-  partySize: number
-): CandidateTable[] {
-  const sorted = [...tables].sort((a, b) => {
-    if (a.capacityMax !== b.capacityMax) {
-      return a.capacityMax - b.capacityMax;
-    }
-
-    return a.name.localeCompare(b.name);
-  });
-
-  const singleTable = sorted.find((table) => partySize <= table.capacityMax);
-  if (singleTable) {
-    return [singleTable];
-  }
-
-  const groupedCombinable = new Map<string, CandidateTable[]>();
-  for (const table of sorted) {
-    if (!table.canCombine || !table.combineGroup) {
-      continue;
-    }
-
-    const key = table.combineGroup;
-    groupedCombinable.set(key, [...(groupedCombinable.get(key) ?? []), table]);
-  }
-
-  for (const [, groupTables] of groupedCombinable) {
-    let remaining = partySize;
-    const selected: CandidateTable[] = [];
-
-    for (const table of groupTables) {
-      if (remaining <= 0) {
-        break;
-      }
-
-      selected.push(table);
-      remaining -= table.capacityMax;
-    }
-
-    if (remaining <= 0) {
-      return selected;
-    }
-  }
-
-  return [];
-}
-
 export async function listAvailableTables(input: {
   organizationId: string;
   venueId: string;
@@ -294,10 +288,7 @@ export async function listAvailableTables(input: {
     durationMinutes: input.durationMinutes
   });
 
-  if (
-    !validateSlotAligned(window.startAt) ||
-    !validateSlotAligned(window.endAt)
-  ) {
+  if (!validateSlotAligned(window.startAt) || !validateSlotAligned(window.endAt)) {
     return {
       availableTables: [],
       recommendedTableIds: [],
@@ -307,13 +298,8 @@ export async function listAvailableTables(input: {
     };
   }
 
-  const { businessHours, blackoutRules, timezone } = await getVenuePolicy(
-    input.venueId
-  );
-  const dayHours =
-    businessHours.find(
-      (hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)
-    ) ?? null;
+  const { businessHours, blackoutRules, timezone } = await getVenuePolicy(input.venueId);
+  const dayHours = businessHours.find((hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)) ?? null;
 
   if (!isWithinBusinessHours({ window, dayHours, timeZone: timezone })) {
     return {
@@ -336,42 +322,15 @@ export async function listAvailableTables(input: {
   }
 
   const [tables, conflictingReservations, tableBlocks] = await Promise.all([
-    prisma.table.findMany({
-      where: {
-        venueId: input.venueId,
-        venue: { organizationId: input.organizationId },
-        isActive: true,
-        capacityMax: { gte: 1 },
-        area: {
-          isActive: true,
-          ...(input.allowedAreaIds && input.allowedAreaIds.length > 0
-            ? { id: { in: input.allowedAreaIds } }
-            : {})
-        },
-        ...(input.allowedTableIds && input.allowedTableIds.length > 0
-          ? { id: { in: input.allowedTableIds } }
-          : {})
-      },
-      select: {
-        id: true,
-        name: true,
-        capacityMax: true,
-        capacityMin: true,
-        canCombine: true,
-        combineGroup: true
-      },
-      orderBy: [{ capacityMax: 'asc' }, { name: 'asc' }]
-    }),
+    getPublishedFloorTables(input),
     prisma.reservationTable.findMany({
       where: {
         table: { venueId: input.venueId },
         reservation: {
           organizationId: input.organizationId,
           venueId: input.venueId,
-          ...(input.reservationIdToExclude
-            ? { id: { not: input.reservationIdToExclude } }
-            : {}),
-          status: { code: { not: 'CANCELED' } },
+          ...(input.reservationIdToExclude ? { id: { not: input.reservationIdToExclude } } : {}),
+          bookingStatus: { not: 'CANCELLED' },
           startAt: { lt: window.endAt },
           endAt: { gt: window.startAt }
         }
@@ -405,18 +364,10 @@ export async function listAvailableTables(input: {
     }))
   ];
 
-  const availableTables = tables.filter((table) => {
-    if (table.capacityMin && input.partySize < table.capacityMin) {
-      return false;
-    }
-
-    return !isTableBlocked({ tableId: table.id, window, busyIntervals });
-  });
-
-  const recommendedTables = chooseMinimalTableSet(
-    availableTables,
-    input.partySize
-  );
+  const availableTables = tables
+    .filter((table) => !table.capacityMin || input.partySize >= table.capacityMin)
+    .filter((table) => !isTableBlocked({ tableId: table.id, window, busyIntervals }));
+  const recommendedTables = chooseBestTableSet(availableTables, input.partySize);
 
   return {
     allowed: recommendedTables.length > 0,
@@ -442,12 +393,8 @@ export async function canPlaceReservation(input: {
     return { ok: false, reason: availability.reason };
   }
 
-  const tableSet = new Set(
-    availability.availableTables.map((table) => table.id)
-  );
-  const allRequestedAreAvailable = input.tableIds.every((tableId) =>
-    tableSet.has(tableId)
-  );
+  const tableSet = new Set(availability.availableTables.map((table) => table.id));
+  const allRequestedAreAvailable = input.tableIds.every((tableId) => tableSet.has(tableId));
 
   return {
     ok: allRequestedAreAvailable,
@@ -464,13 +411,10 @@ export async function listAvailableSlots(input: {
   allowedAreaIds?: string[];
   allowedTableIds?: string[];
 }) {
-  const durationMinutes =
-    input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
+  const durationMinutes = input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
   const { businessHours, timezone } = await getVenuePolicy(input.venueId);
   const zonedDate = getZonedDateTimeParts(input.date, timezone);
-  const dayHours = businessHours.find(
-    (hours) => hours.dayOfWeek === zonedDate.weekday
-  );
+  const dayHours = businessHours.find((hours) => hours.dayOfWeek === zonedDate.weekday);
 
   if (!dayHours || dayHours.isClosed) {
     return [] as Array<{
@@ -528,7 +472,7 @@ export async function listAvailableSlots(input: {
         recommendedTableIds: slotAvailability.recommendedTableIds,
         availableTables: slotAvailability.availableTables.map((table) => ({
           id: table.id,
-          name: table.name,
+          name: table.label,
           capacityMax: table.capacityMax
         }))
       });

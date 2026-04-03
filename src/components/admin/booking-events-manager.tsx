@@ -88,14 +88,17 @@ function eventTypeLabel(type: BookingEvent['eventType']) {
 
 export function BookingEventsManager({ venueId }: { venueId: string }) {
   const [events, setEvents] = useState<BookingEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<Omit<BookingEvent, 'id'>>(EMPTY_EVENT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
+    setIsLoading(true);
     const res = await fetch(`/api/admin/venues/${venueId}/booking-events`);
     const body = await res.json();
     setEvents(body.events ?? []);
+    setIsLoading(false);
   }, [venueId]);
 
   useEffect(() => {
@@ -217,7 +220,7 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
     <section className="space-y-4 rounded-lg border bg-white p-4">
       {message ? <p className="rounded border p-2 text-sm">{message}</p> : null}
       <p className="text-xs text-slate-500">
-        Event overrides always take precedence over default venue settings. If multiple events match the same booking date, precedence is: Single Date, then Date Range, then Weekly Recurring. For the same type, the most recently created event wins.
+        Event overrides always take precedence over default venue settings. If multiple events match the same booking date, precedence is: Single Date, then Date Range (shortest matching span wins), then Weekly Recurring. For an exact tie, the most recently created event wins.
       </p>
 
       <div className="space-y-3 rounded border p-3">
@@ -274,7 +277,8 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
       <div className="space-y-2">
         <p className="text-sm font-semibold">All events ({events.length})</p>
-        {events.length === 0 ? <p className="rounded border border-dashed p-3 text-sm text-slate-500">No events yet. Create one to override booking behavior for a date, date range, or recurring weekly schedule.</p> : null}
+        {isLoading ? <p className="rounded border border-dashed p-3 text-sm text-slate-500">Loading events…</p> : null}
+        {!isLoading && events.length === 0 ? <p className="rounded border border-dashed p-3 text-sm text-slate-500">No events yet. Create one to override booking behavior for a date, date range, or recurring weekly schedule.</p> : null}
         {events.map((event) => (
           <div key={event.id} className="rounded border p-3 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">

@@ -22,10 +22,36 @@ type LayoutWithEntities = Prisma.FloorLayoutGetPayload<{
 
 function mapLayout(layout: LayoutWithEntities): FloorLayoutDto {
   return {
-    ...layout,
+    id: layout.id,
+    venueId: layout.venueId,
+    status: layout.status,
+    version: layout.version,
+    name: layout.name,
+    canvasWidth: layout.canvasWidth,
+    canvasHeight: layout.canvasHeight,
+    gridSize: layout.gridSize,
     updatedAt: layout.updatedAt.toISOString(),
+    areas: layout.areas.map((area) => ({
+      id: area.id,
+      areaId: area.areaId,
+      name: area.name,
+      sortOrder: area.sortOrder,
+      isActive: area.isActive
+    })),
     tables: layout.tables.map((table) => ({
-      ...table,
+      id: table.id,
+      tableId: table.tableId,
+      floorLayoutAreaId: table.floorLayoutAreaId,
+      label: table.label,
+      capacityMin: table.capacityMin,
+      capacityMax: table.capacityMax,
+      shape: table.shape,
+      x: table.x,
+      y: table.y,
+      width: table.width,
+      height: table.height,
+      rotation: table.rotation,
+      isActive: table.isActive,
       combinableMeta: table.combinableMeta
     }))
   };

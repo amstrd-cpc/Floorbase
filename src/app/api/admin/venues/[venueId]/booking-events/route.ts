@@ -146,7 +146,7 @@ export async function GET(
 
   const events = await prisma.bookingEvent.findMany({
     where: { venueId: params.venueId },
-    orderBy: [{ createdAt: 'desc' }]
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
   });
 
   return NextResponse.json({ events });
@@ -174,7 +174,6 @@ export async function POST(
       venueId: params.venueId,
       isActive: payload.isActive ?? true,
       name: payload.name!.trim(),
-      priority: 100,
       eventType: payload.eventType!,
       singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
       dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),
@@ -230,7 +229,6 @@ export async function PUT(
     data: {
       isActive: payload.isActive ?? true,
       name: payload.name!.trim(),
-      priority: 100,
       eventType: payload.eventType!,
       singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
       dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),

@@ -62,8 +62,8 @@ const DEFAULT_STATUSES = [
     color: '#dc2626'
   },
   {
-    code: 'CANCELED',
-    label: 'Canceled',
+    code: 'CANCELLED',
+    label: 'Cancelled',
     sortOrder: 60,
     isDefault: false,
     color: '#7c3aed'
@@ -619,7 +619,7 @@ async function seedSampleReservations(input: {
     {
       key: 'yesterday-canceled-noah',
       guestEmail: 'noah.bennett@example.com',
-      statusCode: 'CANCELED',
+      statusCode: 'CANCELLED',
       tableName: 'Bar 1',
       startAt: atTime(new Date(today.getTime() - 86400000), 17, 30),
       endAt: atTime(new Date(today.getTime() - 86400000), 18, 30),

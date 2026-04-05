@@ -85,6 +85,7 @@ async function assertTableAssignable(input: {
   venueId: string;
   organizationId: string;
   tableId: string;
+  partySize: number;
   startAt: Date;
   endAt: Date;
 }) {
@@ -96,6 +97,8 @@ async function assertTableAssignable(input: {
     select: {
       id: true,
       isActive: true,
+      capacityMin: true,
+      capacityMax: true,
       area: {
         select: { isActive: true }
       }
@@ -112,6 +115,53 @@ async function assertTableAssignable(input: {
     throw new ReservationValidationError('Selected table is inactive and cannot be assigned.', {
       tableId: 'inactive'
     });
+  }
+
+  if (input.partySize > table.capacityMax) {
+    throw new ReservationValidationError(
+      'Selected table does not have enough capacity for this party size.',
+      {
+        partySize: String(input.partySize),
+        capacityMax: String(table.capacityMax)
+      }
+    );
+  }
+
+  if (table.capacityMin && input.partySize < table.capacityMin) {
+    throw new ReservationValidationError(
+      'Party size is below minimum capacity for the selected table.',
+      {
+        partySize: String(input.partySize),
+        capacityMin: String(table.capacityMin)
+      }
+    );
+  }
+
+  const activeBlock = await input.tx.tableBlock.findFirst({
+    where: {
+      tableId: input.tableId,
+      isActive: true,
+      startsAt: { lt: input.endAt },
+      endsAt: { gt: input.startAt }
+    },
+    select: {
+      id: true,
+      reason: true,
+      startsAt: true,
+      endsAt: true
+    }
+  });
+
+  if (activeBlock) {
+    throw new ReservationValidationError(
+      'Selected table is blocked during this reservation window.',
+      {
+        tableId: 'blocked',
+        blockReason: activeBlock.reason ?? 'Table block',
+        blockStartsAt: activeBlock.startsAt.toISOString(),
+        blockEndsAt: activeBlock.endsAt.toISOString()
+      }
+    );
   }
 
   const overlaps = await input.tx.reservationTable.findFirst({
@@ -341,6 +391,7 @@ export async function setReservationTableAssignment(input: {
         organizationId: input.organizationId,
         venueId: reservation.venueId,
         tableId: input.tableId,
+        partySize: reservation.partySize,
         startAt: reservation.startAt,
         endAt: reservation.endAt
       });

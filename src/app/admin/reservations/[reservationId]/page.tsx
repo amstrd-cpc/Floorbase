@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PageHeader } from '@/components/admin/page-header';
 import { ReservationActions } from '@/components/admin/reservation-actions';
+import { ReservationFloorAssignment } from '@/components/admin/reservation-floor-assignment';
 import { SectionCard } from '@/components/admin/section-card';
 import { getAdminContext } from '@/server/auth/admin-context';
 import { prisma } from '@/server/db/prisma/client';
@@ -122,6 +123,11 @@ export default async function ReservationDetailsPage({
           </Link>
         </SectionCard>
       </div>
+      <ReservationFloorAssignment
+        reservationId={reservation.id}
+        organizationId={organizationId}
+        timezone={timezone}
+      />
     </div>
   );
 }

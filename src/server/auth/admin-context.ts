@@ -28,14 +28,13 @@ function getAllowedVenueIdsForOrganization(
     .filter((venueId): venueId is string => Boolean(venueId));
 }
 
-async function resolveSingleActiveVenue(
+async function resolveSingleVenueInScope(
   organizationId: string,
   allowedVenueIds: string[] | null
 ) {
   const venues = await prisma.venue.findMany({
     where: {
       organizationId,
-      isActive: true,
       ...(allowedVenueIds
         ? {
             id: {
@@ -44,18 +43,30 @@ async function resolveSingleActiveVenue(
           }
         : {})
     },
-    select: { id: true }
+    select: { id: true, isActive: true }
   });
 
   if (venues.length === 0) {
     throw new Error(
-      `Admin context resolution failed: no active venue available for organizationId "${organizationId}" within user scope.`
+      `Admin context resolution failed: no venue available for organizationId "${organizationId}" within user scope.`
+    );
+  }
+
+  const activeVenues = venues.filter((venue) => venue.isActive);
+
+  if (activeVenues.length === 1) {
+    return activeVenues[0].id;
+  }
+
+  if (activeVenues.length > 1) {
+    throw new Error(
+      `Admin context resolution failed: multiple active venues are available for organizationId "${organizationId}". Explicit venue selection is required.`
     );
   }
 
   if (venues.length > 1) {
     throw new Error(
-      `Admin context resolution failed: multiple active venues are available for organizationId "${organizationId}". Explicit venue selection is required.`
+      `Admin context resolution failed: no active venue is available and multiple inactive venues exist for organizationId "${organizationId}". Explicit venue selection is required.`
     );
   }
 
@@ -103,7 +114,7 @@ export async function getAdminContext() {
     }
 
     const organizationId = organizations[0].id;
-    const venueId = await resolveSingleActiveVenue(organizationId, null);
+    const venueId = await resolveSingleVenueInScope(organizationId, null);
 
     return {
       user,
@@ -138,9 +149,9 @@ export async function getAdminContext() {
       select: { organizationId: true, isActive: true }
     });
 
-    if (!venue || !venue.isActive) {
+    if (!venue) {
       throw new Error(
-        `Admin context resolution failed: no active venue available for scoped venueId "${venueId}".`
+        `Admin context resolution failed: no venue available for scoped venueId "${venueId}".`
       );
     }
 
@@ -176,7 +187,7 @@ export async function getAdminContext() {
     scopedAssignments,
     organizationId
   );
-  const venueId = await resolveSingleActiveVenue(organizationId, allowedVenueIds);
+  const venueId = await resolveSingleVenueInScope(organizationId, allowedVenueIds);
 
   return {
     user,
@@ -184,4 +195,3 @@ export async function getAdminContext() {
     organizationId
   };
 }
-

@@ -60,11 +60,13 @@ export async function GET(
     return NextResponse.json({
       timezone: venue.timezone,
       config: resolved.resolvedConfig,
+      layout: resolved.layout,
       slots: resolved.slots.map((slot) => ({
         startAt: slot.startAt.toISOString(),
         endAt: slot.endAt.toISOString(),
         localStartAt: slot.localStartAt,
-        availableTables: slot.availableTables
+        availableTables: slot.availableTables,
+        tableStates: slot.tableStates
       }))
     });
   } catch (error) {

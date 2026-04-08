@@ -10,6 +10,7 @@ import {
   formatDateTimeForTimeZone,
   zonedTimeToUtc
 } from '@/lib/timezone';
+import type { FloorLayoutDto } from '@/lib/floor-layout/types';
 import {
   publicSlotQuerySchema,
   createPublicBookingSchema,
@@ -46,6 +47,17 @@ type PublicErrorCode =
   | 'TOO_FAR'
   | 'SLOT_UNAVAILABLE'
   | 'UNKNOWN';
+
+export type PublicTableVisualState = {
+  status:
+    | 'AVAILABLE'
+    | 'UNAVAILABLE_BOOKED'
+    | 'UNAVAILABLE_RULE'
+    | 'UNAVAILABLE_EVENT'
+    | 'INACTIVE';
+  reason: string;
+  selectable: boolean;
+};
 
 export class PublicBookingError extends Error {
   constructor(
@@ -220,15 +232,31 @@ export async function getPublicSlots(input: {
     );
   }
 
-  const slots = await listAvailableSlots({
-    organizationId: input.venue.organizationId,
-    venueId: input.venue.id,
-    date: parseVenueCalendarDate(input.dateText, input.venue.timezone),
-    partySize: input.partySize,
-    durationMinutes: resolved.config.durationMinutes,
-    allowedAreaIds: resolved.config.allowedAreaIds,
-    allowedTableIds: resolved.config.allowedTableIds
-  });
+  const [slots, publishedLayout] = await Promise.all([
+    listAvailableSlots({
+      organizationId: input.venue.organizationId,
+      venueId: input.venue.id,
+      date: parseVenueCalendarDate(input.dateText, input.venue.timezone),
+      partySize: input.partySize,
+      durationMinutes: resolved.config.durationMinutes,
+      allowedAreaIds: resolved.config.allowedAreaIds,
+      allowedTableIds: resolved.config.allowedTableIds
+    }),
+    getPublishedLayoutForPublic(input.venue.id)
+  ]);
+
+  const hasVisualLayout = Boolean(
+    publishedLayout && publishedLayout.tables.some((table) => table.isActive)
+  );
+  const tableStatesBySlot = hasVisualLayout
+    ? buildSlotTableStates({
+        layout: publishedLayout as FloorLayoutDto,
+        slots,
+        allowedAreaIds: resolved.config.allowedAreaIds,
+        allowedTableIds: resolved.config.allowedTableIds,
+        partySize: input.partySize
+      })
+    : {};
 
   const now = new Date();
   const maxAt = new Date(
@@ -240,6 +268,7 @@ export async function getPublicSlots(input: {
 
   return {
     resolvedConfig: resolved.config,
+    layout: hasVisualLayout ? publishedLayout : null,
     slots: slots
       .filter((slot) => slot.startAt >= minAt && slot.startAt <= maxAt)
       .map((slot) => ({
@@ -250,6 +279,8 @@ export async function getPublicSlots(input: {
                 (table) => table.capacityMax >= input.partySize
               )
             : slot.availableTables,
+        tableStates:
+          tableStatesBySlot[slot.startAt.toISOString()] ?? {},
         localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
       }))
       .filter(
@@ -258,6 +289,133 @@ export async function getPublicSlots(input: {
           slot.availableTables.length > 0
       )
   };
+}
+
+async function getPublishedLayoutForPublic(venueId: string): Promise<FloorLayoutDto | null> {
+  const layout = await prisma.floorLayout.findFirst({
+    where: {
+      venueId,
+      status: 'PUBLISHED',
+      isCurrent: true
+    },
+    include: {
+      areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
+      tables: true
+    }
+  });
+
+  if (!layout) {
+    return null;
+  }
+
+  return {
+    id: layout.id,
+    venueId: layout.venueId,
+    status: layout.status,
+    version: layout.version,
+    name: layout.name,
+    canvasWidth: layout.canvasWidth,
+    canvasHeight: layout.canvasHeight,
+    gridSize: layout.gridSize,
+    updatedAt: layout.updatedAt.toISOString(),
+    areas: layout.areas.map((area) => ({
+      id: area.id,
+      areaId: area.areaId,
+      name: area.name,
+      sortOrder: area.sortOrder,
+      isActive: area.isActive
+    })),
+    tables: layout.tables.map((table) => ({
+      id: table.id,
+      tableId: table.tableId,
+      floorLayoutAreaId: table.floorLayoutAreaId,
+      label: table.label,
+      capacityMin: table.capacityMin,
+      capacityMax: table.capacityMax,
+      shape: table.shape,
+      x: table.x,
+      y: table.y,
+      width: table.width,
+      height: table.height,
+      rotation: table.rotation,
+      isActive: table.isActive,
+      combinableMeta: table.combinableMeta
+    }))
+  };
+}
+
+function buildSlotTableStates(input: {
+  layout: FloorLayoutDto;
+  slots: Awaited<ReturnType<typeof listAvailableSlots>>;
+  partySize: number;
+  allowedAreaIds: string[];
+  allowedTableIds: string[];
+}) {
+  const areaIdByLayoutAreaId = new Map(
+    input.layout.areas.map((area) => [area.id, area.areaId])
+  );
+  const allowedTableSet = new Set(input.allowedTableIds);
+  const allowedAreaSet = new Set(input.allowedAreaIds);
+
+  return Object.fromEntries(
+    input.slots.map((slot) => {
+      const availableTableIds = new Set(slot.availableTables.map((table) => table.id));
+
+      const states = Object.fromEntries(
+        input.layout.tables.map((table) => {
+          const areaId = table.floorLayoutAreaId
+            ? (areaIdByLayoutAreaId.get(table.floorLayoutAreaId) ?? null)
+            : null;
+          const eventTableBlocked =
+            allowedTableSet.size > 0 && !allowedTableSet.has(table.tableId);
+          const eventAreaBlocked =
+            !eventTableBlocked &&
+            allowedAreaSet.size > 0 &&
+            areaId != null &&
+            !allowedAreaSet.has(areaId);
+          const belowMin = table.capacityMin != null && input.partySize < table.capacityMin;
+          const aboveMax = input.partySize > table.capacityMax;
+
+          let state: PublicTableVisualState;
+          if (!table.isActive) {
+            state = {
+              status: 'INACTIVE',
+              reason: 'Not bookable',
+              selectable: false
+            };
+          } else if (eventTableBlocked || eventAreaBlocked) {
+            state = {
+              status: 'UNAVAILABLE_EVENT',
+              reason: 'Unavailable for this date',
+              selectable: false
+            };
+          } else if (belowMin || aboveMax) {
+            state = {
+              status: 'UNAVAILABLE_RULE',
+              reason: 'Party size mismatch',
+              selectable: false
+            };
+          } else if (availableTableIds.has(table.tableId)) {
+            state = {
+              status: 'AVAILABLE',
+              reason: `Seats up to ${table.capacityMax}`,
+              selectable: true
+            };
+          } else {
+            state = {
+              status: 'UNAVAILABLE_BOOKED',
+              reason: 'Already booked',
+              selectable: false
+            };
+          }
+
+          return [table.id, state];
+        })
+      );
+
+      return [slot.startAt.toISOString(), states];
+    })
+  ) as Record<string, Record<string, PublicTableVisualState>>;
 }
 
 async function resolveSystemActorUserId(organizationId: string) {

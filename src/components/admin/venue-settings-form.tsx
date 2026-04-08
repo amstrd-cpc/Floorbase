@@ -73,6 +73,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
       setMessage(body.error ?? 'Unable to save settings.');
       return;
     }
+    if (body.venue) {
+      setValues(body.venue as VenueSettings);
+    }
     setMessage('Venue settings saved.');
   }
 

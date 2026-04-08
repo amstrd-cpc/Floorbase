@@ -158,17 +158,43 @@ export async function PUT(
     );
   }
 
+  const normalizedName = payload.name.trim();
+  const normalizedSlug = payload.slug.trim();
+  const normalizedTimezone = payload.timezone.trim();
+  const normalizedCurrency = payload.currency.trim().toUpperCase();
+  const shouldBeActive = payload.isActive ?? true;
+
+  if (!shouldBeActive) {
+    const otherActiveVenues = await prisma.venue.count({
+      where: {
+        organizationId: venueScope.organizationId,
+        isActive: true,
+        id: { not: params.venueId }
+      }
+    });
+
+    if (otherActiveVenues === 0) {
+      return NextResponse.json(
+        {
+          error:
+            'At least one active venue is required for admin access. Activate another venue before deactivating this one.'
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const venue = await prisma.venue.update({
     where: { id: params.venueId },
     data: {
-      name: payload.name.trim(),
-      slug: payload.slug.trim(),
-      timezone: payload.timezone.trim(),
-      currency: payload.currency.trim().toUpperCase(),
+      name: normalizedName,
+      slug: normalizedSlug,
+      timezone: normalizedTimezone,
+      currency: normalizedCurrency,
       country: payload.country?.trim() || null,
       city: payload.city?.trim() || null,
       addressLine: payload.addressLine?.trim() || null,
-      isActive: payload.isActive ?? true,
+      isActive: shouldBeActive,
       publicBookingEnabled: payload.publicBookingEnabled ?? false,
       bookingMode: payload.bookingMode ?? 'AUTO_CONFIRM',
       placementMode: payload.placementMode ?? 'AUTO_ASSIGN',

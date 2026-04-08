@@ -14,7 +14,7 @@ export default async function PublicBookingPage({
     const venue = await getPublicVenueBySlug(params.venueSlug);
 
     return (
-      <main className="mx-auto max-w-3xl p-6">
+      <main className="mx-auto max-w-5xl p-6">
         <h1 className="text-2xl font-semibold">Book {venue.name}</h1>
         <p className="mt-2 text-sm text-slate-600">
           Select a date, choose an available time, and submit your details.

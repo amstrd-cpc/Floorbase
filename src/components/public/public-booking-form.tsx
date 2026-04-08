@@ -103,6 +103,10 @@ export function PublicBookingForm({
       setError('Please choose a time.');
       return;
     }
+    if (tableSelectionEnabled && !selectedTableId) {
+      setError('Please choose a table before continuing.');
+      return;
+    }
 
     setSubmitting(true);
 
@@ -216,14 +220,25 @@ export function PublicBookingForm({
             Green tables are available. Red tables are already booked for this time.
           </p>
           {layout ? (
-            <FloorLayoutCanvas
-              layout={layout}
-              selectedTableId={selectedTableId || null}
-              tableStates={selectedSlot?.tableStates ?? {}}
-              onSelectTable={(tableId) =>
-                setSelectedTableId((current) => (current === tableId ? '' : tableId))
-              }
-            />
+            <>
+              <FloorLayoutCanvas
+                layout={layout}
+                selectedTableId={selectedTableId || null}
+                tableStates={selectedSlot?.tableStates ?? {}}
+                onSelectTable={(tableId) =>
+                  setSelectedTableId((current) => (current === tableId ? '' : tableId))
+                }
+              />
+              <input
+                type="text"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                value={selectedTableId}
+                readOnly
+                required
+              />
+            </>
           ) : (
             <label className="block text-sm">
               Select table

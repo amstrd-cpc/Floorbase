@@ -69,17 +69,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Idempotency: skip already-processed events. Use try-catch on create
-  // rather than find-then-create to avoid race conditions.
-  try {
-    await prisma.stripeEvent.create({ data: { id: event.id } });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-      return NextResponse.json({ ok: true });
-    }
-    throw e;
-  }
-
+  // Process the event, then record it for idempotency. Persisting AFTER
+  // success means a handler failure returns 500 and Stripe will retry —
+  // which is correct. On a concurrent duplicate delivery the unique-key
+  // violation on the final insert is caught and returns 200.
   try {
     switch (event.type) {
       case 'checkout.session.completed':
@@ -103,9 +96,15 @@ export async function POST(request: Request) {
       default:
         break;
     }
-  } catch (error) {
-    console.error(`Stripe webhook handler failed for event ${event.id}`, error);
-    // Return 500 so Stripe retries the event.
+
+    // Mark processed only after successful handling.
+    await prisma.stripeEvent.create({ data: { id: event.id } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      // Concurrent duplicate delivery already completed successfully.
+      return NextResponse.json({ ok: true });
+    }
+    console.error(`Stripe webhook handler failed for event ${event.id}`, e);
     return NextResponse.json(
       { error: 'Webhook handler failed.' },
       { status: 500 }

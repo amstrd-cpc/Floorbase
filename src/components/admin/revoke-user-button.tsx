@@ -7,11 +7,18 @@ export function RevokeUserButton({ userId }: { userId: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleRevoke() {
     setLoading(true);
-    await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    setError(null);
+    const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
     setLoading(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? 'Failed to revoke access.');
+      return;
+    }
     setConfirming(false);
     router.refresh();
   }
@@ -19,7 +26,8 @@ export function RevokeUserButton({ userId }: { userId: string }) {
   if (confirming) {
     return (
       <span className="flex items-center gap-2 text-sm">
-        <span className="text-red-700">Revoke access?</span>
+        {error && <span className="text-red-700">{error}</span>}
+        {!error && <span className="text-red-700">Revoke access?</span>}
         <button
           onClick={handleRevoke}
           disabled={loading}
@@ -27,7 +35,7 @@ export function RevokeUserButton({ userId }: { userId: string }) {
         >
           {loading ? 'Revoking…' : 'Yes, revoke'}
         </button>
-        <button onClick={() => setConfirming(false)} className="text-slate-500 underline">
+        <button onClick={() => { setConfirming(false); setError(null); }} className="text-slate-500 underline">
           Cancel
         </button>
       </span>

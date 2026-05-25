@@ -45,10 +45,25 @@ async function getOrCreateStripeCustomer(orgId: string): Promise<string> {
     metadata: { orgId },
   });
 
-  await prisma.organization.update({
-    where: { id: orgId },
+  // Use updateMany with stripeCustomerId: null so that if a concurrent request
+  // already won the race and set the customer ID, we don't overwrite it.
+  const result = await prisma.organization.updateMany({
+    where: { id: orgId, stripeCustomerId: null },
     data: { stripeCustomerId: customer.id },
   });
+
+  if (result.count === 0) {
+    // Another request won the race; clean up the orphaned Stripe customer
+    // we just created and return the winner's ID.
+    void stripe.customers.del(customer.id).catch((e) =>
+      console.error('Failed to delete orphaned Stripe customer', customer.id, e)
+    );
+    const updated = await prisma.organization.findUniqueOrThrow({
+      where: { id: orgId },
+      select: { stripeCustomerId: true },
+    });
+    return updated.stripeCustomerId!;
+  }
 
   return customer.id;
 }

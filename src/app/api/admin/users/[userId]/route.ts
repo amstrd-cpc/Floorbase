@@ -22,20 +22,26 @@ export async function DELETE(
   }
 
   const isSuperAdmin = actor.adminRoles.some((r: { role: string }) => r.role === 'SUPER_ADMIN');
-  if (!isSuperAdmin && target.organizationId) {
-    if (!hasAdminScope(actor, { organizationId: target.organizationId })) {
+  if (!isSuperAdmin) {
+    // Non-super-admins cannot touch null-org users (e.g. SUPER_ADMINs) and
+    // must have scope over the target's organization.
+    if (
+      !target.organizationId ||
+      !hasAdminScope(actor, { organizationId: target.organizationId })
+    ) {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
   }
 
-  // Deactivate all role assignments for this user in the org.
+  // Revoke role assignments. Scope to the target org when present; revoke all
+  // roles for global (null-org) users so they don't regain access on reactivation.
   const orgId = target.organizationId;
-  if (orgId) {
-    await prisma.adminRoleAssignment.updateMany({
-      where: { userId: target.id, organizationId: orgId },
-      data: { isActive: false },
-    });
-  }
+  await prisma.adminRoleAssignment.updateMany({
+    where: orgId
+      ? { userId: target.id, organizationId: orgId }
+      : { userId: target.id },
+    data: { isActive: false },
+  });
 
   await prisma.user.update({
     where: { id: target.id },

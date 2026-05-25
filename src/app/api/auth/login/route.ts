@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
 
-  if (!email || !password) {
+  if (!email || !password || email.length > 254) {
     return NextResponse.redirect(new URL('/login?error=invalid_credentials', request.url));
   }
 

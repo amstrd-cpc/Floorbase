@@ -3,6 +3,15 @@ import { env } from '@/env';
 
 let _resend: Resend | null = null;
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function getResend(): Resend | null {
   if (!env.RESEND_API_KEY) return null;
   if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
@@ -35,6 +44,8 @@ export async function sendGuestConfirmation(input: {
   if (!resend) return;
 
   const isPending = input.statusCode === 'PENDING';
+  const safeVenueName = escapeHtml(input.venueName);
+  const safeGuestName = escapeHtml(input.guestName);
   const subject = isPending
     ? `Booking request received — ${input.venueName}`
     : `Reservation confirmed — ${input.venueName}`;
@@ -45,11 +56,11 @@ export async function sendGuestConfirmation(input: {
 
   const html = `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
-      <h2 style="margin-bottom:4px">${subject}</h2>
-      <p>Hi ${input.guestName},</p>
+      <h2 style="margin-bottom:4px">${escapeHtml(subject)}</h2>
+      <p>Hi ${safeGuestName},</p>
       ${statusNote}
       <table style="border-collapse:collapse;width:100%;margin:16px 0">
-        <tr><td style="padding:6px 12px 6px 0;color:#666;width:140px">Venue</td><td style="padding:6px 0"><strong>${input.venueName}</strong></td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666;width:140px">Venue</td><td style="padding:6px 0"><strong>${safeVenueName}</strong></td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#666">Date &amp; time</td><td style="padding:6px 0">${formatTime(input.startAt, input.timezone)}</td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#666">Party size</td><td style="padding:6px 0">${input.partySize} ${input.partySize === 1 ? 'guest' : 'guests'}</td></tr>
       </table>
@@ -116,18 +127,21 @@ export async function sendVenueNewReservationAlert(input: {
   const resend = getResend();
   if (!resend) return;
 
+  const safeGuestName = escapeHtml(input.guestName);
+  const safeVenueName = escapeHtml(input.venueName);
   const subject = `New reservation — ${input.guestName} · ${input.partySize}p · ${input.venueName}`;
 
   const html = `
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
       <h2 style="margin-bottom:4px">New reservation</h2>
       <table style="border-collapse:collapse;width:100%;margin:16px 0">
-        <tr><td style="padding:6px 12px 6px 0;color:#666;width:140px">Guest</td><td style="padding:6px 0"><strong>${input.guestName}</strong></td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666;width:140px">Guest</td><td style="padding:6px 0"><strong>${safeGuestName}</strong></td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#666">Date &amp; time</td><td style="padding:6px 0">${formatTime(input.startAt, input.timezone)}</td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#666">Party size</td><td style="padding:6px 0">${input.partySize}</td></tr>
-        <tr><td style="padding:6px 12px 6px 0;color:#666">Email</td><td style="padding:6px 0">${input.guestEmail ?? '—'}</td></tr>
-        <tr><td style="padding:6px 12px 6px 0;color:#666">Phone</td><td style="padding:6px 0">${input.guestPhone ?? '—'}</td></tr>
-        <tr><td style="padding:6px 12px 6px 0;color:#666">Source</td><td style="padding:6px 0">${input.source}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Email</td><td style="padding:6px 0">${input.guestEmail ? escapeHtml(input.guestEmail) : '—'}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Phone</td><td style="padding:6px 0">${input.guestPhone ? escapeHtml(input.guestPhone) : '—'}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Source</td><td style="padding:6px 0">${escapeHtml(input.source)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Venue</td><td style="padding:6px 0">${safeVenueName}</td></tr>
       </table>
       <a href="${input.appUrl}/admin/reservations/${input.reservationId}"
          style="display:inline-block;background:#000;color:#fff;padding:8px 18px;border-radius:4px;text-decoration:none;font-size:14px">

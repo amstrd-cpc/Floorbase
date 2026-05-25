@@ -68,14 +68,22 @@ export async function consumePasswordResetToken(
 
   const passwordHash = await hashPassword(newPassword);
 
+  // Atomically claim the token by flipping usedAt only if it is still null.
+  // This prevents two concurrent requests for the same token from both
+  // succeeding and the second overwriting the first user-chosen password.
+  const claimed = await prisma.passwordResetToken.updateMany({
+    where: { id: record.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+
+  if (claimed.count === 0) {
+    return { ok: false, error: 'This reset link is invalid or has expired.' };
+  }
+
   await prisma.$transaction([
     prisma.user.update({
       where: { id: record.userId },
       data: { passwordHash },
-    }),
-    prisma.passwordResetToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
     }),
     // Invalidate all active sessions so old sessions can't be reused
     prisma.authSession.deleteMany({ where: { userId: record.userId } }),

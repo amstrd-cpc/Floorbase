@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
 import { formatDateForTimeZone } from '@/lib/timezone';
 import {
@@ -37,6 +38,7 @@ export function PublicBookingForm({
   publicInstructions: string | null;
   venueTimezone: string;
 }) {
+  const router = useRouter();
   const [date, setDate] = useState('');
   const [partySize, setPartySize] = useState(Math.max(2, minPartySize));
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -50,7 +52,6 @@ export function PublicBookingForm({
   const [note, setNote] = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const dateMin = useMemo(
@@ -67,7 +68,6 @@ export function PublicBookingForm({
 
     setLoadingSlots(true);
     setError(null);
-    setMessage(null);
     setSlotId('');
     setSelectedTableId('');
 
@@ -97,7 +97,6 @@ export function PublicBookingForm({
   async function submitBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setMessage(null);
 
     if (!slotId) {
       setError('Please choose a time.');
@@ -120,8 +119,8 @@ export function PublicBookingForm({
         email,
         phone,
         selectedTableId: selectedTableId || undefined,
-        note: note.trim() || undefined
-      })
+        note: note.trim() || undefined,
+      }),
     });
 
     const body = await res.json().catch(() => ({}));
@@ -132,17 +131,13 @@ export function PublicBookingForm({
       return;
     }
 
-    setMessage(body.message ?? 'Booking submitted.');
-    setSubmitting(false);
+    router.push(`/book/${venueSlug}/confirmation?reservationId=${encodeURIComponent(body.reservationId)}`);
   }
 
   return (
     <form className="space-y-6" onSubmit={submitBooking}>
       {error ? (
         <p className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</p>
-      ) : null}
-      {message ? (
-        <p className="rounded border border-green-300 bg-green-50 p-2 text-sm text-green-700">{message}</p>
       ) : null}
 
       <section className="space-y-3">

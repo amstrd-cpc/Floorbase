@@ -1,67 +1,134 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Status = { id: string; label: string };
 
 export function ReservationActions({
   reservationId,
   organizationId,
   statuses,
-  currentStatusId
+  currentStatusId,
 }: {
   reservationId: string;
   organizationId: string;
-  statuses: Array<{ id: string; label: string }>;
+  statuses: Status[];
   currentStatusId: string;
 }) {
-  const [statusId, setStatusId] = useState(currentStatusId);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const [selectedStatusId, setSelectedStatusId] = useState(currentStatusId);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [cancelConfirming, setCancelConfirming] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function updateStatus() {
-    setBusy(true);
+  async function changeStatus() {
+    if (selectedStatusId === currentStatusId) return;
+    setStatusLoading(true);
     setError(null);
-    const res = await fetch(`/api/admin/reservations/${reservationId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizationId, action: 'status', reservationStatusId: statusId })
+
+    const url = "/api/admin/reservations/" + reservationId;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        organizationId,
+        action: "status",
+        reservationStatusId: selectedStatusId,
+      }),
     });
-    const body = await res.json().catch(() => ({}));
+
+    const data = await res.json().catch(() => ({}));
+    setStatusLoading(false);
+
     if (!res.ok) {
-      setError(body.error ?? 'Failed status update.');
-      setBusy(false);
+      setError(data.error ?? "Failed to update status.");
       return;
     }
+
     router.refresh();
-    setBusy(false);
   }
 
   async function cancelReservation() {
-    setBusy(true);
+    setCancelLoading(true);
     setError(null);
-    const res = await fetch(`/api/admin/reservations/${reservationId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizationId, action: 'cancel', reason: 'Cancelled from admin UI.' })
+
+    const url = "/api/admin/reservations/" + reservationId;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId, action: "cancel" }),
     });
-    const body = await res.json().catch(() => ({}));
+
+    const data = await res.json().catch(() => ({}));
+    setCancelLoading(false);
+
     if (!res.ok) {
-      setError(body.error ?? 'Failed cancellation.');
-      setBusy(false);
+      setError(data.error ?? "Failed to cancel reservation.");
+      setCancelConfirming(false);
       return;
     }
+
     router.refresh();
-    setBusy(false);
   }
 
   return (
-    <div className="space-y-2">
-      {error ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="text-sm">Change status<select className="mt-1 rounded border p-2" value={statusId} onChange={(e) => setStatusId(e.target.value)}>{statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
-        <button type="button" onClick={updateStatus} disabled={busy} className="rounded border px-3 py-2 text-sm">Update</button>
-        <button type="button" onClick={cancelReservation} disabled={busy} className="rounded border border-red-300 px-3 py-2 text-sm text-red-700">Cancel Reservation</button>
+    <div className="space-y-4">
+      {error ? (
+        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+      ) : null}
+
+      <div className="flex items-end gap-2">
+        <label className="block flex-1 text-sm">
+          Status
+          <select
+            value={selectedStatusId}
+            onChange={(e) => setSelectedStatusId(e.target.value)}
+            className="mt-1 w-full rounded border p-2 text-sm"
+          >
+            {statuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          onClick={changeStatus}
+          disabled={statusLoading || selectedStatusId === currentStatusId}
+          className="rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40"
+        >
+          {statusLoading ? "Saving…" : "Update"}
+        </button>
+      </div>
+
+      <div>
+        {cancelConfirming ? (
+          <span className="flex items-center gap-2 text-sm">
+            <span className="text-red-700">Cancel this reservation?</span>
+            <button
+              onClick={cancelReservation}
+              disabled={cancelLoading}
+              className="text-red-700 underline disabled:opacity-50"
+            >
+              {cancelLoading ? "Cancelling…" : "Yes, cancel"}
+            </button>
+            <button
+              onClick={() => setCancelConfirming(false)}
+              className="text-slate-500 underline"
+            >
+              No
+            </button>
+          </span>
+        ) : (
+          <button
+            onClick={() => setCancelConfirming(true)}
+            className="text-sm text-red-700 hover:underline"
+          >
+            Cancel reservation
+          </button>
+        )}
       </div>
     </div>
   );

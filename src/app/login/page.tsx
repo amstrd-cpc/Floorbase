@@ -78,6 +78,9 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
               Sign in
             </button>
+            <p className="text-xs text-muted-foreground">
+              <Link href="/forgot-password" className="underline">Forgot password?</Link>
+            </p>
           </form>
         )}
 

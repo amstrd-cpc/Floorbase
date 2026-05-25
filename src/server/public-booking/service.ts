@@ -418,6 +418,32 @@ function buildSlotTableStates(input: {
   ) as Record<string, Record<string, PublicTableVisualState>>;
 }
 
+export async function getPublicReservationConfirmation(
+  venueSlug: string,
+  reservationId: string,
+) {
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    select: {
+      id: true,
+      partySize: true,
+      startAt: true,
+      endAt: true,
+      bookingStatus: true,
+      specialRequests: true,
+      guest: { select: { fullName: true, firstName: true, email: true } },
+      venue: { select: { name: true, slug: true, timezone: true, addressLine: true, city: true } },
+      status: { select: { label: true, code: true } },
+    },
+  });
+
+  if (!reservation || reservation.venue.slug !== venueSlug) {
+    return null;
+  }
+
+  return reservation;
+}
+
 async function resolveSystemActorUserId(organizationId: string) {
   const user = await prisma.user.findFirst({
     where: { organizationId, isActive: true },

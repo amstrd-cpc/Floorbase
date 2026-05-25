@@ -68,6 +68,38 @@ export async function sendGuestConfirmation(input: {
   }
 }
 
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  resetUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const subject = 'Reset your Floorbase password';
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+      <h2 style="margin-bottom:4px">Reset your password</h2>
+      <p>We received a request to reset the password for your Floorbase account.</p>
+      <p>Click the button below to set a new password. This link expires in 1 hour.</p>
+      <a href="${input.resetUrl}"
+         style="display:inline-block;background:#000;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px;margin:16px 0">
+        Reset password
+      </a>
+      <p style="color:#666;font-size:13px">If you did not request this, you can safely ignore this email. Your password will not change.</p>
+    </div>`;
+
+  try {
+    await resend.emails.send({
+      from: env.EMAIL_FROM,
+      to: input.to,
+      subject,
+      html,
+    });
+  } catch (err) {
+    console.error('sendPasswordResetEmail failed', err);
+  }
+}
+
 export async function sendVenueNewReservationAlert(input: {
   to: string;
   venueName: string;

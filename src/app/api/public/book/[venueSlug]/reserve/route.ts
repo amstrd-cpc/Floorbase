@@ -5,6 +5,12 @@ import {
   getPublicVenueBySlug,
   PublicBookingError
 } from '@/server/public-booking/service';
+import {
+  sendGuestConfirmation,
+  sendVenueNewReservationAlert
+} from '@/server/email/service';
+import { prisma } from '@/server/db/prisma/client';
+import { env } from '@/env';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof PublicBookingError) {
@@ -25,8 +31,6 @@ export async function POST(
   request: Request,
   { params }: { params: { venueSlug: string } }
 ) {
-  // Take only the leftmost IP from x-forwarded-for to prevent spoofing via
-  // appending arbitrary IPs to the header chain.
   const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
   const rate = checkRateLimit({
     key: `reserve:${params.venueSlug}:${ip}`,
@@ -50,15 +54,78 @@ export async function POST(
         ? 'Your reservation is confirmed.'
         : 'Your booking request was received and is pending review.';
 
+    // Send emails in background — never fail the request on email error.
+    void sendEmailsForPublicBooking({
+      reservationId: result.reservationId,
+      statusCode: result.statusCode,
+      venue,
+    });
+
     return NextResponse.json(
-      {
-        reservationId: result.reservationId,
-        statusCode: result.statusCode,
-        message: modeMessage
-      },
+      { reservationId: result.reservationId, statusCode: result.statusCode, message: modeMessage },
       { status: 201 }
     );
   } catch (error) {
     return toErrorResponse(error);
+  }
+}
+
+async function sendEmailsForPublicBooking(input: {
+  reservationId: string;
+  statusCode: string;
+  venue: { id: string; organizationId: string; name: string; timezone: string };
+}) {
+  try {
+    const [reservation, orgAdmin] = await Promise.all([
+      prisma.reservation.findUnique({
+        where: { id: input.reservationId },
+        select: { startAt: true, partySize: true, guest: { select: { fullName: true, email: true, phone: true } } },
+      }),
+      prisma.user.findFirst({
+        where: {
+          organizationId: input.venue.organizationId,
+          isActive: true,
+          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } },
+        },
+        select: { email: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    if (!reservation) return;
+
+    const guestEmail = reservation.guest.email;
+    const guestName = reservation.guest.fullName ?? 'Guest';
+
+    if (guestEmail) {
+      void sendGuestConfirmation({
+        to: guestEmail,
+        guestName,
+        venueName: input.venue.name,
+        startAt: reservation.startAt,
+        timezone: input.venue.timezone,
+        partySize: reservation.partySize,
+        statusCode: input.statusCode,
+        reservationId: input.reservationId,
+      });
+    }
+
+    if (orgAdmin?.email) {
+      void sendVenueNewReservationAlert({
+        to: orgAdmin.email,
+        venueName: input.venue.name,
+        guestName,
+        guestEmail,
+        guestPhone: reservation.guest.phone,
+        startAt: reservation.startAt,
+        timezone: input.venue.timezone,
+        partySize: reservation.partySize,
+        source: 'Online booking',
+        appUrl: env.APP_URL,
+        reservationId: input.reservationId,
+      });
+    }
+  } catch (err) {
+    console.error('Post-booking email error', err);
   }
 }

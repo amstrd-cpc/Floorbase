@@ -9,6 +9,8 @@ import {
   createReservation,
   listReservations
 } from '@/server/reservations/service';
+import { sendVenueNewReservationAlert } from '@/server/email/service';
+import { env } from '@/env';
 
 async function resolveOrganizationIdForVenue(venueId: string) {
   const venue = await prisma.venue.findUnique({
@@ -124,8 +126,52 @@ export async function POST(request: Request) {
       context: { actorUserId: user.id }
     });
 
+    // Send venue alert in background — never fail the request on email error.
+    void sendAdminReservationAlert({ reservation, organizationId });
+
     return NextResponse.json({ reservation }, { status: 201 });
   } catch (error) {
     return toErrorResponse(error);
+  }
+}
+
+async function sendAdminReservationAlert(input: {
+  reservation: { id: string; startAt: Date; partySize: number; guest: { fullName: string | null; email: string | null; phone: string | null } };
+  organizationId: string;
+}) {
+  try {
+    const [venue, orgAdmin] = await Promise.all([
+      prisma.venue.findFirst({
+        where: { organizationId: input.organizationId, isActive: true },
+        select: { name: true, timezone: true },
+      }),
+      prisma.user.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          isActive: true,
+          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } },
+        },
+        select: { email: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    if (!venue || !orgAdmin?.email) return;
+
+    void sendVenueNewReservationAlert({
+      to: orgAdmin.email,
+      venueName: venue.name,
+      guestName: input.reservation.guest.fullName ?? 'Guest',
+      guestEmail: input.reservation.guest.email,
+      guestPhone: input.reservation.guest.phone,
+      startAt: input.reservation.startAt,
+      timezone: venue.timezone,
+      partySize: input.reservation.partySize,
+      source: 'Admin',
+      appUrl: env.APP_URL,
+      reservationId: input.reservation.id,
+    });
+  } catch (err) {
+    console.error('Admin reservation email error', err);
   }
 }

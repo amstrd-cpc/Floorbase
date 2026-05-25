@@ -22,7 +22,10 @@ const envSchema = z.object({
   // Stripe — required in production, optional in dev/test
   STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
-  STRIPE_PRICE_ID: z.string().startsWith('price_').optional()
+  STRIPE_PRICE_ID: z.string().startsWith('price_').optional(),
+  // Resend — optional; email sending is skipped when absent
+  RESEND_API_KEY: z.string().startsWith('re_').optional(),
+  EMAIL_FROM: z.string().default('Floorbase <noreply@floorbase.app>')
 });
 
 export const env = envSchema.parse(process.env);

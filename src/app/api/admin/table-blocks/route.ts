@@ -68,13 +68,23 @@ export async function POST(request: Request) {
 
   const startsAt = new Date(payload.startsAt);
   const endsAt = new Date(payload.endsAt);
+  const MAX_BLOCK_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+
   if (
     Number.isNaN(startsAt.getTime()) ||
     Number.isNaN(endsAt.getTime()) ||
-    endsAt <= startsAt
+    endsAt <= startsAt ||
+    endsAt.getTime() - startsAt.getTime() > MAX_BLOCK_MS
   ) {
     return NextResponse.json(
-      { error: 'Invalid block window.' },
+      { error: 'Invalid block window. Must be a valid future range under 1 year.' },
+      { status: 400 }
+    );
+  }
+
+  if (payload.reason && payload.reason.length > 500) {
+    return NextResponse.json(
+      { error: 'Reason must be 500 characters or fewer.' },
       { status: 400 }
     );
   }

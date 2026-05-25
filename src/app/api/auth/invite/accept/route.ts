@@ -6,6 +6,7 @@ import { prisma } from '@/server/db/prisma/client';
 function isStrongPassword(password: string): boolean {
   return (
     password.length >= 12 &&
+    password.length <= 128 &&
     /[a-zA-Z]/.test(password) &&
     /[0-9]/.test(password)
   );

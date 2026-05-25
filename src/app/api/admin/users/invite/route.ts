@@ -110,11 +110,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json(invite, { status: 201 });
   } catch (error) {
+    const SAFE_MESSAGES = new Set([
+      'A valid email address is required to create an invite.',
+      'organizationId is required for scoped invites.',
+      'SUPER_ADMIN invites cannot include organization or venue scope.',
+      'Invite venue does not exist or is inactive.',
+      'Invite venue must belong to invite organization.',
+    ]);
+    const msg = error instanceof Error ? error.message : '';
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to create invite.'
-      },
+      { error: SAFE_MESSAGES.has(msg) ? msg : 'Failed to create invite.' },
       { status: 400 }
     );
   }

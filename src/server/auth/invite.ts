@@ -21,8 +21,8 @@ export async function createInvite(input: {
     .trim()
     .toLowerCase();
 
-  if (!email) {
-    throw new Error('Email is required to create an invite.');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('A valid email address is required to create an invite.');
   }
 
   const organizationId =
@@ -118,6 +118,7 @@ export async function acceptInvite(input: {
           firstName: input.firstName,
           lastName: input.lastName,
           isActive: true,
+          passwordHash,
           organizationId:
             existingUser.organizationId ?? invite.organizationId ?? undefined
         }

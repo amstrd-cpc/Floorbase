@@ -47,8 +47,8 @@ export async function consumePasswordResetToken(
     return { ok: false, error: 'Missing token or password.' };
   }
 
-  if (newPassword.length < 12) {
-    return { ok: false, error: 'Password must be at least 12 characters.' };
+  if (newPassword.length < 12 || newPassword.length > 128) {
+    return { ok: false, error: 'Password must be between 12 and 128 characters.' };
   }
 
   const tokenHash = hashToken(rawToken);

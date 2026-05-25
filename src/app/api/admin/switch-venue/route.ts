@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { env } from '@/env';
 import { requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   cookieStore.set(VENUE_COOKIE, venueId, {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: env.NODE_ENV === 'production',
     path: '/admin',
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });

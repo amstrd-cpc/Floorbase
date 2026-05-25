@@ -101,6 +101,23 @@ export async function PUT(
     );
   }
 
+  const VALID_BOOKING_MODES = ['AUTO_CONFIRM', 'REQUEST_ONLY'] as const;
+  const VALID_PLACEMENT_MODES = ['AUTO_ASSIGN', 'TABLE_SELECTION'] as const;
+
+  if (
+    payload.bookingMode !== undefined &&
+    !VALID_BOOKING_MODES.includes(payload.bookingMode as (typeof VALID_BOOKING_MODES)[number])
+  ) {
+    return NextResponse.json({ error: 'Invalid bookingMode.' }, { status: 400 });
+  }
+
+  if (
+    payload.placementMode !== undefined &&
+    !VALID_PLACEMENT_MODES.includes(payload.placementMode as (typeof VALID_PLACEMENT_MODES)[number])
+  ) {
+    return NextResponse.json({ error: 'Invalid placementMode.' }, { status: 400 });
+  }
+
 
   if (!isValidIanaTimeZone(payload.timezone.trim())) {
     return NextResponse.json(

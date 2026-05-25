@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { checkRateLimit } from '@/server/public-booking/rate-limit';
+import { checkRateLimit } from '@/server/rate-limit';
 import {
   createPublicBooking,
   getPublicVenueBySlug,

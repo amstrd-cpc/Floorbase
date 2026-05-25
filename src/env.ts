@@ -18,7 +18,11 @@ const envSchema = z.object({
   ),
   AUTH_SESSION_TTL_HOURS: z.coerce.number().int().positive().default(12),
   AUTH_INVITE_TTL_HOURS: z.coerce.number().int().positive().default(72),
-  AUTH_COOKIE_NAME: z.string().min(1).default('floorbase_session')
+  AUTH_COOKIE_NAME: z.string().min(1).default('floorbase_session'),
+  // Stripe — required in production, optional in dev/test
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
+  STRIPE_PRICE_ID: z.string().startsWith('price_').optional()
 });
 
 export const env = envSchema.parse(process.env);

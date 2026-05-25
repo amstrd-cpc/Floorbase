@@ -22,6 +22,13 @@ enum AdminRole {
   HOST
 }
 
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -107,12 +114,18 @@ enum FloorLayoutStatus {
 }
 
 model Organization {
-  id                  String                @id @default(cuid())
-  name                String
-  slug                String                @unique
-  isActive            Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  id                   String             @id @default(cuid())
+  name                 String
+  slug                 String             @unique
+  isActive             Boolean            @default(true)
+  onboardingComplete   Boolean            @default(false)
+  trialEndsAt          DateTime?
+  subscriptionStatus   SubscriptionStatus @default(TRIALING)
+  stripeCustomerId     String?            @unique
+  subscriptionId       String?            @unique
+  planId               String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   venues              Venue[]
   guests              Guest[]
   reservationStatuses ReservationStatus[]
@@ -538,6 +551,11 @@ model NotificationLog {
   @@index([createdAt])
 }
 
+
+model StripeEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
 
 model FloorLayout {
   id                    String            @id @default(cuid())

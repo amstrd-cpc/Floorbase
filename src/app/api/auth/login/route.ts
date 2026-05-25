@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/server/db/prisma/client';
 import { verifyPassword, DUMMY_HASH } from '@/server/auth/password';
 import { createSession } from '@/server/auth/session';
-import { checkRateLimit } from '@/server/public-booking/rate-limit';
+import { checkRateLimit } from '@/server/rate-limit';
 
 function getClientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for');

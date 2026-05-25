@@ -53,11 +53,26 @@ export async function verifyPassword(password: string, encodedHash: string) {
     return false;
   }
 
+  const N = Number(n);
+  const rVal = Number(r);
+  const pVal = Number(p);
+
+  // Reject params outside safe bounds to prevent DoS via crafted hashes.
+  if (
+    !Number.isInteger(N) || N < 1024 || N > 131072 || (N & (N - 1)) !== 0 ||
+    !Number.isInteger(rVal) || rVal < 1 || rVal > 32 ||
+    !Number.isInteger(pVal) || pVal < 1 || pVal > 4
+  ) {
+    return false;
+  }
+
   const expected = Buffer.from(hash, 'hex');
+  if (expected.length < 32 || expected.length > 128) return false;
+
   const actual = await scrypt(password, salt, expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p)
+    N,
+    r: rVal,
+    p: pVal
   });
 
   if (expected.length !== actual.length) {

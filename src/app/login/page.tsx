@@ -19,6 +19,8 @@ function errorMessage(error?: string) {
       return 'You are signed in but do not have access to that admin area.';
     case 'invalid_invite':
       return 'That invite token is invalid or expired.';
+    case 'too_many_requests':
+      return 'Too many attempts. Try again in 15 minutes.';
     default:
       return 'Unable to complete sign in.';
   }
@@ -47,9 +49,9 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             <label className="block text-sm">Password<input
               name="password"
               type="password"
-              minLength={8}
+              minLength={12}
               required
-              placeholder="Create password"
+              placeholder="Create password (12+ chars)"
               className="mt-1 w-full rounded border p-2 text-sm"
             /></label>
             <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
@@ -81,6 +83,10 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
 
         <p className="mt-5 text-xs text-muted-foreground">
           Need an invite? Ask your organization admin. Then return to this screen using the invite URL.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          New customer?{' '}
+          <Link href="/signup" className="underline">Start a free 14-day trial</Link>.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Back to <Link href="/">home</Link>.

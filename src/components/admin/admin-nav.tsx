@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: '/admin/floor', label: 'Floor' },
   { href: '/admin/events', label: 'Events' },
   { href: '/admin/settings', label: 'Settings' },
-  
+  { href: '/admin/billing', label: 'Billing' },
 ];
 
 export function AdminNav() {

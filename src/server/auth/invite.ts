@@ -54,7 +54,7 @@ export async function createInvite(input: {
     }
   }
 
-  const rawToken = randomBytes(24).toString('hex');
+  const rawToken = randomBytes(32).toString('hex');
   const tokenHash = hashInviteToken(rawToken);
   const expiresAt = new Date(
     Date.now() + env.AUTH_INVITE_TTL_HOURS * 60 * 60 * 1000

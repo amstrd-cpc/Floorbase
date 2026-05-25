@@ -27,7 +27,7 @@ export async function createSession(userId: string) {
 
   cookies().set(env.AUTH_COOKIE_NAME, rawToken, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     secure: env.NODE_ENV === 'production',
     expires: expiresAt,
     path: AUTH_COOKIE_PATH
@@ -44,7 +44,7 @@ export async function destroySession() {
 
   cookieStore.set(env.AUTH_COOKIE_NAME, '', {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     secure: env.NODE_ENV === 'production',
     expires: new Date(0),
     path: AUTH_COOKIE_PATH

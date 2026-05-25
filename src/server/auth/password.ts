@@ -30,6 +30,11 @@ const SCRYPT_PARAMS = {
   keylen: 64
 } as const;
 
+// Used in login route to keep response time constant when user not found,
+// preventing timing-based email enumeration.
+export const DUMMY_HASH =
+  `scrypt$16384$8$1$` + '00'.repeat(16) + '$' + '00'.repeat(64);
+
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
   const derivedKey = await scrypt(password, salt, SCRYPT_PARAMS.keylen, {

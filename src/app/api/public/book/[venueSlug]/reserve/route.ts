@@ -25,7 +25,9 @@ export async function POST(
   request: Request,
   { params }: { params: { venueSlug: string } }
 ) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
+  // Take only the leftmost IP from x-forwarded-for to prevent spoofing via
+  // appending arbitrary IPs to the header chain.
+  const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
   const rate = checkRateLimit({
     key: `reserve:${params.venueSlug}:${ip}`,
     limit: 10,

@@ -29,6 +29,10 @@ enum AuditAction {
   STATUS_CHANGE
   ASSIGN_TABLE
   NOTE_ADDED
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  INVITE_ACCEPTED
 }
 
 enum NotificationChannel {
@@ -403,7 +407,7 @@ model Membership {
 
 model AuditLog {
   id             String      @id @default(cuid())
-  organizationId String
+  organizationId String?
   venueId        String?
   actorUserId    String?
   entityType     String
@@ -413,8 +417,8 @@ model AuditLog {
   metadata       Json?
   createdAt      DateTime    @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actorUser    User?        @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser    User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([venueId])

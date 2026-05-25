@@ -32,3 +32,9 @@ prisma/*.db-journal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# claude
+.claude/
+CLAUDE.md
+

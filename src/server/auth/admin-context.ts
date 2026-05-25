@@ -1,5 +1,8 @@
+import { cookies } from 'next/headers';
 import { prisma } from '@/server/db/prisma/client';
 import { requireRole } from './authorization';
+
+const VENUE_COOKIE = 'floorbase_venue';
 
 type AdminAssignment = {
   role: string;
@@ -28,23 +31,18 @@ function getAllowedVenueIdsForOrganization(
     .filter((venueId): venueId is string => Boolean(venueId));
 }
 
-async function resolveSingleActiveVenue(
+async function resolveVenueId(
   organizationId: string,
   allowedVenueIds: string[] | null
-) {
+): Promise<string> {
   const venues = await prisma.venue.findMany({
     where: {
       organizationId,
       isActive: true,
-      ...(allowedVenueIds
-        ? {
-            id: {
-              in: allowedVenueIds
-            }
-          }
-        : {})
+      ...(allowedVenueIds ? { id: { in: allowedVenueIds } } : {}),
     },
-    select: { id: true }
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
   });
 
   if (venues.length === 0) {
@@ -53,10 +51,15 @@ async function resolveSingleActiveVenue(
     );
   }
 
-  if (venues.length > 1) {
-    throw new Error(
-      `Admin context resolution failed: multiple active venues are available for organizationId "${organizationId}". Explicit venue selection is required.`
-    );
+  if (venues.length === 1) {
+    return venues[0].id;
+  }
+
+  // Multiple venues: honour cookie preference, fall back to oldest.
+  const cookieStore = await cookies();
+  const preferred = cookieStore.get(VENUE_COOKIE)?.value;
+  if (preferred && venues.some((v) => v.id === preferred)) {
+    return preferred;
   }
 
   return venues[0].id;
@@ -103,13 +106,9 @@ export async function getAdminContext() {
     }
 
     const organizationId = organizations[0].id;
-    const venueId = await resolveSingleActiveVenue(organizationId, null);
+    const venueId = await resolveVenueId(organizationId, null);
 
-    return {
-      user,
-      organizationId,
-      venueId
-    };
+    return { user, organizationId, venueId };
   }
 
   const explicitVenueAssignments = scopedAssignments.filter((assignment) =>
@@ -150,11 +149,7 @@ export async function getAdminContext() {
       );
     }
 
-    return {
-      user,
-      venueId,
-      organizationId
-    };
+    return { user, venueId, organizationId };
   }
 
   const organizationIds = Array.from(
@@ -176,11 +171,7 @@ export async function getAdminContext() {
     scopedAssignments,
     organizationId
   );
-  const venueId = await resolveSingleActiveVenue(organizationId, allowedVenueIds);
+  const venueId = await resolveVenueId(organizationId, allowedVenueIds);
 
-  return {
-    user,
-    venueId,
-    organizationId
-  };
+  return { user, venueId, organizationId };
 }

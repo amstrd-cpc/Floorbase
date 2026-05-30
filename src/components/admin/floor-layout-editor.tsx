@@ -835,7 +835,7 @@ export function FloorLayoutEditor({
                   </>
                 ) : (
                   <p className="rounded border bg-slate-50 p-2 text-xs text-slate-600">
-                    This table is not on the floor yet. Use "Add to floor" to place it.
+                    This table is not on the floor yet. Use &ldquo;Add to floor&rdquo; to place it.
                   </p>
                 )}
 

@@ -284,6 +284,25 @@ export async function updateTable(input: {
   }
 }
 
+export async function deleteArea(input: { areaId: string }) {
+  try {
+    const current = await prisma.area.findUnique({
+      where: { id: input.areaId },
+      select: { id: true }
+    });
+
+    if (!current) {
+      throw new FloorNotFoundError('Area not found.');
+    }
+
+    await prisma.area.delete({
+      where: { id: current.id }
+    });
+  } catch (error) {
+    throw toValidationError(error);
+  }
+}
+
 export async function deleteTable(input: { tableId: string }) {
   try {
     const current = await prisma.table.findUnique({

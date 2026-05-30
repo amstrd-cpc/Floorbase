@@ -4,7 +4,7 @@ import {
   FloorNotFoundError,
   FloorValidationError
 } from '@/server/floor/errors';
-import { updateArea } from '@/server/floor/service';
+import { deleteArea, updateArea } from '@/server/floor/service';
 import { getAreaScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
@@ -53,6 +53,41 @@ export async function PUT(
 
     const area = await updateArea({ areaId: params.areaId, payload });
     return NextResponse.json({ area });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { areaId: string } }
+) {
+  const user = await requireRole([
+    'SUPER_ADMIN',
+    'ORGANIZATION_ADMIN',
+    'VENUE_MANAGER'
+  ]);
+
+  try {
+    const areaScope = await getAreaScope(params.areaId);
+    if (!areaScope) {
+      return NextResponse.json({ error: 'Area not found.' }, { status: 404 });
+    }
+
+    if (
+      !hasAdminScope(user, {
+        organizationId: areaScope.venue.organizationId,
+        venueId: areaScope.venue.id
+      })
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden for requested area scope.' },
+        { status: 403 }
+      );
+    }
+
+    await deleteArea({ areaId: params.areaId });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return toErrorResponse(error);
   }

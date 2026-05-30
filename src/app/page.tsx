@@ -150,7 +150,7 @@ export default function HomePage() {
           <div className="flex flex-col gap-5 py-20">
             <div className="eyebrow text-muted-foreground">02 — Capabilities</div>
             <h2 className="max-w-2xl text-[clamp(28px,3.4vw,44px)] font-bold tracking-tightest">
-              Everything the floor needs, nothing it doesn't.
+              Everything the floor needs, nothing it doesn&apos;t.
             </h2>
           </div>
         </div>

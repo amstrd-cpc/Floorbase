@@ -67,7 +67,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
+      <div className="border border-border bg-card p-6 space-y-4">
         <h2 className="font-medium">Current plan</h2>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">

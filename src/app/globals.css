@@ -2,33 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Floorbase — Modern SaaS / Bauhaus-monochrome design system
+   Pure monochrome · 0 radius · Helvetica grotesque + mono labels
+   (Space Mono is loaded via <link> in app/layout.tsx)
+   ============================================================ */
+
 :root {
+  /* LIGHT — slightly warm neutrals, near-zero chroma */
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 60 4% 5%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 60 4% 5%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
+  --popover-foreground: 60 4% 5%;
+  /* Primary is now INK (black), not blue */
+  --primary: 60 4% 5%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 48 10% 95%;
+  --secondary-foreground: 60 4% 5%;
+  --muted: 48 10% 95%;
+  --muted-foreground: 48 3% 42%;
+  --accent: 48 10% 95%;
+  --accent-foreground: 60 4% 5%;
+  /* Destructive reads as deep ink (monochrome), not red */
+  --destructive: 60 4% 18%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 48 8% 88%;
+  --input: 48 8% 88%;
+  --ring: 60 4% 5%;
+  /* Sharp corners everywhere */
+  --radius: 0px;
+
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.dark {
+  --background: 60 6% 4%;
+  --foreground: 48 10% 96%;
+  --card: 60 5% 7%;
+  --card-foreground: 48 10% 96%;
+  --popover: 60 5% 7%;
+  --popover-foreground: 48 10% 96%;
+  --primary: 48 10% 96%;
+  --primary-foreground: 60 6% 4%;
+  --secondary: 60 4% 12%;
+  --secondary-foreground: 48 10% 96%;
+  --muted: 60 4% 12%;
+  --muted-foreground: 48 4% 62%;
+  --accent: 60 4% 12%;
+  --accent-foreground: 48 10% 96%;
+  --destructive: 48 10% 90%;
+  --destructive-foreground: 60 6% 4%;
+  --border: 60 4% 15%;
+  --input: 60 4% 15%;
+  --ring: 48 10% 96%;
 }
 
 * {
   @apply border-border;
 }
 
+html {
+  font-family: var(--font-sans);
+}
+
 body {
   @apply bg-background text-foreground antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Bauhaus monospace micro-label — use on eyebrows, meta, codes, times */
+.eyebrow,
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+::selection {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }

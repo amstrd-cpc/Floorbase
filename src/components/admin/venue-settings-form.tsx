@@ -36,7 +36,7 @@ const TIMEZONE_SUGGESTIONS = [
 
 function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3 rounded-lg border p-4">
+    <section className="space-y-3 border border-border p-4">
       <div>
         <h3 className="text-base font-semibold">{title}</h3>
         <p className="text-xs text-slate-500">{description}</p>
@@ -80,8 +80,8 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border bg-white p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 p-3">
+    <form onSubmit={onSubmit} className="space-y-4 border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-secondary p-3">
         <div>
           <p className="text-sm font-medium">Default venue configuration</p>
           <p className="text-xs text-slate-500">These values are used for regular service days. Event overrides are managed in the Events section.</p>

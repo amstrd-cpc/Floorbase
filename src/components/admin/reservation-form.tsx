@@ -286,7 +286,7 @@ export function ReservationForm(props: ReservationFormProps) {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded-lg border bg-white p-4 md:p-6"
+      className="space-y-4 border border-border bg-card p-4 md:p-6"
     >
       {error ? (
         <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">

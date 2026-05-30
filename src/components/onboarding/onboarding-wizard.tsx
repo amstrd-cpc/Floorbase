@@ -166,7 +166,7 @@ export function OnboardingWizard(props: Props) {
       ) : null}
 
       {step === 1 && (
-        <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
+        <div className="border border-border bg-card p-6 space-y-4">
           <h2 className="font-medium">Step 1 — Venue details</h2>
 
           <label className="block text-sm">
@@ -225,7 +225,7 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 2 && (
-        <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
+        <div className="border border-border bg-card p-6 space-y-4">
           <h2 className="font-medium">Step 2 — Business hours</h2>
           <p className="text-sm text-muted-foreground">Set your regular operating hours.</p>
 
@@ -281,7 +281,7 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 3 && (
-        <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
+        <div className="border border-border bg-card p-6 space-y-4">
           <h2 className="font-medium">Step 3 — Invite your team (optional)</h2>
           <p className="text-sm text-muted-foreground">
             Add a team member now, or skip and do it later from Settings.
@@ -326,7 +326,7 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 4 && (
-        <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4 text-center">
+        <div className="border border-border bg-card p-6 space-y-4 text-center">
           <h2 className="text-xl font-semibold">You&apos;re all set!</h2>
           <p className="text-sm text-muted-foreground">
             Your trial runs for 14 days. No card needed until then.

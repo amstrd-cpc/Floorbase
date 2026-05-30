@@ -353,7 +353,7 @@ export function FloorManager({
 
       <div className="space-y-3">
         {areas.map((area) => (
-          <section key={area.id} className="rounded border bg-white p-4">
+          <section key={area.id} className="border border-border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-medium">
                 {area.name}{' '}

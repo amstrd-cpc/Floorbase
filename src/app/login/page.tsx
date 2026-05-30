@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
 
 type LoginPageProps = {
   searchParams?: {
@@ -31,70 +31,87 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
   const error = errorMessage(searchParams?.error);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl items-center p-6">
-      <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Internal Admin Sign In</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Invite-only access for hosts, managers, and admins.
-        </p>
+    <AuthShell
+      eyebrow={inviteToken ? 'Accept invite' : 'Admin access'}
+      title={inviteToken ? 'Set up your account' : 'Sign in'}
+      description={
+        inviteToken
+          ? 'Set a password to activate your invite and join the team.'
+          : 'Invite-only access for hosts, managers, and admins.'
+      }
+      footer={
+        <>
+          <p>
+            Need an invite? Ask your organization admin, then return using the invite URL.
+          </p>
+          <p>
+            New customer? <AuthLink href="/signup">Start a free 14-day trial</AuthLink>
+          </p>
+          <p>
+            Back to <AuthLink href="/">home</AuthLink>
+          </p>
+        </>
+      }
+    >
+      {error ? <AuthNotice>{error}</AuthNotice> : null}
 
-        {error ? <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-
-        {inviteToken ? (
-          <form action="/api/auth/invite/accept" method="post" className="mt-6 space-y-3">
-            <input type="hidden" name="token" value={inviteToken} />
-            <h2 className="text-sm font-medium">Accept invite and set password</h2>
-            <label className="block text-sm">First name<input required name="firstName" placeholder="First name" className="mt-1 w-full rounded border p-2 text-sm" /></label>
-            <label className="block text-sm">Last name<input required name="lastName" placeholder="Last name" className="mt-1 w-full rounded border p-2 text-sm" /></label>
-            <label className="block text-sm">Password<input
+      {inviteToken ? (
+        <form action="/api/auth/invite/accept" method="post" className="mt-6 space-y-4">
+          <input type="hidden" name="token" value={inviteToken} />
+          <label className={fieldLabel}>
+            First name
+            <input required name="firstName" placeholder="First name" className={fieldInput} />
+          </label>
+          <label className={fieldLabel}>
+            Last name
+            <input required name="lastName" placeholder="Last name" className={fieldInput} />
+          </label>
+          <label className={fieldLabel}>
+            Password
+            <input
               name="password"
               type="password"
               minLength={12}
               required
               placeholder="Create password (12+ chars)"
-              className="mt-1 w-full rounded border p-2 text-sm"
-            /></label>
-            <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
-              Accept Invite
-            </button>
-          </form>
-        ) : (
-          <form action="/api/auth/login" method="post" className="mt-6 space-y-3">
-            <label className="block text-sm">Work email<input
+              className={fieldInput}
+            />
+          </label>
+          <button className={primaryButton} type="submit">
+            Accept invite
+          </button>
+        </form>
+      ) : (
+        <form action="/api/auth/login" method="post" className="mt-6 space-y-4">
+          <label className={fieldLabel}>
+            Work email
+            <input
               name="email"
               type="email"
               required
               placeholder="work-email@company.com"
-              className="mt-1 w-full rounded border p-2 text-sm"
-            /></label>
-            <label className="block text-sm">Password<input
+              className={fieldInput}
+            />
+          </label>
+          <label className={fieldLabel}>
+            Password
+            <input
               name="password"
               type="password"
               required
               minLength={8}
               placeholder="Password"
-              className="mt-1 w-full rounded border p-2 text-sm"
-            /></label>
-            <button className="rounded bg-black px-4 py-2 text-sm text-white" type="submit">
-              Sign in
-            </button>
-            <p className="text-xs text-muted-foreground">
-              <Link href="/forgot-password" className="underline">Forgot password?</Link>
-            </p>
-          </form>
-        )}
-
-        <p className="mt-5 text-xs text-muted-foreground">
-          Need an invite? Ask your organization admin. Then return to this screen using the invite URL.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          New customer?{' '}
-          <Link href="/signup" className="underline">Start a free 14-day trial</Link>.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Back to <Link href="/">home</Link>.
-        </p>
-      </section>
-    </main>
+              className={fieldInput}
+            />
+          </label>
+          <button className={primaryButton} type="submit">
+            Sign in
+          </button>
+          <p className="text-xs text-muted-foreground">
+            <AuthLink href="/forgot-password">Forgot password?</AuthLink>
+          </p>
+        </form>
+      )}
+    </AuthShell>
   );
 }

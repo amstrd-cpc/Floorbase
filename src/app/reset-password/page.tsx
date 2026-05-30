@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -42,30 +42,26 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <p className="text-sm text-red-700">
+      <AuthNotice>
         Invalid or missing reset token. Request a{' '}
-        <Link href="/forgot-password" className="underline">new reset link</Link>.
-      </p>
+        <AuthLink href="/forgot-password">new reset link</AuthLink>.
+      </AuthNotice>
     );
   }
 
   if (success) {
     return (
-      <div>
-        <p className="text-sm text-slate-700">Password updated. You can now sign in with your new password.</p>
-        <p className="mt-4 text-sm">
-          <Link href="/login" className="underline">Sign in</Link>
-        </p>
-      </div>
+      <AuthNotice label="Password updated">
+        You can now sign in with your new password.{' '}
+        <AuthLink href="/login">Sign in</AuthLink>
+      </AuthNotice>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-3">
-      {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
-      ) : null}
-      <label className="block text-sm">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      {error ? <AuthNotice>{error}</AuthNotice> : null}
+      <label className={fieldLabel}>
         New password
         <input
           type="password"
@@ -74,10 +70,10 @@ function ResetPasswordForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="12+ characters"
-          className="mt-1 w-full rounded border p-2 text-sm"
+          className={fieldInput}
         />
       </label>
-      <label className="block text-sm">
+      <label className={fieldLabel}>
         Confirm password
         <input
           type="password"
@@ -86,14 +82,10 @@ function ResetPasswordForm() {
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           placeholder="Repeat password"
-          className="mt-1 w-full rounded border p-2 text-sm"
+          className={fieldInput}
         />
       </label>
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={loading} className={primaryButton}>
         {loading ? 'Saving…' : 'Set new password'}
       </button>
     </form>
@@ -102,16 +94,19 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl items-center p-6">
-      <section className="w-full rounded-lg border bg-card p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Set new password</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Choose a strong password (12+ characters).
+    <AuthShell
+      eyebrow="Account recovery"
+      title="Set new password"
+      description="Choose a strong password (12+ characters)."
+      footer={
+        <p>
+          <AuthLink href="/login">Back to sign in</AuthLink>
         </p>
-        <Suspense>
-          <ResetPasswordForm />
-        </Suspense>
-      </section>
-    </main>
+      }
+    >
+      <Suspense>
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }

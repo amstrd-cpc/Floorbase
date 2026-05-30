@@ -217,9 +217,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   }
 
   return (
-    <section className="space-y-4 rounded-lg border bg-white p-4">
-      {message ? <p className="rounded border p-2 text-sm">{message}</p> : null}
-      <p className="text-xs text-slate-500">
+    <section className="space-y-4 border border-border bg-card p-4">
+      {message ? <p className="border border-border bg-secondary p-2 text-sm">{message}</p> : null}
+      <p className="text-xs text-muted-foreground">
         Event overrides always take precedence over default venue settings. If multiple events match the same booking date, precedence is: Single Date, then Date Range (shortest matching span wins), then Weekly Recurring. For an exact tie, the most recently created event wins.
       </p>
 
@@ -252,7 +252,7 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
         {form.eventType === 'DATE_RANGE' ? <div className="grid gap-2 md:grid-cols-2"><input type="date" className="rounded border p-2 text-sm" value={toDateInputValue(form.dateStart)} onChange={(e) => setForm({ ...form, dateStart: e.target.value || null })} /><input type="date" className="rounded border p-2 text-sm" value={toDateInputValue(form.dateEnd)} onChange={(e) => setForm({ ...form, dateEnd: e.target.value || null })} /></div> : null}
         {form.eventType === 'WEEKLY_RECURRING' ? (
           <div className="flex flex-wrap gap-2 text-xs">
-            {WEEKDAY_LABELS.map((label, index) => <button key={label} type="button" className={`rounded border px-2 py-1 ${form.weekdays.includes(index) ? 'bg-slate-900 text-white' : ''}`} onClick={() => setForm((cur) => ({ ...cur, weekdays: cur.weekdays.includes(index) ? cur.weekdays.filter((d) => d !== index) : [...cur.weekdays, index] }))}>{label}</button>)}
+            {WEEKDAY_LABELS.map((label, index) => <button key={label} type="button" className={`rounded border px-2 py-1 ${form.weekdays.includes(index) ? 'bg-foreground text-background' : ''}`} onClick={() => setForm((cur) => ({ ...cur, weekdays: cur.weekdays.includes(index) ? cur.weekdays.filter((d) => d !== index) : [...cur.weekdays, index] }))}>{label}</button>)}
           </div>
         ) : null}
         <div className="grid gap-2 md:grid-cols-2">
@@ -277,10 +277,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
       <div className="space-y-2">
         <p className="text-sm font-semibold">All events ({events.length})</p>
-        {isLoading ? <p className="rounded border border-dashed p-3 text-sm text-slate-500">Loading events…</p> : null}
-        {!isLoading && events.length === 0 ? <p className="rounded border border-dashed p-3 text-sm text-slate-500">No events yet. Create one to override booking behavior for a date, date range, or recurring weekly schedule.</p> : null}
+        {isLoading ? <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">Loading events…</p> : null}
+        {!isLoading && events.length === 0 ? <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">No events yet. Create one to override booking behavior for a date, date range, or recurring weekly schedule.</p> : null}
         {events.map((event) => (
-          <div key={event.id} className="rounded border p-3 text-sm">
+          <div key={event.id} className="border border-dashed border-border p-3 text-sm text-muted-foreground">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="font-medium">{event.name}</p>

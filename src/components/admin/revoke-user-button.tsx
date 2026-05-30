@@ -26,16 +26,16 @@ export function RevokeUserButton({ userId }: { userId: string }) {
   if (confirming) {
     return (
       <span className="flex items-center gap-2 text-sm">
-        {error && <span className="text-red-700">{error}</span>}
-        {!error && <span className="text-red-700">Revoke access?</span>}
+        {error && <span className="text-foreground">{error}</span>}
+        {!error && <span className="text-foreground">Revoke access?</span>}
         <button
           onClick={handleRevoke}
           disabled={loading}
-          className="text-red-700 underline disabled:opacity-50"
+          className="text-foreground underline disabled:opacity-50"
         >
           {loading ? 'Revoking…' : 'Yes, revoke'}
         </button>
-        <button onClick={() => { setConfirming(false); setError(null); }} className="text-slate-500 underline">
+        <button onClick={() => { setConfirming(false); setError(null); }} className="text-muted-foreground underline">
           Cancel
         </button>
       </span>
@@ -45,7 +45,7 @@ export function RevokeUserButton({ userId }: { userId: string }) {
   return (
     <button
       onClick={() => setConfirming(true)}
-      className="text-sm text-red-700 hover:underline"
+      className="text-sm text-foreground hover:underline"
     >
       Revoke
     </button>

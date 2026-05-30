@@ -40,7 +40,7 @@ function toneClass(tone: TableStateTone) {
     return 'border-emerald-300 bg-emerald-50 text-emerald-950';
   }
 
-  return 'border-slate-300 bg-white text-slate-900';
+  return 'border-border bg-background text-foreground';
 }
 
 export function FloorLayoutRenderer({
@@ -53,7 +53,7 @@ export function FloorLayoutRenderer({
   return (
     <div className="max-h-[70vh] w-full min-w-0 overflow-auto rounded border bg-slate-50 p-3">
       <div
-        className="relative inline-block bg-white"
+        className="relative inline-block bg-background"
         style={{
           width: `${layout.canvasWidth}px`,
           height: `${layout.canvasHeight}px`,
@@ -73,7 +73,7 @@ export function FloorLayoutRenderer({
               type="button"
               disabled={disabled}
               onClick={() => onSelectTable?.(table.id)}
-              className={`absolute border text-left text-xs shadow-sm transition ${shapeClass(table.shape)} ${toneClass(tone)} ${
+              className={`absolute border text-left text-xs transition ${shapeClass(table.shape)} ${toneClass(tone)} ${
                 table.id === selectedTableId ? 'ring-2 ring-blue-300' : ''
               } ${disabled ? 'cursor-not-allowed opacity-70' : ''}`}
               style={{
@@ -88,7 +88,7 @@ export function FloorLayoutRenderer({
               <span className="block truncate px-2 pt-1 font-medium">{table.label}</span>
               <span className="block truncate px-2 text-[10px]">{state?.subtitle ?? `${table.capacityMax} seats`}</span>
               {state?.badge ? (
-                <span className="absolute bottom-1 right-1 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium">
+                <span className="absolute bottom-1 right-1 bg-background/70 px-1.5 py-0.5 text-[10px] font-medium">
                   {state.badge}
                 </span>
               ) : null}

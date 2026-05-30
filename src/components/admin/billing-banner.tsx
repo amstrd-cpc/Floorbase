@@ -15,12 +15,12 @@ export function BillingBanner({ status, trialEndsAt }: BillingBannerProps) {
     message = daysLeft <= 0
       ? 'Your trial has expired. Subscribe to keep access.'
       : `Trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Subscribe to keep access.`;
-    style = daysLeft <= 1 ? 'bg-red-50 border-red-200 text-red-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800';
+    style = daysLeft <= 1 ? 'border-foreground bg-secondary text-foreground' : 'border-border bg-secondary text-foreground';
   }
 
   if (status === 'PAST_DUE') {
     message = 'Payment failed. Update your payment method to restore full access.';
-    style = 'bg-red-50 border-red-200 text-red-800';
+    style = 'border-foreground bg-secondary text-foreground';
   }
 
   if (!message) return null;

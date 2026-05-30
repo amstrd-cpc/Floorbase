@@ -32,76 +32,78 @@ export default async function BookingConfirmationPage({
   const guestName = guest.fullName ?? guest.firstName ?? 'Guest';
 
   return (
-    <main className="mx-auto max-w-xl p-6">
-      <div className="rounded-lg border bg-white p-8 shadow-sm">
+    <main className="mx-auto max-w-xl px-6 py-12">
+      <div className="border border-border bg-card p-8">
+        <div className="eyebrow text-muted-foreground">
+          {isPending ? 'Request received' : 'Confirmed'}
+        </div>
         {isPending ? (
           <>
-            <div className="text-2xl font-semibold">Booking request received</div>
-            <p className="mt-2 text-slate-600">
+            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">Booking request received</h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Hi {guestName} — your request is pending review. {venue.name} will confirm it shortly.
               {guest.email ? ` A confirmation will be sent to ${guest.email}.` : ''}
             </p>
           </>
         ) : (
           <>
-            <div className="text-2xl font-semibold text-emerald-700">Reservation confirmed</div>
-            <p className="mt-2 text-slate-600">
+            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">Reservation confirmed</h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               You&apos;re all set, {guestName}.
               {guest.email ? ` A confirmation has been sent to ${guest.email}.` : ''}
             </p>
           </>
         )}
 
-        <div className="mt-6 space-y-2 rounded-md border bg-slate-50 p-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Venue</span>
-            <span className="font-medium">{venue.name}</span>
+        <dl className="mt-7 border-t border-border text-sm">
+          <div className="flex justify-between gap-4 border-b border-border py-2.5">
+            <dt className="text-muted-foreground">Venue</dt>
+            <dd className="font-medium">{venue.name}</dd>
           </div>
           {(venue.addressLine || venue.city) && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Address</span>
-              <span>{[venue.addressLine, venue.city].filter(Boolean).join(', ')}</span>
+            <div className="flex justify-between gap-4 border-b border-border py-2.5">
+              <dt className="text-muted-foreground">Address</dt>
+              <dd className="text-right">{[venue.addressLine, venue.city].filter(Boolean).join(', ')}</dd>
             </div>
           )}
-          <div className="flex justify-between">
-            <span className="text-slate-500">Date &amp; time</span>
-            <span>{formatDateTime(new Date(startAt), venue.timezone)}</span>
+          <div className="flex justify-between gap-4 border-b border-border py-2.5">
+            <dt className="text-muted-foreground">Date &amp; time</dt>
+            <dd className="text-right">{formatDateTime(new Date(startAt), venue.timezone)}</dd>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Party size</span>
-            <span>{partySize} {partySize === 1 ? 'guest' : 'guests'}</span>
+          <div className="flex justify-between gap-4 border-b border-border py-2.5">
+            <dt className="text-muted-foreground">Party size</dt>
+            <dd>{partySize} {partySize === 1 ? 'guest' : 'guests'}</dd>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Status</span>
-            <span
-              className={
-                isPending
-                  ? 'font-medium text-amber-700'
-                  : 'font-medium text-emerald-700'
-              }
-            >
-              {status.label}
-            </span>
+          <div className="flex items-center justify-between gap-4 border-b border-border py-2.5">
+            <dt className="text-muted-foreground">Status</dt>
+            <dd>
+              <span className="border border-foreground px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em]">
+                {status.label}
+              </span>
+            </dd>
           </div>
           {specialRequests && (
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-500">Note</span>
-              <span className="text-right">{specialRequests}</span>
+            <div className="flex justify-between gap-4 border-b border-border py-2.5">
+              <dt className="text-muted-foreground">Note</dt>
+              <dd className="text-right">{specialRequests}</dd>
             </div>
           )}
-        </div>
+        </dl>
 
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="mt-6 text-sm text-muted-foreground">
           Need to make changes? Contact {venue.name} directly.
         </p>
 
         <Link
           href={`/book/${venue.slug}`}
-          className="mt-4 inline-block text-sm underline text-slate-600"
+          className="mt-4 inline-block text-sm font-medium text-foreground underline underline-offset-2 hover:opacity-70"
         >
           Make another reservation
         </Link>
       </div>
+      <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
+        Powered by Floorbase
+      </p>
     </main>
   );
 }

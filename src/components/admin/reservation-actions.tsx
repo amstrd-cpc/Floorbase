@@ -76,7 +76,7 @@ export function ReservationActions({
   return (
     <div className="space-y-4">
       {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        <p className="border border-foreground bg-secondary p-2 text-sm text-foreground">{error}</p>
       ) : null}
 
       <div className="flex items-end gap-2">
@@ -85,7 +85,7 @@ export function ReservationActions({
           <select
             value={selectedStatusId}
             onChange={(e) => setSelectedStatusId(e.target.value)}
-            className="mt-1 w-full rounded border p-2 text-sm"
+            className="mt-1 w-full border p-2 text-sm"
           >
             {statuses.map((s) => (
               <option key={s.id} value={s.id}>
@@ -97,7 +97,7 @@ export function ReservationActions({
         <button
           onClick={changeStatus}
           disabled={statusLoading || selectedStatusId === currentStatusId}
-          className="rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40"
+          className="bg-foreground px-3 py-2 text-sm text-background disabled:opacity-40"
         >
           {statusLoading ? "Saving…" : "Update"}
         </button>
@@ -106,17 +106,17 @@ export function ReservationActions({
       <div>
         {cancelConfirming ? (
           <span className="flex items-center gap-2 text-sm">
-            <span className="text-red-700">Cancel this reservation?</span>
+            <span className="text-foreground">Cancel this reservation?</span>
             <button
               onClick={cancelReservation}
               disabled={cancelLoading}
-              className="text-red-700 underline disabled:opacity-50"
+              className="text-foreground underline disabled:opacity-50"
             >
               {cancelLoading ? "Cancelling…" : "Yes, cancel"}
             </button>
             <button
               onClick={() => setCancelConfirming(false)}
-              className="text-slate-500 underline"
+              className="text-muted-foreground underline"
             >
               No
             </button>
@@ -124,7 +124,7 @@ export function ReservationActions({
         ) : (
           <button
             onClick={() => setCancelConfirming(true)}
-            className="text-sm text-red-700 hover:underline"
+            className="text-sm text-foreground hover:underline"
           >
             Cancel reservation
           </button>

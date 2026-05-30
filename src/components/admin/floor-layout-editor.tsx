@@ -372,7 +372,7 @@ export function FloorLayoutEditor({
 
   return (
     <div className="w-full min-w-0 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border border-border bg-card px-3 py-2">
         <div>
           <h2 className="text-sm font-semibold">Floor Layout Editor</h2>
           <p className="text-xs text-slate-500">
@@ -417,7 +417,7 @@ export function FloorLayoutEditor({
             {selectedPlacedTable ? (
               <>
                 <div
-                  className="absolute h-4 w-4 cursor-se-resize rounded border border-blue-600 bg-white"
+                  className="absolute h-4 w-4 cursor-se-resize rounded border border-foreground bg-background"
                   style={{ left: selectedPlacedTable.x + selectedPlacedTable.width - 8, top: selectedPlacedTable.y + selectedPlacedTable.height - 8 }}
                   onMouseDown={(event) => {
                     event.preventDefault();

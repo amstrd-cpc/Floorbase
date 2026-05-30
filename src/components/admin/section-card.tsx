@@ -4,7 +4,7 @@ export function SectionCard({
   className,
   title,
   description,
-  children
+  children,
 }: {
   className?: string;
   title: string;
@@ -12,10 +12,10 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn('rounded-lg border bg-white p-4 shadow-sm md:p-5', className)}>
-      <h3 className="text-base font-semibold">{title}</h3>
+    <section className={cn('border border-border bg-card p-5', className)}>
+      <h3 className="text-[15px] font-bold tracking-tight">{title}</h3>
       {description ? <p className="mb-3 mt-1 text-sm text-muted-foreground">{description}</p> : null}
-      {children}
+      <div className={description ? '' : 'mt-3'}>{children}</div>
     </section>
   );
 }

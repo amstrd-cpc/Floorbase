@@ -25,6 +25,12 @@ type ResolvedConfig = {
   publicLabel: string | null;
 };
 
+const bookInput =
+  'mt-1.5 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus:border-foreground focus:ring-1 focus:ring-foreground';
+const stepEyebrow = 'font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground';
+const primaryBtn =
+  'bg-foreground px-4 py-2.5 text-[13px] font-semibold text-background transition hover:opacity-85 disabled:opacity-50';
+
 export function PublicBookingForm({
   venueSlug,
   maxOnlinePartySize,
@@ -135,66 +141,74 @@ export function PublicBookingForm({
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitBooking}>
+    <form className="space-y-8" onSubmit={submitBooking}>
       {error ? (
-        <p className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        <div className="border border-foreground bg-secondary px-3.5 py-3">
+          <div className={stepEyebrow}>Notice</div>
+          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{error}</p>
+        </div>
       ) : null}
 
       <section className="space-y-3">
-        <p className="text-sm font-semibold text-slate-900">1. Choose date and party size</p>
+        <p className={stepEyebrow}>Step 01 — Date &amp; party size</p>
         <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm">
+          <label className="block text-[13px] font-medium">
             Date
             <input
               type="date"
               min={dateMin}
-              className="mt-1 w-full rounded border p-2"
+              className={bookInput}
               value={date}
               onChange={(event) => setDate(event.target.value)}
             />
           </label>
-          <label className="text-sm">
+          <label className="block text-[13px] font-medium">
             Party size
             <input
               type="number"
               min={resolvedConfig?.minPartySize ?? minPartySize}
               max={resolvedConfig?.maxOnlinePartySize ?? maxOnlinePartySize}
-              className="mt-1 w-full rounded border p-2"
+              className={bookInput}
               value={partySize}
               onChange={(event) => setPartySize(Number(event.target.value))}
             />
           </label>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           {resolvedConfig?.publicLabel ??
             `Online bookings support ${resolvedConfig?.minPartySize ?? minPartySize} to ${resolvedConfig?.maxOnlinePartySize ?? maxOnlinePartySize} guests.`}
         </p>
         {(resolvedConfig?.publicInstructions ?? publicInstructions) ? (
-          <p className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
+          <p className="border border-border bg-secondary p-3 text-sm text-muted-foreground">
             {resolvedConfig?.publicInstructions ?? publicInstructions}
           </p>
         ) : null}
         <button
           type="button"
           onClick={fetchSlots}
-          className="rounded bg-slate-900 px-4 py-2 text-sm text-white"
+          className={primaryBtn}
           disabled={loadingSlots}
         >
-          {loadingSlots ? 'Loading...' : 'Check availability'}
+          {loadingSlots ? 'Loading…' : 'Check availability'}
         </button>
       </section>
 
       {slots.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-semibold text-slate-900">2. Select a time ({venueTimezone})</p>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <p className={stepEyebrow}>Step 02 — Select a time · {venueTimezone}</p>
+          <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4 md:grid-cols-6">
             {slots.map((availableSlot) => {
               const label = availableSlot.localStartAt.slice(11, 16);
+              const active = slotId === availableSlot.startAt;
               return (
                 <button
                   key={availableSlot.startAt}
                   type="button"
-                  className={`rounded border px-3 py-2 text-sm ${slotId === availableSlot.startAt ? 'border-slate-900 bg-slate-100' : 'border-slate-200'}`}
+                  className={`px-3 py-2.5 text-[13px] font-medium tabular-nums transition ${
+                    active
+                      ? 'bg-foreground text-background'
+                      : 'bg-background text-foreground hover:bg-secondary'
+                  }`}
                   onClick={() => {
                     setSlotId(availableSlot.startAt);
                     setSelectedTableId('');
@@ -210,9 +224,9 @@ export function PublicBookingForm({
 
       {tableSelectionEnabled ? (
         <section className="space-y-3">
-          <p className="text-sm font-semibold text-slate-900">3. Choose your table</p>
-          <p className="text-xs text-slate-500">
-            Green tables are available. Red tables are already booked for this time.
+          <p className={stepEyebrow}>Step 03 — Choose your table</p>
+          <p className="text-xs text-muted-foreground">
+            Outlined tables are open. Shaded tables are already taken for this time.
           </p>
           {layout ? (
             <>
@@ -235,10 +249,10 @@ export function PublicBookingForm({
               />
             </>
           ) : (
-            <label className="block text-sm">
+            <label className="block text-[13px] font-medium">
               Select table
               <select
-                className="mt-1 w-full rounded border p-2"
+                className={bookInput}
                 value={selectedTableId}
                 onChange={(event) => setSelectedTableId(event.target.value)}
                 required
@@ -256,23 +270,23 @@ export function PublicBookingForm({
       ) : null}
 
       <section className="space-y-3">
-        <p className="text-sm font-semibold text-slate-900">
-          {tableSelectionEnabled ? '4.' : '3.'} Enter your details
+        <p className={stepEyebrow}>
+          {tableSelectionEnabled ? 'Step 04' : 'Step 03'} — Your details
         </p>
         <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm">
+          <label className="block text-[13px] font-medium">
             Full name
             <input
-              className="mt-1 w-full rounded border p-2"
+              className={bookInput}
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               required
             />
           </label>
-          <label className="text-sm">
+          <label className="block text-[13px] font-medium">
             Phone
             <input
-              className="mt-1 w-full rounded border p-2"
+              className={bookInput}
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               required
@@ -280,32 +294,29 @@ export function PublicBookingForm({
           </label>
         </div>
 
-        <label className="block text-sm">
+        <label className="block text-[13px] font-medium">
           Email
           <input
             type="email"
-            className="mt-1 w-full rounded border p-2"
+            className={bookInput}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
           />
         </label>
 
-        <label className="block text-sm">
+        <label className="block text-[13px] font-medium">
           Note (optional)
           <textarea
-            className="mt-1 w-full rounded border p-2"
+            className={bookInput}
             rows={3}
             value={note}
             onChange={(event) => setNote(event.target.value)}
           />
         </label>
 
-        <button
-          className="rounded bg-emerald-600 px-4 py-2 text-sm text-white"
-          disabled={submitting}
-        >
-          {submitting ? 'Submitting...' : 'Book now'}
+        <button className={primaryBtn} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Book now'}
         </button>
       </section>
     </form>

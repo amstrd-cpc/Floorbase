@@ -35,7 +35,7 @@ export function VenueSwitcher({
       value={activeVenueId}
       onChange={handleChange}
       disabled={switching}
-      className="rounded border bg-white px-2 py-1 text-sm disabled:opacity-50"
+      className="border bg-card px-2 py-1 text-sm disabled:opacity-50"
       aria-label="Switch venue"
     >
       {venues.map((v) => (

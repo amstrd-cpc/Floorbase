@@ -24,7 +24,7 @@ export default async function SettingsPage() {
       />
 
       {bookingUrl && (
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <div className="border border-border bg-card p-4">
           <p className="text-sm font-medium">Public booking link</p>
           <div className="mt-2 flex items-center gap-2">
             <code className="flex-1 rounded bg-slate-100 px-3 py-1.5 text-sm break-all">

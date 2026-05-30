@@ -11,7 +11,7 @@ export function BillingActions({ hasSubscription }: Props) {
         <form action="/api/billing/portal" method="post">
           <button
             type="submit"
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className="bg-foreground px-4 py-2 text-sm text-background"
           >
             Manage billing
           </button>
@@ -20,7 +20,7 @@ export function BillingActions({ hasSubscription }: Props) {
         <form action="/api/billing/checkout" method="post">
           <button
             type="submit"
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className="bg-foreground px-4 py-2 text-sm text-background"
           >
             Subscribe now
           </button>

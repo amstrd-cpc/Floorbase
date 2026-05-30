@@ -5,19 +5,19 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { href: '/admin', label: 'Today' },
-  { href: '/admin/reservations', label: 'Reservations' },
-  { href: '/admin/floor', label: 'Floor' },
-  { href: '/admin/events', label: 'Events' },
-  { href: '/admin/settings', label: 'Settings' },
-  { href: '/admin/billing', label: 'Billing' },
+  { href: '/admin', label: 'Today', n: '01' },
+  { href: '/admin/reservations', label: 'Reservations', n: '02' },
+  { href: '/admin/floor', label: 'Floor', n: '03' },
+  { href: '/admin/events', label: 'Events', n: '04' },
+  { href: '/admin/settings', label: 'Settings', n: '05' },
+  { href: '/admin/billing', label: 'Billing', n: '06' },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-wrap gap-2">
+    <nav className="flex flex-1 flex-col py-3">
       {NAV_ITEMS.map((item) => {
         const isActive =
           item.href === '/admin'
@@ -29,14 +29,24 @@ export function AdminNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'rounded-md px-3 py-1.5 text-sm font-medium',
-              isActive ? 'bg-slate-900 text-white' : 'border bg-white text-slate-700 hover:bg-slate-100'
+              'flex items-center gap-3.5 border-l-2 px-[22px] py-2.5 transition-colors',
+              isActive
+                ? 'border-foreground bg-foreground text-background'
+                : 'border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
             )}
           >
-            {item.label}
+            <span
+              className={cn(
+                'font-mono text-[9.5px] tracking-[0.14em]',
+                isActive ? 'text-background/60' : 'text-muted-foreground/70'
+              )}
+            >
+              {item.n}
+            </span>
+            <span className="text-[13.5px] font-semibold">{item.label}</span>
           </Link>
         );
-        })}
+      })}
     </nav>
   );
 }

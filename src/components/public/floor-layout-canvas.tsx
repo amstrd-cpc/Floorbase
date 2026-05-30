@@ -24,29 +24,35 @@ type Props = {
 };
 
 function shapeClass(shape: string) {
+  // Round tables stay physically round; everything else is sharp (0 radius)
   if (shape === 'ROUND') return 'rounded-full';
-  if (shape === 'RECTANGLE') return 'rounded-sm';
-  return 'rounded-md';
+  return 'rounded-none';
 }
+
+// Monochrome encoding — fill weight + hatch stand in for the old color semaphore
+const HATCH =
+  'repeating-linear-gradient(45deg, transparent, transparent 4px, hsl(var(--border)) 4px, hsl(var(--border)) 5px)';
 
 function tableTone(status: PublicTableVisualState['status'], selected: boolean) {
   if (selected) {
-    return 'border-blue-700 bg-blue-100 text-blue-950 ring-2 ring-blue-400';
+    return 'border-foreground bg-foreground text-background ring-1 ring-foreground';
   }
 
   if (status === 'AVAILABLE') {
-    return 'border-emerald-400 bg-emerald-50 text-emerald-950 hover:bg-emerald-100';
-  }
-
-  if (status === 'UNAVAILABLE_BOOKED') {
-    return 'border-rose-300 bg-rose-50 text-rose-900';
+    return 'border-foreground bg-background text-foreground hover:bg-secondary';
   }
 
   if (status === 'UNAVAILABLE_EVENT') {
-    return 'border-amber-300 bg-amber-50 text-amber-900';
+    return 'border border-dashed border-muted-foreground/50 bg-secondary text-muted-foreground';
   }
 
-  return 'border-slate-300 bg-slate-100 text-slate-500';
+  // BOOKED / RULE / INACTIVE — muted, hatched
+  return 'border-border bg-secondary text-muted-foreground/70';
+}
+
+function isHatched(status: PublicTableVisualState['status'], selected: boolean) {
+  if (selected) return false;
+  return status === 'UNAVAILABLE_BOOKED' || status === 'UNAVAILABLE_RULE' || status === 'INACTIVE';
 }
 
 export function FloorLayoutCanvas({
@@ -64,16 +70,16 @@ export function FloorLayoutCanvas({
   const canvasHeight = useMemo(() => layout.canvasHeight * scale, [layout.canvasHeight, scale]);
 
   return (
-    <div className="rounded-lg border bg-slate-50 p-3">
+    <div className="border border-border bg-secondary p-3">
       <div ref={containerRef} className="w-full" style={{ height: `${canvasHeight}px` }}>
         <div
-          className="relative origin-top-left bg-white"
+          className="relative origin-top-left bg-background"
           style={{
             width: `${layout.canvasWidth}px`,
             height: `${layout.canvasHeight}px`,
             transform: `scale(${scale})`,
             backgroundImage:
-              'linear-gradient(to right, #f1f5f9 1px, transparent 1px), linear-gradient(to bottom, #f1f5f9 1px, transparent 1px)',
+              'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
             backgroundSize: `${layout.gridSize}px ${layout.gridSize}px`
           }}
         >
@@ -95,10 +101,10 @@ export function FloorLayoutCanvas({
                   }
                 }}
                 className={cn(
-                  'absolute border px-1 text-left text-[11px] shadow-sm transition md:text-xs',
+                  'absolute border px-1 text-left text-[11px] transition md:text-xs',
                   shapeClass(table.shape),
                   tableTone(state?.status ?? 'UNAVAILABLE_RULE', selected),
-                  disabled ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                  disabled ? 'cursor-not-allowed' : 'cursor-pointer'
                 )}
                 style={{
                   left: `${table.x}px`,
@@ -106,7 +112,8 @@ export function FloorLayoutCanvas({
                   width: `${table.width}px`,
                   height: `${table.height}px`,
                   transform: `rotate(${table.rotation}deg)`,
-                  transformOrigin: 'center center'
+                  transformOrigin: 'center center',
+                  backgroundImage: isHatched(state?.status ?? 'UNAVAILABLE_RULE', selected) ? HATCH : undefined
                 }}
               >
                 <span className="block truncate font-medium">{table.label}</span>

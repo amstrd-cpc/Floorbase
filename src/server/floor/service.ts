@@ -286,19 +286,16 @@ export async function updateTable(input: {
 
 export async function deleteArea(input: { areaId: string }) {
   try {
-    const current = await prisma.area.findUnique({
-      where: { id: input.areaId },
-      select: { id: true }
-    });
-
-    if (!current) {
-      throw new FloorNotFoundError('Area not found.');
-    }
-
     await prisma.area.delete({
-      where: { id: current.id }
+      where: { id: input.areaId }
     });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new FloorNotFoundError('Area not found.');
+    }
     throw toValidationError(error);
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { TableShape } from '@prisma/client';
 import { FloorLayoutRenderer } from './floor-layout-renderer';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
@@ -68,6 +68,7 @@ export function FloorLayoutEditor({
   const [dirty, setDirty] = useState(false);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [editingZoneName, setEditingZoneName] = useState('');
+  const renameViaEnterRef = useRef(false);
 
   const selectedDomainTable = useMemo(
     () => tables.find((table) => table.id === selectedTableInventoryId) ?? null,
@@ -248,15 +249,16 @@ export function FloorLayoutEditor({
     }
 
     setAreas((current) => current.filter((area) => area.id !== areaId));
-    markDirty({
-      ...draft,
-      areas: draft.areas.filter((area) => area.areaId !== areaId),
-      tables: draft.tables.map((t) =>
-        layoutArea && t.floorLayoutAreaId === layoutArea.id
-          ? { ...t, floorLayoutAreaId: null }
-          : t
-      )
-    });
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      areas: currentDraft.areas.filter((area) => area.areaId !== areaId),
+      tables: currentDraft.tables.map((t) => {
+        const la = currentDraft.areas.find((a) => a.areaId === areaId);
+        return la && t.floorLayoutAreaId === la.id ? { ...t, floorLayoutAreaId: null } : t;
+      })
+    }));
+    setDirty(true);
+    setSuccess(null);
   }
 
   function buildPlacedTableEntry(
@@ -321,8 +323,11 @@ export function FloorLayoutEditor({
     setTables((current) => [...current, nextTable]);
     setSelectedTableInventoryId(nextTable.id);
 
-    const entry = buildPlacedTableEntry(nextTable, draft, draft.tables.length);
-    markDirty({ ...draft, tables: [...draft.tables, entry] });
+    setDraft((currentDraft) => {
+      const entry = buildPlacedTableEntry(nextTable, currentDraft, currentDraft.tables.length);
+      return { ...currentDraft, tables: [...currentDraft.tables, entry] };
+    });
+    setDirty(true);
     setSuccess(`Table "${nextTable.name}" created and added to floor.`);
   }
 
@@ -639,9 +644,18 @@ export function FloorLayoutEditor({
                       className="min-w-0 flex-1 rounded border p-1 text-sm"
                       value={editingZoneName}
                       onChange={(e) => setEditingZoneName(e.target.value)}
-                      onBlur={() => { if (area.areaId) void renameZone(area.areaId, editingZoneName); }}
+                      onBlur={() => {
+                        if (renameViaEnterRef.current) {
+                          renameViaEnterRef.current = false;
+                          return;
+                        }
+                        if (area.areaId) void renameZone(area.areaId, editingZoneName);
+                      }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && area.areaId) void renameZone(area.areaId, editingZoneName);
+                        if (e.key === 'Enter' && area.areaId) {
+                          renameViaEnterRef.current = true;
+                          void renameZone(area.areaId, editingZoneName);
+                        }
                         if (e.key === 'Escape') setEditingZoneId(null);
                       }}
                     />

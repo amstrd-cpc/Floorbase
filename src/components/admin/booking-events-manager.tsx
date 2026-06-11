@@ -132,15 +132,20 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    const [eventsRes, areasRes] = await Promise.all([
-      fetch(`/api/admin/venues/${venueId}/booking-events`),
-      fetch(`/api/admin/areas?venueId=${venueId}`)
-    ]);
-    const eventsBody = await eventsRes.json();
-    const areasBody = await areasRes.json();
-    setEvents(eventsBody.events ?? []);
-    setAreas(areasBody.areas ?? []);
-    setIsLoading(false);
+    try {
+      const [eventsRes, areasRes] = await Promise.all([
+        fetch(`/api/admin/venues/${venueId}/booking-events`),
+        fetch(`/api/admin/areas?venueId=${venueId}`)
+      ]);
+      const eventsBody = await eventsRes.json();
+      const areasBody = await areasRes.json();
+      setEvents(eventsBody.events ?? []);
+      setAreas(areasBody.areas ?? []);
+    } catch {
+      setMessage({ text: 'Failed to load data. Please refresh.', kind: 'err' });
+    } finally {
+      setIsLoading(false);
+    }
   }, [venueId]);
 
   useEffect(() => {
@@ -168,62 +173,78 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
       setFormError(err);
       return;
     }
-    const method = editingId ? 'PUT' : 'POST';
-    const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, id: editingId ?? undefined })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setMessage({ text: body.error ?? 'Failed to save event.', kind: 'err' });
-      return;
+    try {
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, id: editingId ?? undefined })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ text: body.error ?? 'Failed to save event.', kind: 'err' });
+        return;
+      }
+      setForm(EMPTY_EVENT);
+      setEditingId(null);
+      setMessage({ text: editingId ? 'Event updated.' : 'Event created.', kind: 'ok' });
+      await loadData();
+    } catch {
+      setMessage({ text: 'Failed to save event.', kind: 'err' });
     }
-    setForm(EMPTY_EVENT);
-    setEditingId(null);
-    setMessage({ text: editingId ? 'Event updated.' : 'Event created.', kind: 'ok' });
-    await loadData();
   }
 
   async function removeEvent(id: string) {
     if (!window.confirm('Delete this event? This cannot be undone.')) return;
-    const res = await fetch(`/api/admin/venues/${venueId}/booking-events?id=${id}`, {
-      method: 'DELETE'
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/admin/venues/${venueId}/booking-events?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        setMessage({ text: 'Failed to delete event.', kind: 'err' });
+        return;
+      }
+      setMessage({ text: 'Event deleted.', kind: 'ok' });
+      await loadData();
+    } catch {
       setMessage({ text: 'Failed to delete event.', kind: 'err' });
-      return;
     }
-    setMessage({ text: 'Event deleted.', kind: 'ok' });
-    await loadData();
   }
 
   async function duplicateEvent(event: BookingEvent) {
-    const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...fromEventToForm(event), name: `${event.name} (Copy)` })
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...fromEventToForm(event), name: `${event.name} (Copy)` })
+      });
+      if (!res.ok) {
+        setMessage({ text: 'Failed to duplicate event.', kind: 'err' });
+        return;
+      }
+      setMessage({ text: 'Event duplicated.', kind: 'ok' });
+      await loadData();
+    } catch {
       setMessage({ text: 'Failed to duplicate event.', kind: 'err' });
-      return;
     }
-    setMessage({ text: 'Event duplicated.', kind: 'ok' });
-    await loadData();
   }
 
   async function toggleEventState(event: BookingEvent) {
-    const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: event.id, ...fromEventToForm(event), isActive: !event.isActive })
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: event.id, ...fromEventToForm(event), isActive: !event.isActive })
+      });
+      if (!res.ok) {
+        setMessage({ text: 'Failed to update event status.', kind: 'err' });
+        return;
+      }
+      setMessage({ text: event.isActive ? 'Event disabled.' : 'Event enabled.', kind: 'ok' });
+      await loadData();
+    } catch {
       setMessage({ text: 'Failed to update event status.', kind: 'err' });
-      return;
     }
-    setMessage({ text: event.isActive ? 'Event disabled.' : 'Event enabled.', kind: 'ok' });
-    await loadData();
   }
 
   const describeWhen = useMemo(() => {

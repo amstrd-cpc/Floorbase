@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
+import { apiFetch, ApiError } from '@/lib/client/api';
 import { formatDateForTimeZone } from '@/lib/timezone';
 import {
   FloorLayoutCanvas,
@@ -77,27 +78,24 @@ export function PublicBookingForm({
     setSlotId('');
     setSelectedTableId('');
 
-    const res = await fetch(
-      `/api/public/book/${venueSlug}/slots?date=${encodeURIComponent(date)}&partySize=${partySize}`
-    );
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
+    try {
+      const body = await apiFetch<{ slots?: Slot[]; config?: ResolvedConfig; layout?: FloorLayoutDto }>(
+        `/api/public/book/${venueSlug}/slots?date=${encodeURIComponent(date)}&partySize=${partySize}`
+      );
+      const nextSlots = (body.slots ?? []) as Slot[];
+      setResolvedConfig((body.config ?? null) as ResolvedConfig | null);
+      setSlots(nextSlots);
+      setLayout((body.layout ?? null) as FloorLayoutDto | null);
+      if (nextSlots.length === 0) {
+        setError('No openings match that date and party size. Try a different date or party size.');
+      }
+    } catch (e) {
       setSlots([]);
       setLayout(null);
-      setError(body.error ?? 'Unable to load available times.');
+      setError(e instanceof ApiError ? e.message : 'Unable to load available times.');
+    } finally {
       setLoadingSlots(false);
-      return;
     }
-
-    const nextSlots = (body.slots ?? []) as Slot[];
-    setResolvedConfig((body.config ?? null) as ResolvedConfig | null);
-    setSlots(nextSlots);
-    setLayout((body.layout ?? null) as FloorLayoutDto | null);
-    if (nextSlots.length === 0) {
-      setError('No openings match that date and party size. Try a different date or party size.');
-    }
-    setLoadingSlots(false);
   }
 
   async function submitBooking(event: React.FormEvent<HTMLFormElement>) {
@@ -114,30 +112,26 @@ export function PublicBookingForm({
     }
 
     setSubmitting(true);
-
-    const res = await fetch(`/api/public/book/${venueSlug}/reserve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        slotId,
-        partySize,
-        fullName,
-        email,
-        phone,
-        selectedTableId: selectedTableId || undefined,
-        note: note.trim() || undefined,
-      }),
-    });
-
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setError(body.error ?? 'Unable to submit booking.');
+    try {
+      const data = await apiFetch<{ reservationId: string }>(`/api/public/book/${venueSlug}/reserve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slotId,
+          partySize,
+          fullName,
+          email,
+          phone,
+          selectedTableId: selectedTableId || undefined,
+          note: note.trim() || undefined,
+        }),
+      });
+      router.push(`/book/${venueSlug}/confirmation?reservationId=${encodeURIComponent(data.reservationId)}`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Unable to submit booking.');
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    router.push(`/book/${venueSlug}/confirmation?reservationId=${encodeURIComponent(body.reservationId)}`);
   }
 
   return (

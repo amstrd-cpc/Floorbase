@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { apiFetch, ApiError } from '@/lib/client/api';
 
 type VenueSettings = {
   id: string;
@@ -48,7 +49,9 @@ function Section({ title, description, children }: { title: string; description:
 
 export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
   const [values, setValues] = useState(venue);
-  const [message, setMessage] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -62,21 +65,22 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
-    const res = await fetch(`/api/admin/venues/${venue.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values)
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setMessage(body.error ?? 'Unable to save settings.');
-      return;
+    setSuccessMsg(null);
+    setErrorMsg(null);
+    setSaving(true);
+    try {
+      const body = await apiFetch<{ venue: VenueSettings }>(`/api/admin/venues/${venue.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values)
+      });
+      if (body.venue) setValues(body.venue);
+      setSuccessMsg('Venue settings saved.');
+    } catch (e) {
+      setErrorMsg(e instanceof ApiError ? e.message : 'Unable to save settings.');
+    } finally {
+      setSaving(false);
     }
-    if (body.venue) {
-      setValues(body.venue as VenueSettings);
-    }
-    setMessage('Venue settings saved.');
   }
 
   return (
@@ -86,10 +90,11 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
           <p className="text-sm font-medium">Default venue configuration</p>
           <p className="text-xs text-slate-500">These values are used for regular service days. Event overrides are managed in the Events section.</p>
         </div>
-        <button className="rounded bg-slate-900 px-4 py-2 text-sm text-white">Save settings</button>
+        <button disabled={saving} className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save settings'}</button>
       </div>
 
-      {message ? <p className="rounded border p-2 text-sm">{message}</p> : null}
+      {successMsg ? <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">{successMsg}</p> : null}
+      {errorMsg ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{errorMsg}</p> : null}
 
       <Section title="General" description="Core identity and public booking URL details.">
         <div className="grid gap-3 md:grid-cols-2">

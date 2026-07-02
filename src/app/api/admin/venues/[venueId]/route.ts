@@ -1,8 +1,64 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import { getVenueScope } from '@/server/auth/scope-resolvers';
 import { isValidIanaTimeZone } from '@/lib/timezone';
+import { z } from 'zod';
+
+const updateVenueSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    slug: z.string().regex(/^[a-z0-9-]{1,64}$/, {
+      message: 'Slug must be 1–64 lowercase alphanumeric characters or hyphens.'
+    }),
+    timezone: z.string().trim().min(1).max(100),
+    currency: z.string().trim().length(3),
+    country: z.string().trim().max(100).nullable().optional(),
+    city: z.string().trim().max(100).nullable().optional(),
+    addressLine: z.string().trim().max(300).nullable().optional(),
+    isActive: z.boolean().optional(),
+    publicBookingEnabled: z.boolean().optional(),
+    bookingMode: z.enum(['AUTO_CONFIRM', 'REQUEST_ONLY']).optional(),
+    placementMode: z.enum(['AUTO_ASSIGN', 'TABLE_SELECTION']).optional(),
+    minPartySize: z.number().int().min(1).optional(),
+    maxOnlinePartySize: z.number().int().min(1).optional(),
+    minAdvanceNoticeMinutes: z.number().int().min(0).optional(),
+    maxDaysAhead: z.number().int().min(1).optional(),
+    defaultReservationDurationMinutes: z.number().int().min(30).optional(),
+    publicInstructions: z.string().trim().max(2000).nullable().optional()
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.timezone && !isValidIanaTimeZone(value.timezone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'timezone must be a valid IANA timezone, for example Europe/Berlin.',
+        path: ['timezone']
+      });
+    }
+
+    if (value.minPartySize != null && value.maxOnlinePartySize != null) {
+      if (value.minPartySize > value.maxOnlinePartySize) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'minPartySize cannot exceed maxOnlinePartySize.',
+          path: ['minPartySize']
+        });
+      }
+    }
+
+    if (
+      value.defaultReservationDurationMinutes != null &&
+      value.defaultReservationDurationMinutes % 15 !== 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'defaultReservationDurationMinutes must be in 15-minute increments.',
+        path: ['defaultReservationDurationMinutes']
+      });
+    }
+  });
 
 export async function GET(
   _request: Request,
@@ -69,119 +125,25 @@ export async function PUT(
     );
   }
 
-  const payload = (await request.json()) as {
-    name?: string;
-    slug?: string;
-    timezone?: string;
-    currency?: string;
-    country?: string | null;
-    city?: string | null;
-    addressLine?: string | null;
-    isActive?: boolean;
-    publicBookingEnabled?: boolean;
-    bookingMode?: 'AUTO_CONFIRM' | 'REQUEST_ONLY';
-    placementMode?: 'AUTO_ASSIGN' | 'TABLE_SELECTION';
-    minPartySize?: number;
-    maxOnlinePartySize?: number;
-    minAdvanceNoticeMinutes?: number;
-    maxDaysAhead?: number;
-    defaultReservationDurationMinutes?: number;
-    publicInstructions?: string | null;
-  };
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
+  }
 
-  if (
-    !payload.name ||
-    !payload.slug ||
-    !payload.timezone ||
-    !payload.currency
-  ) {
+  const parsed = updateVenueSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
     return NextResponse.json(
-      { error: 'name, slug, timezone, and currency are required.' },
+      { error: firstError?.message ?? 'Invalid venue payload.' },
       { status: 400 }
     );
   }
 
-  const VALID_BOOKING_MODES = ['AUTO_CONFIRM', 'REQUEST_ONLY'] as const;
-  const VALID_PLACEMENT_MODES = ['AUTO_ASSIGN', 'TABLE_SELECTION'] as const;
+  const payload = parsed.data;
 
-  if (
-    payload.bookingMode !== undefined &&
-    !VALID_BOOKING_MODES.includes(payload.bookingMode as (typeof VALID_BOOKING_MODES)[number])
-  ) {
-    return NextResponse.json({ error: 'Invalid bookingMode.' }, { status: 400 });
-  }
-
-  if (
-    payload.placementMode !== undefined &&
-    !VALID_PLACEMENT_MODES.includes(payload.placementMode as (typeof VALID_PLACEMENT_MODES)[number])
-  ) {
-    return NextResponse.json({ error: 'Invalid placementMode.' }, { status: 400 });
-  }
-
-
-  if (!isValidIanaTimeZone(payload.timezone.trim())) {
-    return NextResponse.json(
-      { error: 'timezone must be a valid IANA timezone, for example Europe/Berlin.' },
-      { status: 400 }
-    );
-  }
-  if ((payload.minPartySize ?? 1) < 1) {
-    return NextResponse.json(
-      { error: 'minPartySize must be at least 1.' },
-      { status: 400 }
-    );
-  }
-
-  if ((payload.maxOnlinePartySize ?? 1) < 1) {
-    return NextResponse.json(
-      { error: 'maxOnlinePartySize must be at least 1.' },
-      { status: 400 }
-    );
-  }
-  if (
-    (payload.minPartySize ?? 1) >
-    (payload.maxOnlinePartySize ?? 12)
-  ) {
-    return NextResponse.json(
-      { error: 'minPartySize cannot exceed maxOnlinePartySize.' },
-      { status: 400 }
-    );
-  }
-
-  if ((payload.maxDaysAhead ?? 1) < 1) {
-    return NextResponse.json(
-      { error: 'maxDaysAhead must be at least 1.' },
-      { status: 400 }
-    );
-  }
-
-  if ((payload.minAdvanceNoticeMinutes ?? 0) < 0) {
-    return NextResponse.json(
-      { error: 'minAdvanceNoticeMinutes must be 0 or greater.' },
-      { status: 400 }
-    );
-  }
-
-  if (
-    (payload.defaultReservationDurationMinutes ?? 0) < 30 ||
-    (payload.defaultReservationDurationMinutes ?? 0) % 15 !== 0
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          'defaultReservationDurationMinutes must be at least 30 and in 15-minute increments.'
-      },
-      { status: 400 }
-    );
-  }
-
-  const normalizedName = payload.name.trim();
-  const normalizedSlug = payload.slug.trim();
-  const normalizedTimezone = payload.timezone.trim();
-  const normalizedCurrency = payload.currency.trim().toUpperCase();
-  const shouldBeActive = payload.isActive ?? true;
-
-  if (!shouldBeActive) {
+  if (payload.isActive === false) {
     const otherActiveVenues = await prisma.venue.count({
       where: {
         organizationId: venueScope.organizationId,
@@ -201,29 +163,38 @@ export async function PUT(
     }
   }
 
-  const venue = await prisma.venue.update({
-    where: { id: params.venueId },
-    data: {
-      name: normalizedName,
-      slug: normalizedSlug,
-      timezone: normalizedTimezone,
-      currency: normalizedCurrency,
-      country: payload.country?.trim() || null,
-      city: payload.city?.trim() || null,
-      addressLine: payload.addressLine?.trim() || null,
-      isActive: shouldBeActive,
-      publicBookingEnabled: payload.publicBookingEnabled ?? false,
-      bookingMode: payload.bookingMode ?? 'AUTO_CONFIRM',
-      placementMode: payload.placementMode ?? 'AUTO_ASSIGN',
-      minPartySize: payload.minPartySize ?? 1,
-      maxOnlinePartySize: payload.maxOnlinePartySize ?? 12,
-      minAdvanceNoticeMinutes: payload.minAdvanceNoticeMinutes ?? 120,
-      maxDaysAhead: payload.maxDaysAhead ?? 60,
-      defaultReservationDurationMinutes:
-        payload.defaultReservationDurationMinutes ?? 120,
-      publicInstructions: payload.publicInstructions?.trim() || null
-    }
-  });
+  const updateData: Prisma.VenueUpdateInput = {
+    name: payload.name.trim(),
+    slug: payload.slug.trim(),
+    timezone: payload.timezone.trim(),
+    currency: payload.currency.trim().toUpperCase(),
+    country: payload.country?.trim() ?? null,
+    city: payload.city?.trim() ?? null,
+    addressLine: payload.addressLine?.trim() ?? null
+  };
 
-  return NextResponse.json({ venue });
+  if (payload.isActive !== undefined) updateData.isActive = payload.isActive;
+  if (payload.publicBookingEnabled !== undefined) updateData.publicBookingEnabled = payload.publicBookingEnabled;
+  if (payload.bookingMode !== undefined) updateData.bookingMode = payload.bookingMode;
+  if (payload.placementMode !== undefined) updateData.placementMode = payload.placementMode;
+  if (payload.minPartySize !== undefined) updateData.minPartySize = payload.minPartySize;
+  if (payload.maxOnlinePartySize !== undefined) updateData.maxOnlinePartySize = payload.maxOnlinePartySize;
+  if (payload.minAdvanceNoticeMinutes !== undefined) updateData.minAdvanceNoticeMinutes = payload.minAdvanceNoticeMinutes;
+  if (payload.maxDaysAhead !== undefined) updateData.maxDaysAhead = payload.maxDaysAhead;
+  if (payload.defaultReservationDurationMinutes !== undefined) updateData.defaultReservationDurationMinutes = payload.defaultReservationDurationMinutes;
+  if (payload.publicInstructions !== undefined) updateData.publicInstructions = payload.publicInstructions?.trim() || null;
+
+  try {
+    const venue = await prisma.venue.update({
+      where: { id: params.venueId },
+      data: updateData
+    });
+
+    return NextResponse.json({ venue });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return NextResponse.json({ error: 'Slug already in use.' }, { status: 409 });
+    }
+    throw e;
+  }
 }

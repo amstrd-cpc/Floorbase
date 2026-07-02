@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch, ApiError } from '@/lib/client/api';
 import {
   MAX_PARTY_SIZE,
   MAX_RESERVATION_DURATION_MINUTES,
@@ -100,33 +101,6 @@ function validateForm(values: ReservationFormValues) {
   return errors;
 }
 
-function formatApiError(body: Record<string, unknown>) {
-  if (!body) {
-    return 'Unable to save reservation.';
-  }
-
-  const details =
-    body.details && typeof body.details === 'object'
-      ? Object.values(body.details as Record<string, unknown>)
-      : [];
-
-  const detailText = details
-    .filter(
-      (value): value is string => typeof value === 'string' && value.length > 0
-    )
-    .join(' ');
-
-  if (typeof body.error === 'string' && detailText.length > 0) {
-    return `${body.error} ${detailText}`;
-  }
-
-  if (typeof body.error === 'string') {
-    return body.error;
-  }
-
-  return 'Unable to save reservation.';
-}
-
 function isTableCompatible(option: Option, partySize: number) {
   const min = option.capacityMin ?? 1;
   const max = option.capacityMax ?? MAX_PARTY_SIZE;
@@ -139,6 +113,8 @@ export function ReservationForm(props: ReservationFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [availabilityNote, setAvailabilityNote] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const availabilitySeqRef = useRef(0);
   const [values, setValues] = useState<ReservationFormValues>(
     props.initialValues ?? {
       fullName: '',
@@ -201,86 +177,65 @@ export function ReservationForm(props: ReservationFormProps) {
         : `/api/admin/reservations/${props.reservationId}?organizationId=${props.organizationId}`;
     const method = props.mode === 'create' ? 'POST' : 'PUT';
 
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const body = (await response.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >;
-    if (!response.ok) {
-      setError(formatApiError(body));
+    try {
+      const body = await apiFetch<{ reservation?: { id?: string } }>(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const reservationId = body.reservation?.id ?? props.reservationId;
+      router.push(`/admin/reservations/${reservationId}`);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Unable to save reservation.');
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    const reservationId =
-      (body.reservation as { id?: string } | undefined)?.id ??
-      props.reservationId;
-    router.push(`/admin/reservations/${reservationId}`);
-    router.refresh();
   }
 
   async function checkAvailability() {
+    const seq = ++availabilitySeqRef.current;
+    setCheckingAvailability(true);
     setAvailabilityNote(null);
     const startAt = new Date(values.startAt);
     if (Number.isNaN(startAt.getTime())) {
       setAvailabilityNote('Choose a valid start time to check availability.');
+      setCheckingAvailability(false);
       return;
     }
-
     const params = new URLSearchParams({
       venueId: props.venueId,
       startAt: startAt.toISOString(),
       durationMinutes: String(values.durationMinutes),
       partySize: String(values.partySize)
     });
-
     if (props.mode === 'edit' && props.reservationId) {
       params.set('reservationIdToExclude', props.reservationId);
     }
-
-    const response = await fetch(
-      `/api/admin/reservations/availability?${params.toString()}`
-    );
-    const body = (await response.json().catch(() => ({}))) as {
-      reason?: string;
-      recommendedTableIds?: string[];
-      availableTables?: Array<{
-        id: string;
-        name: string;
-        capacityMax: number;
-      }>;
-      error?: string;
-    };
-
-    if (!response.ok) {
+    try {
+      const body = await apiFetch<{
+        reason?: string;
+        recommendedTableIds?: string[];
+        availableTables?: Array<{ id: string; name: string; capacityMax: number }>;
+      }>(`/api/admin/reservations/availability?${params.toString()}`);
+      if (seq !== availabilitySeqRef.current) return;
+      if (body.recommendedTableIds && body.recommendedTableIds.length > 0) {
+        setValues((previous) => ({ ...previous, tableIds: body.recommendedTableIds ?? [] }));
+        setAvailabilityNote(`Found availability. Recommended tables have been selected (${body.recommendedTableIds!.length}).`);
+        return;
+      }
+      const availableCount = body.availableTables?.length ?? 0;
       setAvailabilityNote(
-        body.error ?? 'Unable to check availability right now.'
+        availableCount > 0
+          ? `No exact recommendation found, but ${availableCount} table(s) are free.`
+          : `No availability for this time. ${body.reason ? `Reason: ${body.reason}.` : ''}`
       );
-      return;
+    } catch (e) {
+      if (seq !== availabilitySeqRef.current) return;
+      setAvailabilityNote(e instanceof ApiError ? e.message : 'Unable to check availability right now.');
+    } finally {
+      if (seq === availabilitySeqRef.current) setCheckingAvailability(false);
     }
-
-    if (body.recommendedTableIds && body.recommendedTableIds.length > 0) {
-      setValues((previous) => ({
-        ...previous,
-        tableIds: body.recommendedTableIds ?? []
-      }));
-      setAvailabilityNote(
-        `Found availability. Recommended tables have been selected (${body.recommendedTableIds.length}).`
-      );
-      return;
-    }
-
-    const availableCount = body.availableTables?.length ?? 0;
-    setAvailabilityNote(
-      availableCount > 0
-        ? `No exact recommendation found, but ${availableCount} table(s) are free.`
-        : `No availability for this time. ${body.reason ? `Reason: ${body.reason}.` : ''}`
-    );
   }
 
   return (
@@ -418,9 +373,10 @@ export function ReservationForm(props: ReservationFormProps) {
       <button
         type="button"
         onClick={checkAvailability}
+        disabled={checkingAvailability}
         className="rounded border px-3 py-2 text-sm"
       >
-        Check Availability / Suggest Tables
+        {checkingAvailability ? 'Checking…' : 'Check Availability / Suggest Tables'}
       </button>
       <label className="block text-sm">
         Guest Notes / Special Requests

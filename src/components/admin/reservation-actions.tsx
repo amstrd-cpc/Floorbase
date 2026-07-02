@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch, ApiError } from "@/lib/client/api";
 
 type Status = { id: string; label: string };
 
@@ -27,50 +28,40 @@ export function ReservationActions({
     if (selectedStatusId === currentStatusId) return;
     setStatusLoading(true);
     setError(null);
-
-    const url = "/api/admin/reservations/" + reservationId;
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        organizationId,
-        action: "status",
-        reservationStatusId: selectedStatusId,
-      }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    setStatusLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to update status.");
-      return;
+    try {
+      await apiFetch<unknown>("/api/admin/reservations/" + reservationId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          action: "status",
+          reservationStatusId: selectedStatusId,
+        }),
+      });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to update status.");
+    } finally {
+      setStatusLoading(false);
     }
-
-    router.refresh();
   }
 
   async function cancelReservation() {
     setCancelLoading(true);
     setError(null);
-
-    const url = "/api/admin/reservations/" + reservationId;
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organizationId, action: "cancel" }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    setCancelLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to cancel reservation.");
+    try {
+      await apiFetch<unknown>("/api/admin/reservations/" + reservationId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId, action: "cancel" }),
+      });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to cancel reservation.");
       setCancelConfirming(false);
-      return;
+    } finally {
+      setCancelLoading(false);
     }
-
-    router.refresh();
   }
 
   return (

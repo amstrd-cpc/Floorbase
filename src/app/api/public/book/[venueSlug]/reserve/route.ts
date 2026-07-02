@@ -5,6 +5,8 @@ import {
   getPublicVenueBySlug,
   PublicBookingError
 } from '@/server/public-booking/service';
+import { createPublicBookingSchema } from '@/server/public-booking/validation';
+import { mapZodErrors } from '@/lib/zod-utils';
 import {
   sendGuestConfirmation,
   sendVenueNewReservationAlert
@@ -44,10 +46,24 @@ export async function POST(
     );
   }
 
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  const parsed = createPublicBookingSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Please complete all required fields with valid values.', details: mapZodErrors(parsed.error.issues) },
+      { status: 400 }
+    );
+  }
+
   try {
     const venue = await getPublicVenueBySlug(params.venueSlug);
-    const payload = await request.json();
-    const result = await createPublicBooking({ venue, payload });
+    const result = await createPublicBooking({ venue, payload: parsed.data });
 
     const modeMessage =
       result.statusCode === 'CONFIRMED'
@@ -58,7 +74,7 @@ export async function POST(
     void sendEmailsForPublicBooking({
       reservationId: result.reservationId,
       statusCode: result.statusCode,
-      venue,
+      venue
     });
 
     return NextResponse.json(
@@ -79,17 +95,17 @@ async function sendEmailsForPublicBooking(input: {
     const [reservation, orgAdmin] = await Promise.all([
       prisma.reservation.findUnique({
         where: { id: input.reservationId },
-        select: { startAt: true, partySize: true, guest: { select: { fullName: true, email: true, phone: true } } },
+        select: { startAt: true, partySize: true, guest: { select: { fullName: true, email: true, phone: true } } }
       }),
       prisma.user.findFirst({
         where: {
           organizationId: input.venue.organizationId,
           isActive: true,
-          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } },
+          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } }
         },
         select: { email: true },
-        orderBy: { createdAt: 'asc' },
-      }),
+        orderBy: { createdAt: 'asc' }
+      })
     ]);
 
     if (!reservation) return;
@@ -106,7 +122,7 @@ async function sendEmailsForPublicBooking(input: {
         timezone: input.venue.timezone,
         partySize: reservation.partySize,
         statusCode: input.statusCode,
-        reservationId: input.reservationId,
+        reservationId: input.reservationId
       });
     }
 
@@ -122,7 +138,7 @@ async function sendEmailsForPublicBooking(input: {
         partySize: reservation.partySize,
         source: 'Online booking',
         appUrl: env.APP_URL,
-        reservationId: input.reservationId,
+        reservationId: input.reservationId
       });
     }
   } catch (err) {

@@ -6,6 +6,10 @@ import {
   listAvailableSlots,
   listAvailableTables
 } from '@/server/reservations/availability-service';
+import {
+  MAX_RESERVATION_DURATION_MINUTES,
+  MIN_RESERVATION_DURATION_MINUTES
+} from '@/server/reservations/availability';
 
 async function resolveOrganizationIdForVenue(venueId: string) {
   const venue = await prisma.venue.findUnique({
@@ -37,11 +41,39 @@ export async function GET(request: Request) {
   const reservationIdToExclude =
     searchParams.get('reservationIdToExclude') ?? undefined;
 
-  if (!venueId || !partySize || partySize < 1) {
+  if (!venueId || !partySize || partySize < 1 || !Number.isInteger(partySize)) {
     return NextResponse.json(
-      { error: 'venueId and partySize are required.' },
+      { error: 'venueId and a positive integer partySize are required.' },
       { status: 400 }
     );
+  }
+
+  if (
+    durationMinutes !== undefined &&
+    (!Number.isInteger(durationMinutes) ||
+      durationMinutes < MIN_RESERVATION_DURATION_MINUTES ||
+      durationMinutes > MAX_RESERVATION_DURATION_MINUTES)
+  ) {
+    return NextResponse.json(
+      {
+        error: `durationMinutes must be an integer between ${MIN_RESERVATION_DURATION_MINUTES} and ${MAX_RESERVATION_DURATION_MINUTES}.`
+      },
+      { status: 400 }
+    );
+  }
+
+  if (startAt) {
+    const parsedStartAt = new Date(startAt);
+    if (Number.isNaN(parsedStartAt.getTime())) {
+      return NextResponse.json({ error: 'startAt is not a valid date.' }, { status: 400 });
+    }
+  }
+
+  if (date) {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return NextResponse.json({ error: 'date is not a valid date.' }, { status: 400 });
+    }
   }
 
   const organizationId = await resolveOrganizationIdForVenue(venueId);

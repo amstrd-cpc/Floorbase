@@ -8,6 +8,7 @@ import {
   hasOverlappingWindow,
   validateSlotAligned
 } from './availability';
+import { getZonedDateTimeParts, zonedTimeToUtc } from '@/lib/timezone';
 
 type AvailabilityWindow = {
   startAt: Date;
@@ -23,25 +24,6 @@ type BusyInterval = {
   tableId: string;
   startAt: Date;
   endAt: Date;
-};
-
-type ZonedDateTimeParts = {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  weekday: number;
-};
-
-const weekdayIndexMap: Record<string, number> = {
-  sun: 0,
-  mon: 1,
-  tue: 2,
-  wed: 3,
-  thu: 4,
-  fri: 5,
-  sat: 6
 };
 
 function parseHourMinute(value: string) {
@@ -63,70 +45,13 @@ function parseHourMinute(value: string) {
   return { hours, minutes };
 }
 
-function getZonedDateTimeParts(date: Date, timeZone: string): ZonedDateTimeParts {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    weekday: 'short'
-  });
-
-  const parts = formatter.formatToParts(date);
-  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const weekdayText = String(lookup.weekday ?? '')
-    .slice(0, 3)
-    .toLowerCase();
-
-  return {
-    year: Number(lookup.year),
-    month: Number(lookup.month),
-    day: Number(lookup.day),
-    hour: Number(lookup.hour),
-    minute: Number(lookup.minute),
-    weekday: weekdayIndexMap[weekdayText]
-  };
-}
-
 function toZonedMinutes(date: Date, timeZone: string) {
   const parts = getZonedDateTimeParts(date, timeZone);
   return parts.hour * 60 + parts.minute;
 }
 
 function weekdayFor(date: Date, timeZone: string) {
-  return getZonedDateTimeParts(date, timeZone).weekday;
-}
-
-function zonedTimeToUtc(input: {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  timeZone: string;
-}) {
-  let guessUtc = Date.UTC(
-    input.year,
-    input.month - 1,
-    input.day,
-    input.hour,
-    input.minute,
-    0,
-    0
-  );
-
-  for (let index = 0; index < 3; index += 1) {
-    const parts = getZonedDateTimeParts(new Date(guessUtc), input.timeZone);
-    const localAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
-    const targetAsUtc = Date.UTC(input.year, input.month - 1, input.day, input.hour, input.minute, 0, 0);
-
-    guessUtc += targetAsUtc - localAsUtc;
-  }
-
-  return new Date(guessUtc);
+  return getZonedDateTimeParts(date, timeZone).weekday ?? -1;
 }
 
 async function getVenuePolicy(venueId: string) {

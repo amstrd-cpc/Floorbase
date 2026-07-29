@@ -5,6 +5,7 @@ import type { TableShape } from '@prisma/client';
 import { FloorLayoutRenderer } from './floor-layout-renderer';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
 import { SectionCard } from './section-card';
+import { apiFetch, ApiError } from '@/lib/client/api';
 
 type DomainTable = {
   id: string;
@@ -104,34 +105,31 @@ export function FloorLayoutEditor({
   }
 
   async function saveDraft(currentDraft = draft): Promise<FloorLayoutDto | null> {
-    setIsSaving(true);
     setError(null);
-
-    const res = await fetch('/api/admin/floor-layout', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venueId,
-        canvasWidth: currentDraft.canvasWidth,
-        canvasHeight: currentDraft.canvasHeight,
-        gridSize: currentDraft.gridSize,
-        areas: currentDraft.areas,
-        tables: currentDraft.tables
-      })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    setIsSaving(false);
-
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to save draft layout.');
+    setIsSaving(true);
+    try {
+      const body = await apiFetch<{ draft: FloorLayoutDto }>('/api/admin/floor-layout', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId,
+          canvasWidth: currentDraft.canvasWidth,
+          canvasHeight: currentDraft.canvasHeight,
+          gridSize: currentDraft.gridSize,
+          areas: currentDraft.areas,
+          tables: currentDraft.tables
+        })
+      });
+      setDraft(body.draft);
+      setDirty(false);
+      setSuccess('Draft saved.');
+      return body.draft;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to save draft layout.');
       return null;
+    } finally {
+      setIsSaving(false);
     }
-
-    setDraft(body.draft);
-    setDirty(false);
-    setSuccess('Draft saved.');
-    return body.draft as FloorLayoutDto;
   }
 
   async function publishDraft() {
@@ -143,25 +141,21 @@ export function FloorLayoutEditor({
       if (!saved) return;
     }
 
-    setIsPublishing(true);
     setError(null);
-
-    const res = await fetch('/api/admin/floor-layout/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ venueId })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    setIsPublishing(false);
-
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to publish layout.');
-      return;
+    setIsPublishing(true);
+    try {
+      const body = await apiFetch<{ published: FloorLayoutDto }>('/api/admin/floor-layout/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId })
+      });
+      setPublished(body.published);
+      setSuccess('Layout published.');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to publish layout.');
+    } finally {
+      setIsPublishing(false);
     }
-
-    setPublished(body.published);
-    setSuccess('Layout published.');
   }
 
   async function createZone(formData: FormData) {
@@ -169,33 +163,29 @@ export function FloorLayoutEditor({
     const name = String(formData.get('name') ?? '').trim();
     if (!name) return;
 
-    const res = await fetch('/api/admin/areas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ venueId, name, sortOrder: draft.areas.length, isActive: true })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to create zone.');
-      return;
+    try {
+      const body = await apiFetch<{ area: { id: string; name: string; sortOrder: number; isActive: boolean } }>('/api/admin/areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId, name, sortOrder: draft.areas.length, isActive: true })
+      });
+      setAreas((current) => [...current, { id: body.area.id, name: body.area.name }]);
+      markDirty({
+        ...draft,
+        areas: [
+          ...draft.areas,
+          {
+            id: newId(),
+            areaId: body.area.id,
+            name: body.area.name,
+            sortOrder: body.area.sortOrder,
+            isActive: body.area.isActive
+          }
+        ]
+      });
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to create zone.');
     }
-
-    setAreas((current) => [...current, { id: body.area.id, name: body.area.name }]);
-
-    markDirty({
-      ...draft,
-      areas: [
-        ...draft.areas,
-        {
-          id: newId(),
-          areaId: body.area.id,
-          name: body.area.name,
-          sortOrder: body.area.sortOrder,
-          isActive: body.area.isActive
-        }
-      ]
-    });
   }
 
   async function renameZone(areaId: string, name: string) {
@@ -205,29 +195,26 @@ export function FloorLayoutEditor({
       return;
     }
 
-    const res = await fetch(`/api/admin/areas/${areaId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: trimmed })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to rename zone.');
+    try {
+      await apiFetch<unknown>(`/api/admin/areas/${areaId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed })
+      });
+      setAreas((current) =>
+        current.map((area) => (area.id === areaId ? { ...area, name: trimmed } : area))
+      );
+      markDirty({
+        ...draft,
+        areas: draft.areas.map((area) =>
+          area.areaId === areaId ? { ...area, name: trimmed } : area
+        )
+      });
       setEditingZoneId(null);
-      return;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to rename zone.');
+      setEditingZoneId(null);
     }
-
-    setAreas((current) =>
-      current.map((area) => (area.id === areaId ? { ...area, name: trimmed } : area))
-    );
-    markDirty({
-      ...draft,
-      areas: draft.areas.map((area) =>
-        area.areaId === areaId ? { ...area, name: trimmed } : area
-      )
-    });
-    setEditingZoneId(null);
   }
 
   async function deleteZone(areaId: string, areaName: string) {
@@ -241,24 +228,22 @@ export function FloorLayoutEditor({
         : `Remove zone "${areaName}"?`;
     if (!window.confirm(msg)) return;
 
-    const res = await fetch(`/api/admin/areas/${areaId}`, { method: 'DELETE' });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to delete zone.');
-      return;
+    try {
+      await apiFetch<unknown>(`/api/admin/areas/${areaId}`, { method: 'DELETE' });
+      setAreas((current) => current.filter((area) => area.id !== areaId));
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        areas: currentDraft.areas.filter((area) => area.areaId !== areaId),
+        tables: currentDraft.tables.map((t) => {
+          const la = currentDraft.areas.find((a) => a.areaId === areaId);
+          return la && t.floorLayoutAreaId === la.id ? { ...t, floorLayoutAreaId: null } : t;
+        })
+      }));
+      setDirty(true);
+      setSuccess(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to delete zone.');
     }
-
-    setAreas((current) => current.filter((area) => area.id !== areaId));
-    setDraft((currentDraft) => ({
-      ...currentDraft,
-      areas: currentDraft.areas.filter((area) => area.areaId !== areaId),
-      tables: currentDraft.tables.map((t) => {
-        const la = currentDraft.areas.find((a) => a.areaId === areaId);
-        return la && t.floorLayoutAreaId === la.id ? { ...t, floorLayoutAreaId: null } : t;
-      })
-    }));
-    setDirty(true);
-    setSuccess(null);
   }
 
   function buildPlacedTableEntry(
@@ -296,39 +281,35 @@ export function FloorLayoutEditor({
     const capacityMin = Number(formData.get('capacityMin') ?? 1);
     const shape = String(formData.get('shape') ?? 'SQUARE') as TableShape;
 
-    const res = await fetch('/api/admin/tables', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venueId,
-        areaId,
-        name,
-        shape,
-        tableType: 'STANDARD',
-        capacityMin,
-        capacityMax,
-        isActive: true,
-        canCombine: false,
-        combineGroup: null
-      })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to create table.');
-      return;
+    try {
+      const body = await apiFetch<{ table: DomainTable }>('/api/admin/tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId,
+          areaId,
+          name,
+          shape,
+          tableType: 'STANDARD',
+          capacityMin,
+          capacityMax,
+          isActive: true,
+          canCombine: false,
+          combineGroup: null
+        })
+      });
+      const nextTable = body.table;
+      setTables((current) => [...current, nextTable]);
+      setSelectedTableInventoryId(nextTable.id);
+      setDraft((currentDraft) => {
+        const entry = buildPlacedTableEntry(nextTable, currentDraft, currentDraft.tables.length);
+        return { ...currentDraft, tables: [...currentDraft.tables, entry] };
+      });
+      setDirty(true);
+      setSuccess(`Table "${nextTable.name}" created and added to floor.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to create table.');
     }
-
-    const nextTable = body.table as DomainTable;
-    setTables((current) => [...current, nextTable]);
-    setSelectedTableInventoryId(nextTable.id);
-
-    setDraft((currentDraft) => {
-      const entry = buildPlacedTableEntry(nextTable, currentDraft, currentDraft.tables.length);
-      return { ...currentDraft, tables: [...currentDraft.tables, entry] };
-    });
-    setDirty(true);
-    setSuccess(`Table "${nextTable.name}" created and added to floor.`);
   }
 
   function addTableToDraft(tableId: string) {
@@ -345,63 +326,56 @@ export function FloorLayoutEditor({
     if (!selectedDomainTable) return;
     setError(null);
 
-    const res = await fetch(`/api/admin/tables/${selectedDomainTable.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to update table.');
-      return;
-    }
-
-    const next = body.table as DomainTable;
-    setTables((current) => current.map((table) => (table.id === next.id ? next : table)));
-
-    if (selectedPlacedTable) {
-      patchPlacedTable({
-        label: next.name,
-        capacityMin: next.capacityMin,
-        capacityMax: next.capacityMax,
-        shape: next.shape,
-        isActive: next.isActive,
-        combinableMeta: next.canCombine ? { combineGroup: next.combineGroup } : null,
-        floorLayoutAreaId:
-          draft.areas.find((area) => area.areaId === next.areaId)?.id ?? null
+    try {
+      const body = await apiFetch<{ table: DomainTable }>(`/api/admin/tables/${selectedDomainTable.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
+      const next = body.table;
+      setTables((current) => current.map((table) => (table.id === next.id ? next : table)));
+      if (selectedPlacedTable) {
+        patchPlacedTable({
+          label: next.name,
+          capacityMin: next.capacityMin,
+          capacityMax: next.capacityMax,
+          shape: next.shape,
+          isActive: next.isActive,
+          combinableMeta: next.canCombine ? { combineGroup: next.combineGroup } : null,
+          floorLayoutAreaId:
+            draft.areas.find((area) => area.areaId === next.areaId)?.id ?? null
+        });
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to update table.');
     }
   }
 
   async function duplicateSelectedTable() {
     if (!selectedDomainTable) return;
 
-    const res = await fetch('/api/admin/tables', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venueId,
-        areaId: selectedDomainTable.areaId,
-        name: `${selectedDomainTable.name} Copy`,
-        shape: selectedDomainTable.shape,
-        tableType: 'STANDARD',
-        capacityMin: selectedDomainTable.capacityMin,
-        capacityMax: selectedDomainTable.capacityMax,
-        isActive: selectedDomainTable.isActive,
-        canCombine: selectedDomainTable.canCombine,
-        combineGroup: selectedDomainTable.combineGroup
-      })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to duplicate table.');
-      return;
+    try {
+      const body = await apiFetch<{ table: DomainTable }>('/api/admin/tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId,
+          areaId: selectedDomainTable.areaId,
+          name: `${selectedDomainTable.name} Copy`,
+          shape: selectedDomainTable.shape,
+          tableType: 'STANDARD',
+          capacityMin: selectedDomainTable.capacityMin,
+          capacityMax: selectedDomainTable.capacityMax,
+          isActive: selectedDomainTable.isActive,
+          canCombine: selectedDomainTable.canCombine,
+          combineGroup: selectedDomainTable.combineGroup
+        })
+      });
+      setTables((current) => [...current, body.table]);
+      setSelectedTableInventoryId(body.table.id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to duplicate table.');
     }
-
-    setTables((current) => [...current, body.table as DomainTable]);
-    setSelectedTableInventoryId(body.table.id);
   }
 
   async function deleteSelectedTable() {
@@ -409,23 +383,20 @@ export function FloorLayoutEditor({
     if (!window.confirm('Delete this table permanently? It will be removed from all layouts.'))
       return;
 
-    const res = await fetch(`/api/admin/tables/${selectedDomainTable.id}`, {
-      method: 'DELETE'
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to delete table.');
-      return;
+    try {
+      await apiFetch<unknown>(`/api/admin/tables/${selectedDomainTable.id}`, {
+        method: 'DELETE'
+      });
+      setTables((current) => current.filter((table) => table.id !== selectedDomainTable.id));
+      markDirty({
+        ...draft,
+        tables: draft.tables.filter((table) => table.tableId !== selectedDomainTable.id)
+      });
+      setSelectedTableInventoryId(null);
+      setSuccess('Table deleted.');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to delete table.');
     }
-
-    setTables((current) => current.filter((table) => table.id !== selectedDomainTable.id));
-    markDirty({
-      ...draft,
-      tables: draft.tables.filter((table) => table.tableId !== selectedDomainTable.id)
-    });
-
-    setSelectedTableInventoryId(null);
-    setSuccess('Table deleted.');
   }
 
   function removeFromDraftOnly() {

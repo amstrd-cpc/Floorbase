@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminContext } from '@/server/auth/admin-context';
+import { requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import { z } from 'zod';
 
@@ -18,6 +19,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN', 'VENUE_MANAGER']);
   const { venueId } = await getAdminContext();
 
   const body = await request.json();

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
+import { apiFetch } from '@/lib/client/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -11,13 +12,18 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      // intentional: don't expose whether email exists
+    } finally {
+      setLoading(false);
+      setSubmitted(true);
+    }
   }
 
   return (

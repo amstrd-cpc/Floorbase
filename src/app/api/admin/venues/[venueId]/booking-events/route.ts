@@ -1,31 +1,13 @@
 import { NextResponse } from 'next/server';
-import { BookingEventType } from '@prisma/client';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import { getVenueScope } from '@/server/auth/scope-resolvers';
 import { zonedTimeToUtc } from '@/lib/timezone';
-
-type EventPayload = {
-  id?: string;
-  isActive?: boolean;
-  name?: string;
-  eventType?: BookingEventType;
-  singleDate?: string | null;
-  dateStart?: string | null;
-  dateEnd?: string | null;
-  weekdays?: number[];
-  confirmationMode?: 'AUTO_CONFIRM' | 'REQUEST_ONLY' | null;
-  placementMode?: 'AUTO_ASSIGN' | 'TABLE_SELECTION' | null;
-  minPartySize?: number | null;
-  maxOnlinePartySize?: number | null;
-  minAdvanceNoticeMinutes?: number | null;
-  maxDaysAhead?: number | null;
-  durationMinutes?: number | null;
-  publicInstructions?: string | null;
-  publicLabel?: string | null;
-  allowedAreaIds?: string[];
-  allowedTableIds?: string[];
-};
+import { mapZodErrors } from '@/lib/zod-utils';
+import {
+  createBookingEventSchema,
+  updateBookingEventSchema
+} from '@/server/booking-events/validation';
 
 async function assertWriteAccess(venueId: string) {
   const user = await requireRole([
@@ -72,19 +54,6 @@ function parseCalendarDateInVenueTimeZone(
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-    Number.isNaN(year) ||
-    Number.isNaN(month) ||
-    Number.isNaN(day) ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > 31
-  ) {
-    return null;
-  }
-
   return zonedTimeToUtc({
     year,
     month,
@@ -103,38 +72,19 @@ async function resolveVenueTimeZone(venueId: string) {
   if (!venue) {
     return null;
   }
-
   return venue.timezone;
 }
 
-function validateEventPayload(payload: EventPayload, venueTimeZone: string) {
-  if (!payload.name?.trim()) {
-    return 'name is required.';
-  }
-  if (!payload.eventType) {
-    return 'eventType is required.';
-  }
-  if (
-    payload.eventType === 'SINGLE_DATE' &&
-    !parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone)
-  ) {
-    return 'singleDate is required for single-date events.';
-  }
-  if (
-    payload.eventType === 'DATE_RANGE' &&
-    (!parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone) ||
-      !parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone))
-  ) {
-    return 'dateStart and dateEnd are required for date-range events.';
-  }
-  if (
-    payload.eventType === 'WEEKLY_RECURRING' &&
-    (!payload.weekdays || payload.weekdays.length === 0)
-  ) {
-    return 'weekdays are required for weekly recurring events.';
-  }
+async function verifyAreaIds(areaIds: string[], venueId: string) {
+  if (!areaIds || areaIds.length === 0) return true;
+  const count = await prisma.area.count({ where: { id: { in: areaIds }, venueId } });
+  return count === areaIds.length;
+}
 
-  return null;
+async function verifyTableIds(tableIds: string[], venueId: string) {
+  if (!tableIds || tableIds.length === 0) return true;
+  const count = await prisma.table.count({ where: { id: { in: tableIds }, venueId } });
+  return count === tableIds.length;
 }
 
 export async function GET(
@@ -158,38 +108,64 @@ export async function POST(
 ) {
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
+
   const venueTimeZone = await resolveVenueTimeZone(params.venueId);
   if (!venueTimeZone) {
     return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
   }
 
-  const payload = (await request.json()) as EventPayload;
-  const error = validateEventPayload(payload, venueTimeZone);
-  if (error) {
-    return NextResponse.json({ error }, { status: 400 });
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
+  }
+
+  const parsed = createBookingEventSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid event payload.', details: mapZodErrors(parsed.error.issues) },
+      { status: 400 }
+    );
+  }
+
+  const data = parsed.data;
+
+  if (data.allowedAreaIds?.length) {
+    const valid = await verifyAreaIds(data.allowedAreaIds, params.venueId);
+    if (!valid) {
+      return NextResponse.json({ error: 'One or more allowedAreaIds do not belong to this venue.' }, { status: 400 });
+    }
+  }
+
+  if (data.allowedTableIds?.length) {
+    const valid = await verifyTableIds(data.allowedTableIds, params.venueId);
+    if (!valid) {
+      return NextResponse.json({ error: 'One or more allowedTableIds do not belong to this venue.' }, { status: 400 });
+    }
   }
 
   const event = await prisma.bookingEvent.create({
     data: {
       venueId: params.venueId,
-      isActive: payload.isActive ?? true,
-      name: payload.name!.trim(),
-      eventType: payload.eventType!,
-      singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
-      dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),
-      dateEnd: parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone),
-      weekdays: payload.weekdays ?? [],
-      confirmationMode: payload.confirmationMode ?? null,
-      placementMode: payload.placementMode ?? null,
-      minPartySize: payload.minPartySize ?? null,
-      maxOnlinePartySize: payload.maxOnlinePartySize ?? null,
-      minAdvanceNoticeMinutes: payload.minAdvanceNoticeMinutes ?? null,
-      maxDaysAhead: payload.maxDaysAhead ?? null,
-      durationMinutes: payload.durationMinutes ?? null,
-      publicInstructions: normalizeNullableString(payload.publicInstructions),
-      publicLabel: normalizeNullableString(payload.publicLabel),
-      allowedAreaIds: payload.allowedAreaIds ?? [],
-      allowedTableIds: payload.allowedTableIds ?? []
+      isActive: data.isActive ?? true,
+      name: data.name.trim(),
+      eventType: data.eventType,
+      singleDate: parseCalendarDateInVenueTimeZone(data.singleDate, venueTimeZone),
+      dateStart: parseCalendarDateInVenueTimeZone(data.dateStart, venueTimeZone),
+      dateEnd: parseCalendarDateInVenueTimeZone(data.dateEnd, venueTimeZone),
+      weekdays: data.weekdays ?? [],
+      confirmationMode: data.confirmationMode ?? null,
+      placementMode: data.placementMode ?? null,
+      minPartySize: data.minPartySize ?? null,
+      maxOnlinePartySize: data.maxOnlinePartySize ?? null,
+      minAdvanceNoticeMinutes: data.minAdvanceNoticeMinutes ?? null,
+      maxDaysAhead: data.maxDaysAhead ?? null,
+      durationMinutes: data.durationMinutes ?? null,
+      publicInstructions: normalizeNullableString(data.publicInstructions),
+      publicLabel: normalizeNullableString(data.publicLabel),
+      allowedAreaIds: data.allowedAreaIds ?? [],
+      allowedTableIds: data.allowedTableIds ?? []
     }
   });
 
@@ -202,49 +178,72 @@ export async function PUT(
 ) {
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
+
   const venueTimeZone = await resolveVenueTimeZone(params.venueId);
   if (!venueTimeZone) {
     return NextResponse.json({ error: 'Venue not found.' }, { status: 404 });
   }
 
-  const payload = (await request.json()) as EventPayload;
-  if (!payload.id) {
-    return NextResponse.json({ error: 'id is required.' }, { status: 400 });
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
   }
 
-  const error = validateEventPayload(payload, venueTimeZone);
-  if (error) {
-    return NextResponse.json({ error }, { status: 400 });
+  const parsed = updateBookingEventSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid event payload.', details: mapZodErrors(parsed.error.issues) },
+      { status: 400 }
+    );
   }
+
+  const data = parsed.data;
+
   const existing = await prisma.bookingEvent.findFirst({
-    where: { id: payload.id, venueId: params.venueId },
+    where: { id: data.id, venueId: params.venueId },
     select: { id: true }
   });
   if (!existing) {
     return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
   }
 
+  if (data.allowedAreaIds?.length) {
+    const valid = await verifyAreaIds(data.allowedAreaIds, params.venueId);
+    if (!valid) {
+      return NextResponse.json({ error: 'One or more allowedAreaIds do not belong to this venue.' }, { status: 400 });
+    }
+  }
+
+  if (data.allowedTableIds?.length) {
+    const valid = await verifyTableIds(data.allowedTableIds, params.venueId);
+    if (!valid) {
+      return NextResponse.json({ error: 'One or more allowedTableIds do not belong to this venue.' }, { status: 400 });
+    }
+  }
+
   const event = await prisma.bookingEvent.update({
-    where: { id: payload.id },
+    where: { id: data.id },
     data: {
-      isActive: payload.isActive ?? true,
-      name: payload.name!.trim(),
-      eventType: payload.eventType!,
-      singleDate: parseCalendarDateInVenueTimeZone(payload.singleDate, venueTimeZone),
-      dateStart: parseCalendarDateInVenueTimeZone(payload.dateStart, venueTimeZone),
-      dateEnd: parseCalendarDateInVenueTimeZone(payload.dateEnd, venueTimeZone),
-      weekdays: payload.weekdays ?? [],
-      confirmationMode: payload.confirmationMode ?? null,
-      placementMode: payload.placementMode ?? null,
-      minPartySize: payload.minPartySize ?? null,
-      maxOnlinePartySize: payload.maxOnlinePartySize ?? null,
-      minAdvanceNoticeMinutes: payload.minAdvanceNoticeMinutes ?? null,
-      maxDaysAhead: payload.maxDaysAhead ?? null,
-      durationMinutes: payload.durationMinutes ?? null,
-      publicInstructions: normalizeNullableString(payload.publicInstructions),
-      publicLabel: normalizeNullableString(payload.publicLabel),
-      allowedAreaIds: payload.allowedAreaIds ?? [],
-      allowedTableIds: payload.allowedTableIds ?? []
+      isActive: data.isActive ?? true,
+      name: data.name.trim(),
+      eventType: data.eventType,
+      singleDate: parseCalendarDateInVenueTimeZone(data.singleDate, venueTimeZone),
+      dateStart: parseCalendarDateInVenueTimeZone(data.dateStart, venueTimeZone),
+      dateEnd: parseCalendarDateInVenueTimeZone(data.dateEnd, venueTimeZone),
+      weekdays: data.weekdays ?? [],
+      confirmationMode: data.confirmationMode ?? null,
+      placementMode: data.placementMode ?? null,
+      minPartySize: data.minPartySize ?? null,
+      maxOnlinePartySize: data.maxOnlinePartySize ?? null,
+      minAdvanceNoticeMinutes: data.minAdvanceNoticeMinutes ?? null,
+      maxDaysAhead: data.maxDaysAhead ?? null,
+      durationMinutes: data.durationMinutes ?? null,
+      publicInstructions: normalizeNullableString(data.publicInstructions),
+      publicLabel: normalizeNullableString(data.publicLabel),
+      allowedAreaIds: data.allowedAreaIds ?? [],
+      allowedTableIds: data.allowedTableIds ?? []
     }
   });
 

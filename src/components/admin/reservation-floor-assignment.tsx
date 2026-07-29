@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FloorLayoutRenderer } from './floor-layout-renderer';
 import { SectionCard } from './section-card';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
+import { apiFetch, ApiError } from '@/lib/client/api';
 
 type Snapshot = {
   reservation: {
@@ -58,27 +59,22 @@ export function ReservationFloorAssignment({
   async function loadSnapshot() {
     setLoading(true);
     setError(null);
-
-    const res = await fetch(
-      `/api/admin/reservations/${reservationId}/assignment?organizationId=${organizationId}`,
-      { cache: 'no-store' }
-    );
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to load floor assignment state.');
+    try {
+      const body = await apiFetch<{ snapshot: Snapshot }>(
+        `/api/admin/reservations/${reservationId}/assignment?organizationId=${organizationId}`,
+        { cache: 'no-store' }
+      );
+      const nextSnapshot = body.snapshot;
+      setSnapshot(nextSnapshot);
+      const firstAssigned = nextSnapshot.tableStates.find(
+        (table) => table.status === 'assigned-selected'
+      );
+      setSelectedLayoutTableId(firstAssigned?.layoutTableId ?? null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to load floor assignment state.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const nextSnapshot = body.snapshot as Snapshot;
-    setSnapshot(nextSnapshot);
-
-    const firstAssigned = nextSnapshot.tableStates.find(
-      (table) => table.status === 'assigned-selected'
-    );
-    setSelectedLayoutTableId(firstAssigned?.layoutTableId ?? null);
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -149,24 +145,20 @@ export function ReservationFloorAssignment({
     setSaving(true);
     setError(null);
     setNotice(null);
-
-    const res = await fetch(`/api/admin/reservations/${reservationId}/assignment`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizationId, tableId })
-    });
-
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(body.error ?? 'Failed to save assignment.');
+    try {
+      const body = await apiFetch<{ snapshot: Snapshot }>(`/api/admin/reservations/${reservationId}/assignment`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId, tableId })
+      });
+      setSnapshot(body.snapshot);
+      setNotice(tableId ? 'Reservation reassigned.' : 'Reservation unassigned.');
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to save assignment.');
+    } finally {
       setSaving(false);
-      return;
     }
-
-    setSnapshot(body.snapshot as Snapshot);
-    setNotice(tableId ? 'Reservation reassigned.' : 'Reservation unassigned.');
-    setSaving(false);
-    router.refresh();
   }
 
   return (

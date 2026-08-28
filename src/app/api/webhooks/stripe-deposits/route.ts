@@ -6,12 +6,20 @@ import {
   markDepositPaidByPaymentIntent,
   markDepositFailedByPaymentIntent
 } from '@/server/deposits/service';
+import {
+  markOrderPaymentSucceededByIntent,
+  markOrderPaymentFailedByIntent
+} from '@/server/order-payments/service';
 import { prisma } from '@/server/db/prisma/client';
 import { env } from '@/env';
 
 // Separate webhook endpoint from /api/webhooks/stripe (SaaS billing) — this
-// one is a distinct Stripe webhook subscription for guest-facing reservation
-// deposits (payment_intent.* events), with its own signing secret.
+// one is a distinct Stripe webhook subscription for guest/venue-facing
+// payments (payment_intent.* events: reservation deposits and order
+// payments), with its own signing secret. Deposit and order-payment
+// PaymentIntents share this same event stream; each mark*ByPaymentIntent
+// call below is a no-op update if the intent id doesn't belong to that
+// table, so it's safe to call both unconditionally.
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
@@ -51,18 +59,20 @@ export async function POST(request: Request) {
   // so this still gives correct idempotency across both handlers.
   try {
     switch (event.type) {
-      case 'payment_intent.succeeded':
-        await markDepositPaidByPaymentIntent(
-          (event.data.object as Stripe.PaymentIntent).id
-        );
+      case 'payment_intent.succeeded': {
+        const id = (event.data.object as Stripe.PaymentIntent).id;
+        await markDepositPaidByPaymentIntent(id);
+        await markOrderPaymentSucceededByIntent(id);
         break;
+      }
 
       case 'payment_intent.payment_failed':
-      case 'payment_intent.canceled':
-        await markDepositFailedByPaymentIntent(
-          (event.data.object as Stripe.PaymentIntent).id
-        );
+      case 'payment_intent.canceled': {
+        const id = (event.data.object as Stripe.PaymentIntent).id;
+        await markDepositFailedByPaymentIntent(id);
+        await markOrderPaymentFailedByIntent(id);
         break;
+      }
 
       default:
         break;

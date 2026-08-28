@@ -119,6 +119,14 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderPaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
 model Organization {
   id                   String             @id @default(cuid())
   name                 String
@@ -649,11 +657,31 @@ model Order {
   reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
   createdByUser User?        @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   lines         OrderLine[]
+  payments      OrderPayment[]
 
   @@index([organizationId])
   @@index([venueId, status])
   @@index([tableId])
   @@index([reservationId])
+}
+
+model OrderPayment {
+  id            String             @id @default(cuid())
+  orderId       String
+  amountMinor   Int
+  tipMinor      Int                @default(0)
+  currency      String             @default("USD")
+  status        OrderPaymentStatus @default(PENDING)
+  provider      String?
+  providerRef   String?
+  refundedMinor Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
 }
 
 model OrderLine {

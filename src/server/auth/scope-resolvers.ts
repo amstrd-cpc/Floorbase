@@ -58,3 +58,13 @@ export async function getOrderLineScope(lineId: string) {
     }
   });
 }
+
+export async function getOrderPaymentScope(orderPaymentId: string) {
+  return prisma.orderPayment.findUnique({
+    where: { id: orderPaymentId },
+    select: {
+      id: true,
+      order: { select: { id: true, organizationId: true, venueId: true } }
+    }
+  });
+}

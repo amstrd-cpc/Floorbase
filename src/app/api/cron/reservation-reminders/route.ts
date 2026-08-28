@@ -5,7 +5,11 @@ import { env } from '@/env';
 
 export const dynamic = 'force-dynamic';
 
-const REMINDER_WINDOW_HOURS = 24;
+// Vercel Hobby plan only allows daily cron (see vercel.json), not hourly.
+// With a 24h-apart cadence, a plain 24h window can catch a reservation right
+// at the edge and only remind it a few minutes before start instead of a day
+// ahead. 30h guarantees at least ~6h notice on every run at that cadence.
+const REMINDER_WINDOW_HOURS = 30;
 // ponytail: a flat cap instead of pagination — fine at expected reminder
 // volume per run; paginate if a single run regularly hits this.
 const MAX_REMINDERS_PER_RUN = 200;

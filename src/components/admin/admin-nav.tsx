@@ -8,9 +8,10 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Today', n: '01' },
   { href: '/admin/reservations', label: 'Reservations', n: '02' },
   { href: '/admin/floor', label: 'Floor', n: '03' },
-  { href: '/admin/events', label: 'Events', n: '04' },
-  { href: '/admin/settings', label: 'Settings', n: '05' },
-  { href: '/admin/billing', label: 'Billing', n: '06' },
+  { href: '/admin/menu', label: 'Menu', n: '04' },
+  { href: '/admin/events', label: 'Events', n: '05' },
+  { href: '/admin/settings', label: 'Settings', n: '06' },
+  { href: '/admin/billing', label: 'Billing', n: '07' },
 ];
 
 export function AdminNav() {

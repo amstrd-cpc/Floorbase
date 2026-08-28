@@ -171,6 +171,8 @@ model Venue {
   floorLayouts FloorLayout[]
   adminRoles    AdminRoleAssignment[]
   authInvites   AuthInvite[]
+  menuCategories MenuCategory[]
+  menuItems     MenuItem[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -578,6 +580,42 @@ model RateLimitBucket {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+model MenuCategory {
+  id        String   @id @default(cuid())
+  venueId   String
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  items MenuItem[]
+
+  @@unique([venueId, name])
+  @@index([venueId])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  categoryId  String
+  name        String
+  description String?
+  priceMinor  Int
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  venue    Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, name])
+  @@index([venueId])
+  @@index([categoryId])
 }
 
 model FloorLayout {

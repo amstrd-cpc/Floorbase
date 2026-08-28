@@ -27,3 +27,17 @@ export async function getReservationScope(reservationId: string) {
     select: { id: true, organizationId: true, venueId: true }
   });
 }
+
+export async function getMenuCategoryScope(categoryId: string) {
+  return prisma.menuCategory.findUnique({
+    where: { id: categoryId },
+    select: { id: true, venue: { select: { id: true, organizationId: true } } }
+  });
+}
+
+export async function getMenuItemScope(itemId: string) {
+  return prisma.menuItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, venue: { select: { id: true, organizationId: true } } }
+  });
+}

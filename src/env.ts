@@ -23,6 +23,10 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
   STRIPE_PRICE_ID: z.string().startsWith('price_').optional(),
+  // Separate webhook endpoint/secret from the SaaS billing one above — this
+  // one is for guest-facing reservation deposits, a different Stripe
+  // webhook subscription in the dashboard (payment_intent.* events).
+  STRIPE_DEPOSITS_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
   // Resend — optional; email sending is skipped when absent
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
   EMAIL_FROM: z.string().default('Floorbase <noreply@floorbase.app>')

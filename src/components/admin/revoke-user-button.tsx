@@ -12,15 +12,20 @@ export function RevokeUserButton({ userId }: { userId: string }) {
   async function handleRevoke() {
     setLoading(true);
     setError(null);
-    const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? 'Failed to revoke access.');
-      return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? 'Failed to revoke access.');
+        return;
+      }
+      setConfirming(false);
+      router.refresh();
+    } catch {
+      setError('Network error. Try again.');
+    } finally {
+      setLoading(false);
     }
-    setConfirming(false);
-    router.refresh();
   }
 
   if (confirming) {

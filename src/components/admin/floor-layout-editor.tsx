@@ -170,10 +170,10 @@ export function FloorLayoutEditor({
         body: JSON.stringify({ venueId, name, sortOrder: draft.areas.length, isActive: true })
       });
       setAreas((current) => [...current, { id: body.area.id, name: body.area.name }]);
-      markDirty({
-        ...draft,
+      setDraft((currentDraft) => ({
+        ...currentDraft,
         areas: [
-          ...draft.areas,
+          ...currentDraft.areas,
           {
             id: newId(),
             areaId: body.area.id,
@@ -182,7 +182,9 @@ export function FloorLayoutEditor({
             isActive: body.area.isActive
           }
         ]
-      });
+      }));
+      setDirty(true);
+      setSuccess(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to create zone.');
     }
@@ -204,12 +206,14 @@ export function FloorLayoutEditor({
       setAreas((current) =>
         current.map((area) => (area.id === areaId ? { ...area, name: trimmed } : area))
       );
-      markDirty({
-        ...draft,
-        areas: draft.areas.map((area) =>
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        areas: currentDraft.areas.map((area) =>
           area.areaId === areaId ? { ...area, name: trimmed } : area
         )
-      });
+      }));
+      setDirty(true);
+      setSuccess(null);
       setEditingZoneId(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to rename zone.');
@@ -325,6 +329,7 @@ export function FloorLayoutEditor({
   async function updateDomainTable(payload: Partial<DomainTable>) {
     if (!selectedDomainTable) return;
     setError(null);
+    const selectedPlacedTableId = selectedPlacedTable?.id;
 
     try {
       const body = await apiFetch<{ table: DomainTable }>(`/api/admin/tables/${selectedDomainTable.id}`, {
@@ -334,17 +339,27 @@ export function FloorLayoutEditor({
       });
       const next = body.table;
       setTables((current) => current.map((table) => (table.id === next.id ? next : table)));
-      if (selectedPlacedTable) {
-        patchPlacedTable({
-          label: next.name,
-          capacityMin: next.capacityMin,
-          capacityMax: next.capacityMax,
-          shape: next.shape,
-          isActive: next.isActive,
-          combinableMeta: next.canCombine ? { combineGroup: next.combineGroup } : null,
-          floorLayoutAreaId:
-            draft.areas.find((area) => area.areaId === next.areaId)?.id ?? null
-        });
+      if (selectedPlacedTableId) {
+        setDraft((currentDraft) => ({
+          ...currentDraft,
+          tables: currentDraft.tables.map((table) =>
+            table.id === selectedPlacedTableId
+              ? {
+                  ...table,
+                  label: next.name,
+                  capacityMin: next.capacityMin,
+                  capacityMax: next.capacityMax,
+                  shape: next.shape,
+                  isActive: next.isActive,
+                  combinableMeta: next.canCombine ? { combineGroup: next.combineGroup } : null,
+                  floorLayoutAreaId:
+                    currentDraft.areas.find((area) => area.areaId === next.areaId)?.id ?? null
+                }
+              : table
+          )
+        }));
+        setDirty(true);
+        setSuccess(null);
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to update table.');
@@ -388,10 +403,11 @@ export function FloorLayoutEditor({
         method: 'DELETE'
       });
       setTables((current) => current.filter((table) => table.id !== selectedDomainTable.id));
-      markDirty({
-        ...draft,
-        tables: draft.tables.filter((table) => table.tableId !== selectedDomainTable.id)
-      });
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        tables: currentDraft.tables.filter((table) => table.tableId !== selectedDomainTable.id)
+      }));
+      setDirty(true);
       setSelectedTableInventoryId(null);
       setSuccess('Table deleted.');
     } catch (e) {

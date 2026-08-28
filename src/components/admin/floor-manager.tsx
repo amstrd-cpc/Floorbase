@@ -114,23 +114,28 @@ export function FloorManager({
   async function createArea(formData: FormData) {
     setError(null);
 
-    const res = await fetch('/api/admin/areas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venueId,
-        name: formData.get('name'),
-        sortOrder: Number(formData.get('sortOrder') || 0),
-        isActive: formData.get('isActive') === 'on'
-      })
-    });
+    try {
+      const res = await fetch('/api/admin/areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId,
+          name: formData.get('name'),
+          sortOrder: Number(formData.get('sortOrder') || 0),
+          isActive: formData.get('isActive') === 'on'
+        })
+      });
 
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return setError(body.error ?? 'Failed to create area.');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? 'Failed to create area.');
+        return;
+      }
+
+      await refreshAreas();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create area.');
     }
-
-    await refreshAreas();
   }
 
   async function createTable(formData: FormData) {
@@ -139,30 +144,35 @@ export function FloorManager({
     const canCombine = formData.get('canCombine') === 'on';
     const combineGroupRaw = String(formData.get('combineGroup') ?? '').trim();
 
-    const res = await fetch('/api/admin/tables', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        venueId,
-        areaId: formData.get('areaId'),
-        name: formData.get('name'),
-        code: formData.get('code') || null,
-        shape: formData.get('shape'),
-        tableType: formData.get('tableType'),
-        canCombine,
-        combineGroup: canCombine && combineGroupRaw ? combineGroupRaw : null,
-        capacityMin: Number(formData.get('capacityMin') || 1),
-        capacityMax: Number(formData.get('capacityMax')),
-        isActive: formData.get('isActive') === 'on'
-      })
-    });
+    try {
+      const res = await fetch('/api/admin/tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId,
+          areaId: formData.get('areaId'),
+          name: formData.get('name'),
+          code: formData.get('code') || null,
+          shape: formData.get('shape'),
+          tableType: formData.get('tableType'),
+          canCombine,
+          combineGroup: canCombine && combineGroupRaw ? combineGroupRaw : null,
+          capacityMin: Number(formData.get('capacityMin') || 1),
+          capacityMax: Number(formData.get('capacityMax')),
+          isActive: formData.get('isActive') === 'on'
+        })
+      });
 
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return setError(body.error ?? 'Failed to create table.');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? 'Failed to create table.');
+        return;
+      }
+
+      await refreshAreas();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create table.');
     }
-
-    await refreshAreas();
   }
 
   async function patchArea(areaId: string, payload: Record<string, unknown>) {
@@ -187,6 +197,8 @@ export function FloorManager({
           area.id === areaId ? { ...area, ...(body.area as Area) } : area
         )
       );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update area.');
     } finally {
       setSavingId(null);
     }
@@ -214,6 +226,8 @@ export function FloorManager({
       }
 
       onSuccess(body.table as FloorTable);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update table.');
     } finally {
       setSavingId(null);
     }

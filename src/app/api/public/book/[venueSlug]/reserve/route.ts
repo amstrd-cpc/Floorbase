@@ -95,7 +95,7 @@ async function sendEmailsForPublicBooking(input: {
     const [reservation, orgAdmin] = await Promise.all([
       prisma.reservation.findUnique({
         where: { id: input.reservationId },
-        select: { startAt: true, partySize: true, guest: { select: { fullName: true, email: true, phone: true } } }
+        select: { startAt: true, partySize: true, guest: { select: { id: true, fullName: true, email: true, phone: true } } }
       }),
       prisma.user.findFirst({
         where: {
@@ -122,7 +122,9 @@ async function sendEmailsForPublicBooking(input: {
         timezone: input.venue.timezone,
         partySize: reservation.partySize,
         statusCode: input.statusCode,
-        reservationId: input.reservationId
+        reservationId: input.reservationId,
+        organizationId: input.venue.organizationId,
+        guestId: reservation.guest.id
       });
     }
 
@@ -138,7 +140,9 @@ async function sendEmailsForPublicBooking(input: {
         partySize: reservation.partySize,
         source: 'Online booking',
         appUrl: env.APP_URL,
-        reservationId: input.reservationId
+        reservationId: input.reservationId,
+        organizationId: input.venue.organizationId,
+        guestId: reservation.guest.id
       });
     }
   } catch (err) {

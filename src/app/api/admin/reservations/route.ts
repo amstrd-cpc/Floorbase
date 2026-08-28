@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 }
 
 async function sendAdminReservationAlert(input: {
-  reservation: { id: string; startAt: Date; partySize: number; guest: { fullName: string | null; email: string | null; phone: string | null } };
+  reservation: { id: string; startAt: Date; partySize: number; guest: { id: string; fullName: string | null; email: string | null; phone: string | null } };
   organizationId: string;
 }) {
   try {
@@ -170,6 +170,8 @@ async function sendAdminReservationAlert(input: {
       source: 'Admin',
       appUrl: env.APP_URL,
       reservationId: input.reservation.id,
+      organizationId: input.organizationId,
+      guestId: input.reservation.guest.id,
     });
   } catch (err) {
     console.error('Admin reservation email error', err);

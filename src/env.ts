@@ -29,7 +29,11 @@ const envSchema = z.object({
   STRIPE_DEPOSITS_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
   // Resend — optional; email sending is skipped when absent
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
-  EMAIL_FROM: z.string().default('Floorbase <noreply@floorbase.app>')
+  EMAIL_FROM: z.string().default('Floorbase <noreply@floorbase.app>'),
+  // Verifies scheduled-job requests (e.g. Vercel Cron sends this as
+  // `Authorization: Bearer <value>`). Optional so cron routes stay callable
+  // locally in dev; set it in production.
+  CRON_SECRET: z.string().min(16).optional()
 });
 
 export const env = envSchema.parse(process.env);

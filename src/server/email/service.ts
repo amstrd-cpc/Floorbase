@@ -1,7 +1,38 @@
 import { Resend } from 'resend';
+import type { NotificationStatus } from '@prisma/client';
 import { env } from '@/env';
+import { prisma } from '@/server/db/prisma/client';
 
 let _resend: Resend | null = null;
+
+async function logNotification(input: {
+  organizationId: string;
+  reservationId?: string;
+  guestId?: string;
+  templateKey: string;
+  recipient: string;
+  status: NotificationStatus;
+  errorMessage?: string;
+}) {
+  try {
+    await prisma.notificationLog.create({
+      data: {
+        organizationId: input.organizationId,
+        reservationId: input.reservationId,
+        guestId: input.guestId,
+        channel: 'EMAIL',
+        templateKey: input.templateKey,
+        recipient: input.recipient,
+        status: input.status,
+        provider: 'resend',
+        errorMessage: input.errorMessage,
+        sentAt: input.status === 'SENT' ? new Date() : null
+      }
+    });
+  } catch (err) {
+    console.error('Failed to write notification log', err);
+  }
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -39,9 +70,21 @@ export async function sendGuestConfirmation(input: {
   partySize: number;
   statusCode: string;
   reservationId: string;
+  organizationId: string;
+  guestId?: string;
 }) {
   const resend = getResend();
-  if (!resend) return;
+  if (!resend) {
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'guest_confirmation',
+      recipient: input.to,
+      status: 'SKIPPED'
+    });
+    return;
+  }
 
   const isPending = input.statusCode === 'PENDING';
   const safeVenueName = escapeHtml(input.venueName);
@@ -74,8 +117,95 @@ export async function sendGuestConfirmation(input: {
       subject,
       html,
     });
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'guest_confirmation',
+      recipient: input.to,
+      status: 'SENT'
+    });
   } catch (err) {
     console.error('sendGuestConfirmation failed', err);
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'guest_confirmation',
+      recipient: input.to,
+      status: 'FAILED',
+      errorMessage: err instanceof Error ? err.message : 'Unknown error'
+    });
+  }
+}
+
+export async function sendGuestReminder(input: {
+  to: string;
+  guestName: string;
+  venueName: string;
+  startAt: Date;
+  timezone: string;
+  partySize: number;
+  reservationId: string;
+  organizationId: string;
+  guestId?: string;
+}) {
+  const resend = getResend();
+  if (!resend) {
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'reservation_reminder',
+      recipient: input.to,
+      status: 'SKIPPED'
+    });
+    return;
+  }
+
+  const safeVenueName = escapeHtml(input.venueName);
+  const safeGuestName = escapeHtml(input.guestName);
+  const subject = `Reminder: your reservation at ${input.venueName}`;
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+      <h2 style="margin-bottom:4px">${escapeHtml(subject)}</h2>
+      <p>Hi ${safeGuestName},</p>
+      <p>Just a reminder about your upcoming reservation.</p>
+      <table style="border-collapse:collapse;width:100%;margin:16px 0">
+        <tr><td style="padding:6px 12px 6px 0;color:#666;width:140px">Venue</td><td style="padding:6px 0"><strong>${safeVenueName}</strong></td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Date &amp; time</td><td style="padding:6px 0">${formatTime(input.startAt, input.timezone)}</td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#666">Party size</td><td style="padding:6px 0">${input.partySize} ${input.partySize === 1 ? 'guest' : 'guests'}</td></tr>
+      </table>
+      <p style="color:#666;font-size:13px">If you need to make changes, please contact the venue directly.</p>
+    </div>`;
+
+  try {
+    await resend.emails.send({
+      from: env.EMAIL_FROM,
+      to: input.to,
+      subject,
+      html,
+    });
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'reservation_reminder',
+      recipient: input.to,
+      status: 'SENT'
+    });
+  } catch (err) {
+    console.error('sendGuestReminder failed', err);
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'reservation_reminder',
+      recipient: input.to,
+      status: 'FAILED',
+      errorMessage: err instanceof Error ? err.message : 'Unknown error'
+    });
   }
 }
 
@@ -123,9 +253,21 @@ export async function sendVenueNewReservationAlert(input: {
   source: string;
   appUrl: string;
   reservationId: string;
+  organizationId: string;
+  guestId?: string;
 }) {
   const resend = getResend();
-  if (!resend) return;
+  if (!resend) {
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'venue_new_reservation_alert',
+      recipient: input.to,
+      status: 'SKIPPED'
+    });
+    return;
+  }
 
   const safeGuestName = escapeHtml(input.guestName);
   const safeVenueName = escapeHtml(input.venueName);
@@ -156,7 +298,24 @@ export async function sendVenueNewReservationAlert(input: {
       subject,
       html,
     });
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'venue_new_reservation_alert',
+      recipient: input.to,
+      status: 'SENT'
+    });
   } catch (err) {
     console.error('sendVenueNewReservationAlert failed', err);
+    await logNotification({
+      organizationId: input.organizationId,
+      reservationId: input.reservationId,
+      guestId: input.guestId,
+      templateKey: 'venue_new_reservation_alert',
+      recipient: input.to,
+      status: 'FAILED',
+      errorMessage: err instanceof Error ? err.message : 'Unknown error'
+    });
   }
 }

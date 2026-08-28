@@ -6,7 +6,7 @@ import { checkRateLimit } from '@/server/rate-limit';
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rl = checkRateLimit({ key: `forgot-password:${ip}`, limit: 5, windowMs: 60 * 60 * 1000 });
+  const rl = await checkRateLimit({ key: `forgot-password:${ip}`, limit: 5, windowMs: 60 * 60 * 1000 });
   if (!rl.allowed) {
     return NextResponse.json({ ok: true }); // always 200 to avoid enumeration
   }

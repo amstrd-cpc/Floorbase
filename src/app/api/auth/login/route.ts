@@ -15,7 +15,7 @@ function getClientIp(request: Request): string {
 export async function POST(request: Request) {
   const ip = getClientIp(request);
 
-  const ipRate = checkRateLimit({ key: `login_ip:${ip}`, limit: 20, windowMs: 15 * 60_000 });
+  const ipRate = await checkRateLimit({ key: `login_ip:${ip}`, limit: 20, windowMs: 15 * 60_000 });
   if (!ipRate.allowed) {
     return NextResponse.redirect(new URL('/login?error=too_many_requests', request.url));
   }
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL('/login?error=invalid_credentials', request.url));
   }
 
-  const emailRate = checkRateLimit({ key: `login_email:${email}`, limit: 5, windowMs: 15 * 60_000 });
+  const emailRate = await checkRateLimit({ key: `login_email:${email}`, limit: 5, windowMs: 15 * 60_000 });
   if (!emailRate.allowed) {
     return NextResponse.redirect(new URL('/login?error=too_many_requests', request.url));
   }

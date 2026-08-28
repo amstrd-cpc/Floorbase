@@ -572,6 +572,14 @@ model StripeEvent {
   processedAt DateTime @default(now())
 }
 
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 model FloorLayout {
   id                    String            @id @default(cuid())
   venueId               String

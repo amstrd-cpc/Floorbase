@@ -1,39 +1,44 @@
-// Shared rate limiter. Currently in-memory — resets on process restart and
-// does not work across multiple instances.
+import { prisma } from '@/server/db/prisma/client';
+
+// Shared, DB-backed rate limiter (RateLimitBucket table) so limits hold
+// across instances/restarts, not just within one process's memory.
 //
-// To upgrade to Redis (recommended before horizontal scaling):
-//   npm install @upstash/redis @upstash/ratelimit
-//   Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in .env
-//   Replace this implementation with @upstash/ratelimit sliding window.
+// The increment is a single atomic upsert (INSERT ... ON CONFLICT DO
+// UPDATE), so concurrent requests for the same key can't race a
+// read-then-write like the in-memory Map version could.
 
-const buckets = new Map<string, { count: number; resetAt: number }>();
-
-// Purge expired entries every 10 minutes to prevent unbounded growth.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
-}, 10 * 60 * 1000).unref();
-
-export function checkRateLimit(input: {
+export async function checkRateLimit(input: {
   key: string;
   limit: number;
   windowMs: number;
-}): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const current = buckets.get(input.key);
+}): Promise<{ allowed: boolean; remaining: number }> {
+  const resetAt = new Date(Date.now() + input.windowMs);
 
-  if (!current || current.resetAt <= now) {
-    buckets.set(input.key, { count: 1, resetAt: now + input.windowMs });
-    return { allowed: true, remaining: input.limit - 1 };
+  const rows = await prisma.$queryRaw<Array<{ count: number; resetAt: Date }>>`
+    INSERT INTO "RateLimitBucket" ("key", "count", "resetAt")
+    VALUES (${input.key}, 1, ${resetAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= now() THEN 1
+        ELSE "RateLimitBucket"."count" + 1
+      END,
+      "resetAt" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= now() THEN ${resetAt}
+        ELSE "RateLimitBucket"."resetAt"
+      END
+    RETURNING "count", "resetAt"
+  `;
+
+  const { count } = rows[0];
+
+  // ponytail: probabilistic cleanup of expired buckets instead of a cron job —
+  // fine at this key cardinality; move to a scheduled delete if it isn't.
+  if (Math.random() < 0.01) {
+    await prisma.rateLimitBucket.deleteMany({ where: { resetAt: { lt: new Date() } } });
   }
 
-  if (current.count >= input.limit) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  current.count += 1;
-  buckets.set(input.key, current);
-  return { allowed: true, remaining: input.limit - current.count };
+  return {
+    allowed: count <= input.limit,
+    remaining: Math.max(0, input.limit - count)
+  };
 }

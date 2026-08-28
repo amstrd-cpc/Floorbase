@@ -20,7 +20,7 @@ function isStrongPassword(password: string): boolean {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const rate = checkRateLimit({ key: `signup_ip:${ip}`, limit: 5, windowMs: 60 * 60_000 });
+  const rate = await checkRateLimit({ key: `signup_ip:${ip}`, limit: 5, windowMs: 60 * 60_000 });
   if (!rate.allowed) {
     return NextResponse.redirect(new URL('/signup?error=too_many_requests', request.url));
   }

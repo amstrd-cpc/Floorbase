@@ -34,7 +34,7 @@ export async function POST(
   { params }: { params: { venueSlug: string } }
 ) {
   const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `reserve:${params.venueSlug}:${ip}`,
     limit: 10,
     windowMs: 60_000

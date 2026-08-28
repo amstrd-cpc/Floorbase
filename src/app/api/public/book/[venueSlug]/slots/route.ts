@@ -37,7 +37,7 @@ export async function GET(
   }
 
   const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `slots:${params.venueSlug}:${ip}`,
     limit: 60,
     windowMs: 60_000

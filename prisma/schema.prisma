@@ -113,6 +113,12 @@ enum FloorLayoutStatus {
   PUBLISHED
 }
 
+enum OrderStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
 model Organization {
   id                   String             @id @default(cuid())
   name                 String
@@ -136,6 +142,7 @@ model Organization {
   notifications       NotificationLog[]
   adminRoles          AdminRoleAssignment[]
   authInvites         AuthInvite[]
+  orders              Order[]
 }
 
 model Venue {
@@ -173,6 +180,7 @@ model Venue {
   authInvites   AuthInvite[]
   menuCategories MenuCategory[]
   menuItems     MenuItem[]
+  orders        Order[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -245,6 +253,7 @@ model Table {
   reservations ReservationTable[]
   blocks       TableBlock[]
   floorLayoutTables FloorLayoutTable[]
+  orders       Order[]
 
   @@unique([venueId, name])
   @@unique([venueId, code])
@@ -339,6 +348,7 @@ model Reservation {
   reservationTables ReservationTable[]
   deposit           Deposit?
   notifications     NotificationLog[]
+  orders            Order[]
 
   @@index([organizationId])
   @@index([venueId, reservationDate])
@@ -400,6 +410,7 @@ model User {
   authSessions        AuthSession[]
   passwordResetTokens PasswordResetToken[]
   sentInvites         AuthInvite[]          @relation("AuthInviteSender")
+  createdOrders       Order[]
 
   @@index([organizationId])
 }
@@ -610,12 +621,57 @@ model MenuItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  venue    Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  category MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderLines OrderLine[]
 
   @@unique([venueId, name])
   @@index([venueId])
   @@index([categoryId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  organizationId  String
+  venueId         String
+  tableId         String?
+  reservationId   String?
+  status          OrderStatus @default(OPEN)
+  notes           String?
+  createdByUserId String?
+  closedAt        DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue         Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table         Table?       @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  createdByUser User?        @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lines         OrderLine[]
+
+  @@index([organizationId])
+  @@index([venueId, status])
+  @@index([tableId])
+  @@index([reservationId])
+}
+
+model OrderLine {
+  id                 String   @id @default(cuid())
+  orderId            String
+  menuItemId         String?
+  nameSnapshot       String
+  priceMinorSnapshot Int
+  quantity           Int      @default(1)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([menuItemId])
 }
 
 model FloorLayout {

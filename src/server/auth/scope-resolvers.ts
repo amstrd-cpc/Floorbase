@@ -41,3 +41,20 @@ export async function getMenuItemScope(itemId: string) {
     select: { id: true, venue: { select: { id: true, organizationId: true } } }
   });
 }
+
+export async function getOrderScope(orderId: string) {
+  return prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, organizationId: true, venueId: true }
+  });
+}
+
+export async function getOrderLineScope(lineId: string) {
+  return prisma.orderLine.findUnique({
+    where: { id: lineId },
+    select: {
+      id: true,
+      order: { select: { id: true, organizationId: true, venueId: true } }
+    }
+  });
+}

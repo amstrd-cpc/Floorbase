@@ -1,7 +1,12 @@
 import { BookingLifecycleStatus, Prisma } from '@prisma/client';
 import { getPublishedLayout } from '@/server/floor-layout/service';
 import { prisma } from '@/server/db/prisma/client';
-import { ReservationNotFoundError, ReservationValidationError } from './errors';
+import {
+  ReservationConflictError,
+  ReservationNotFoundError,
+  ReservationValidationError
+} from './errors';
+import { lockTablesForBooking } from './availability-service';
 import { hasOverlappingWindow } from './availability';
 
 type AssignmentContext = {
@@ -202,7 +207,7 @@ async function assertTableAssignable(input: {
         .join(' ') ||
         'another reservation');
 
-    throw new ReservationValidationError('Table is already assigned for an overlapping reservation window.', {
+    throw new ReservationConflictError('Table is already assigned for an overlapping reservation window.', {
       tableId: 'overlap conflict',
       conflictReservationId: overlaps.reservation.id,
       conflictGuest: overlapGuest
@@ -385,6 +390,7 @@ export async function setReservationTableAssignment(input: {
     const previousTableIds = reservation.reservationTables.map((item) => item.tableId);
 
     if (input.tableId) {
+      await lockTablesForBooking(tx, [input.tableId]);
       await assertTableAssignable({
         tx,
         reservationId: reservation.id,

@@ -11,7 +11,7 @@ import {
   computeReservationWindow,
   validateSlotAligned
 } from './availability';
-import { canPlaceReservation } from './availability-service';
+import { canPlaceReservation, lockTablesForBooking } from './availability-service';
 import {
   type CancelReservationInput,
   type ChangeReservationStatusInput,
@@ -22,7 +22,11 @@ import {
   createReservationSchema,
   updateReservationSchema
 } from './validation';
-import { ReservationNotFoundError, ReservationValidationError } from './errors';
+import {
+  ReservationConflictError,
+  ReservationNotFoundError,
+  ReservationValidationError
+} from './errors';
 
 type ReservationWithRelations = Prisma.ReservationGetPayload<{
   include: {
@@ -412,6 +416,7 @@ export async function createReservation(input: {
         durationMinutes: parsed.data.durationMinutes
       });
       assertDurationAndSlot(reservationWindow);
+      await lockTablesForBooking(tx, parsed.data.tableIds);
 
       await assertVenue(tx, {
         venueId: parsed.data.venueId,
@@ -431,7 +436,7 @@ export async function createReservation(input: {
         endAt: reservationWindow.endAt
       });
       if (!placementCheck.ok) {
-        throw new ReservationValidationError(
+        throw new ReservationConflictError(
           'Reservation cannot be placed at the selected time with the selected tables.',
           { availability: String(placementCheck.reason ?? 'UNKNOWN') }
         );
@@ -614,6 +619,7 @@ export async function updateReservation(input: {
       });
     }
     assertDurationAndSlot(reservationWindow);
+    await lockTablesForBooking(tx, tableIds);
 
     await assertVenue(tx, { venueId, organizationId: input.organizationId });
     await assertTableAssignments(tx, { venueId, tableIds, partySize });
@@ -627,7 +633,7 @@ export async function updateReservation(input: {
       endAt: reservationWindow.endAt
     });
     if (!placementCheck.ok) {
-      throw new ReservationValidationError(
+      throw new ReservationConflictError(
         'Reservation cannot be placed at the selected time with the selected tables.',
         { availability: String(placementCheck.reason ?? 'UNKNOWN') }
       );

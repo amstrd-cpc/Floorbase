@@ -14,3 +14,13 @@ export class ReservationNotFoundError extends Error {
     this.name = 'ReservationNotFoundError';
   }
 }
+
+export class ReservationConflictError extends ReservationValidationError {
+  constructor(
+    message = 'Selected table is no longer available for this time window.',
+    details?: Record<string, string>
+  ) {
+    super(message, details);
+    this.name = 'ReservationConflictError';
+  }
+}

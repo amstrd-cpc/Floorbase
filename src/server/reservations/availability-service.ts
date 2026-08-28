@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
 import { chooseBestTableSet, type AssignableTable } from './table-assignment';
 import {
@@ -301,6 +302,21 @@ export async function listAvailableTables(input: {
     recommendedTableIds: recommendedTables.map((table) => table.id),
     window
   };
+}
+
+/**
+ * Serializes concurrent writers per table so the check-then-write
+ * availability check below can't race: two transactions booking the same
+ * table block on each other here instead of both reading "available" before
+ * either commits. Postgres releases the lock automatically at commit/rollback.
+ */
+export async function lockTablesForBooking(
+  tx: Prisma.TransactionClient,
+  tableIds: string[]
+) {
+  for (const tableId of [...new Set(tableIds)].sort()) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tableId}))`;
+  }
 }
 
 export async function canPlaceReservation(input: {

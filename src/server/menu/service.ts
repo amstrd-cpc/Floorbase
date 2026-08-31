@@ -169,7 +169,10 @@ export async function createMenuItem(payload: CreateMenuItemInput) {
         description: parsed.data.description ?? null,
         priceMinor: parsed.data.priceMinor,
         sortOrder: parsed.data.sortOrder ?? 0,
-        isActive: parsed.data.isActive ?? true
+        isActive: parsed.data.isActive ?? true,
+        trackInventory: parsed.data.trackInventory ?? false,
+        stockQty: parsed.data.stockQty ?? 0,
+        lowStockThreshold: parsed.data.lowStockThreshold ?? 0
       }
     });
   } catch (error) {
@@ -213,7 +216,9 @@ export async function updateMenuItem(input: {
           parsed.data.description === undefined ? current.description : parsed.data.description,
         priceMinor: parsed.data.priceMinor ?? current.priceMinor,
         sortOrder: parsed.data.sortOrder ?? current.sortOrder,
-        isActive: parsed.data.isActive ?? current.isActive
+        isActive: parsed.data.isActive ?? current.isActive,
+        trackInventory: parsed.data.trackInventory ?? current.trackInventory,
+        lowStockThreshold: parsed.data.lowStockThreshold ?? current.lowStockThreshold
       }
     });
   } catch (error) {

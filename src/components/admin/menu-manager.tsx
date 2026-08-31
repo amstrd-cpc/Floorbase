@@ -10,6 +10,9 @@ type MenuItem = {
   priceMinor: number;
   sortOrder: number;
   isActive: boolean;
+  trackInventory: boolean;
+  stockQty: number;
+  lowStockThreshold: number;
 };
 
 type MenuCategory = {
@@ -27,7 +30,10 @@ const EMPTY_ITEM_FORM = {
   description: '',
   price: '',
   sortOrder: 0,
-  isActive: true
+  isActive: true,
+  trackInventory: false,
+  stockQty: '0',
+  lowStockThreshold: '0'
 };
 
 function formatPrice(priceMinor: number) {
@@ -149,13 +155,15 @@ export function MenuManager({ venueId }: { venueId: string }) {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(editingItemId ? {} : { venueId }),
+          ...(editingItemId ? {} : { venueId, stockQty: Number(itemForm.stockQty) || 0 }),
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || null,
           priceMinor,
           sortOrder: itemForm.sortOrder,
-          isActive: itemForm.isActive
+          isActive: itemForm.isActive,
+          trackInventory: itemForm.trackInventory,
+          lowStockThreshold: Number(itemForm.lowStockThreshold) || 0
         })
       });
       const body = await res.json().catch(() => ({}));
@@ -169,6 +177,35 @@ export function MenuManager({ venueId }: { venueId: string }) {
       await loadData();
     } catch {
       setMessage({ text: 'Failed to save item.', kind: 'err' });
+    }
+  }
+
+  async function adjustStock(item: MenuItem) {
+    const raw = window.prompt(
+      `Adjust stock for "${item.name}" (current: ${item.stockQty}). Enter a signed number, e.g. 24 to restock or -2 for waste:`,
+      ''
+    );
+    if (raw === null || raw.trim() === '') return;
+    const quantityDelta = Number(raw);
+    if (!Number.isInteger(quantityDelta) || quantityDelta === 0) {
+      setMessage({ text: 'Enter a non-zero whole number.', kind: 'err' });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/menu/items/${item.id}/adjust-stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantityDelta })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ text: body.error ?? 'Failed to adjust stock.', kind: 'err' });
+        return;
+      }
+      setMessage({ text: 'Stock updated.', kind: 'ok' });
+      await loadData();
+    } catch {
+      setMessage({ text: 'Failed to adjust stock.', kind: 'err' });
     }
   }
 
@@ -314,6 +351,36 @@ export function MenuManager({ venueId }: { venueId: string }) {
               Active
             </label>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={itemForm.trackInventory}
+              onChange={(e) => setItemForm({ ...itemForm, trackInventory: e.target.checked })}
+            />
+            Track inventory
+          </label>
+          {itemForm.trackInventory ? (
+            <div className="grid grid-cols-2 gap-2">
+              {editingItemId ? null : (
+                <input
+                  type="number"
+                  min={0}
+                  className="rounded border p-2 text-sm"
+                  placeholder="Starting stock"
+                  value={itemForm.stockQty}
+                  onChange={(e) => setItemForm({ ...itemForm, stockQty: e.target.value })}
+                />
+              )}
+              <input
+                type="number"
+                min={0}
+                className="rounded border p-2 text-sm"
+                placeholder="Low-stock threshold"
+                value={itemForm.lowStockThreshold}
+                onChange={(e) => setItemForm({ ...itemForm, lowStockThreshold: e.target.value })}
+              />
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={saveItem}
@@ -389,7 +456,26 @@ export function MenuManager({ venueId }: { venueId: string }) {
                   {item.description ? (
                     <p className="text-xs text-muted-foreground">{item.description}</p>
                   ) : null}
+                  {item.trackInventory ? (
+                    <p
+                      className={`mt-1 text-xs ${
+                        item.stockQty <= item.lowStockThreshold ? 'font-semibold text-red-700' : 'text-muted-foreground'
+                      }`}
+                    >
+                      Stock: {item.stockQty}
+                      {item.stockQty <= item.lowStockThreshold ? ' — low stock' : ''}
+                    </p>
+                  ) : null}
                   <div className="mt-1 flex gap-2">
+                    {item.trackInventory ? (
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs"
+                        onClick={() => adjustStock(item)}
+                      >
+                        Adjust stock
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="rounded border px-2 py-1 text-xs"
@@ -400,7 +486,10 @@ export function MenuManager({ venueId }: { venueId: string }) {
                           description: item.description ?? '',
                           price: (item.priceMinor / 100).toFixed(2),
                           sortOrder: item.sortOrder,
-                          isActive: item.isActive
+                          isActive: item.isActive,
+                          trackInventory: item.trackInventory,
+                          stockQty: String(item.stockQty),
+                          lowStockThreshold: String(item.lowStockThreshold)
                         });
                         setEditingItemId(item.id);
                         setItemFormError(null);

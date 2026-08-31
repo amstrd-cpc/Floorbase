@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
+import { InventoryError } from '@/server/inventory/errors';
+import { reserveStock, releaseStock } from '@/server/inventory/service';
 import { OrderNotFoundError, OrderValidationError } from './errors';
 import {
   type AddOrderLineInput,
@@ -22,6 +24,10 @@ function mapZodErrors(
 function toValidationError(error: unknown) {
   if (error instanceof OrderValidationError || error instanceof OrderNotFoundError) {
     return error;
+  }
+
+  if (error instanceof InventoryError) {
+    return new OrderValidationError(error.message);
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -168,21 +174,32 @@ export async function addOrderLine(input: {
 
     const menuItem = await prisma.menuItem.findFirst({
       where: { id: parsed.data.menuItemId, venueId: order.venueId, isActive: true },
-      select: { id: true, name: true, priceMinor: true }
+      select: { id: true, name: true, priceMinor: true, trackInventory: true }
     });
     if (!menuItem) {
       throw new OrderValidationError('Menu item does not exist or is inactive in this venue.');
     }
 
-    await prisma.orderLine.create({
-      data: {
-        orderId: order.id,
+    const quantity = parsed.data.quantity ?? 1;
+
+    await prisma.$transaction(async (tx) => {
+      const reserved = await reserveStock(tx, {
         menuItemId: menuItem.id,
-        nameSnapshot: menuItem.name,
-        priceMinorSnapshot: menuItem.priceMinor,
-        quantity: parsed.data.quantity ?? 1,
-        notes: parsed.data.notes ?? null
-      }
+        trackInventory: menuItem.trackInventory,
+        quantity
+      });
+
+      await tx.orderLine.create({
+        data: {
+          orderId: order.id,
+          menuItemId: menuItem.id,
+          nameSnapshot: menuItem.name,
+          priceMinorSnapshot: menuItem.priceMinor,
+          quantity,
+          notes: parsed.data.notes ?? null,
+          stockReserved: reserved
+        }
+      });
     });
 
     return getOrder({ orderId: order.id });
@@ -206,7 +223,7 @@ export async function updateOrderLine(input: {
 
     const line = await prisma.orderLine.findUnique({
       where: { id: input.lineId },
-      select: { id: true, orderId: true }
+      select: { id: true, orderId: true, menuItemId: true, quantity: true, stockReserved: true }
     });
     if (!line) {
       throw new OrderNotFoundError('Order line not found.');
@@ -214,12 +231,36 @@ export async function updateOrderLine(input: {
 
     await getOpenOrderOrThrow(line.orderId);
 
-    await prisma.orderLine.update({
-      where: { id: line.id },
-      data: {
-        quantity: parsed.data.quantity,
-        notes: parsed.data.notes
+    await prisma.$transaction(async (tx) => {
+      if (
+        line.stockReserved &&
+        line.menuItemId &&
+        parsed.data.quantity !== undefined &&
+        parsed.data.quantity !== line.quantity
+      ) {
+        const delta = parsed.data.quantity - line.quantity;
+        if (delta > 0) {
+          await reserveStock(tx, {
+            menuItemId: line.menuItemId,
+            trackInventory: true,
+            quantity: delta
+          });
+        } else {
+          await releaseStock(tx, {
+            menuItemId: line.menuItemId,
+            wasReserved: true,
+            quantity: -delta
+          });
+        }
       }
+
+      await tx.orderLine.update({
+        where: { id: line.id },
+        data: {
+          quantity: parsed.data.quantity,
+          notes: parsed.data.notes
+        }
+      });
     });
 
     return getOrder({ orderId: line.orderId });
@@ -232,7 +273,7 @@ export async function removeOrderLine(input: { lineId: string }) {
   try {
     const line = await prisma.orderLine.findUnique({
       where: { id: input.lineId },
-      select: { id: true, orderId: true }
+      select: { id: true, orderId: true, menuItemId: true, quantity: true, stockReserved: true }
     });
     if (!line) {
       throw new OrderNotFoundError('Order line not found.');
@@ -240,7 +281,16 @@ export async function removeOrderLine(input: { lineId: string }) {
 
     await getOpenOrderOrThrow(line.orderId);
 
-    await prisma.orderLine.delete({ where: { id: line.id } });
+    await prisma.$transaction(async (tx) => {
+      if (line.menuItemId) {
+        await releaseStock(tx, {
+          menuItemId: line.menuItemId,
+          wasReserved: line.stockReserved,
+          quantity: line.quantity
+        });
+      }
+      await tx.orderLine.delete({ where: { id: line.id } });
+    });
 
     return getOrder({ orderId: line.orderId });
   } catch (error) {
@@ -264,12 +314,28 @@ export async function closeOrder(input: { orderId: string }) {
 
 export async function cancelOrder(input: { orderId: string }) {
   try {
-    await getOpenOrderOrThrow(input.orderId);
+    const order = await getOpenOrderOrThrow(input.orderId);
+    const lines = await prisma.orderLine.findMany({
+      where: { orderId: order.id, stockReserved: true },
+      select: { menuItemId: true, quantity: true }
+    });
 
-    return await prisma.order.update({
-      where: { id: input.orderId },
-      data: { status: 'CANCELLED', closedAt: new Date() },
-      ...orderWithLines
+    return await prisma.$transaction(async (tx) => {
+      for (const line of lines) {
+        if (line.menuItemId) {
+          await releaseStock(tx, {
+            menuItemId: line.menuItemId,
+            wasReserved: true,
+            quantity: line.quantity
+          });
+        }
+      }
+
+      return tx.order.update({
+        where: { id: input.orderId },
+        data: { status: 'CANCELLED', closedAt: new Date() },
+        ...orderWithLines
+      });
     });
   } catch (error) {
     throw toValidationError(error);

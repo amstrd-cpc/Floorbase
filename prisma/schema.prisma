@@ -629,6 +629,10 @@ model MenuItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  trackInventory    Boolean @default(false)
+  stockQty          Int     @default(0)
+  lowStockThreshold Int     @default(0)
+
   venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
   category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   orderLines OrderLine[]
@@ -692,6 +696,7 @@ model OrderLine {
   priceMinorSnapshot Int
   quantity           Int      @default(1)
   notes              String?
+  stockReserved      Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

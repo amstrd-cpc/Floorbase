@@ -31,7 +31,10 @@ export const createMenuItemSchema = z
     description: z.string().trim().max(500).nullable().optional(),
     priceMinor: z.number().int().min(0).max(10_000_00),
     sortOrder: z.number().int().min(0).max(1000).optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    trackInventory: z.boolean().optional(),
+    stockQty: z.number().int().min(0).optional(),
+    lowStockThreshold: z.number().int().min(0).optional()
   })
   .strict();
 
@@ -42,7 +45,9 @@ export const updateMenuItemSchema = z
     description: z.string().trim().max(500).nullable().optional(),
     priceMinor: z.number().int().min(0).max(10_000_00).optional(),
     sortOrder: z.number().int().min(0).max(1000).optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    trackInventory: z.boolean().optional(),
+    lowStockThreshold: z.number().int().min(0).optional()
   })
   .strict();
 

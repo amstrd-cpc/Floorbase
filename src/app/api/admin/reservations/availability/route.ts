@@ -65,14 +65,20 @@ export async function GET(request: Request) {
   if (startAt) {
     const parsedStartAt = new Date(startAt);
     if (Number.isNaN(parsedStartAt.getTime())) {
-      return NextResponse.json({ error: 'startAt is not a valid date.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'startAt is not a valid date.' },
+        { status: 400 }
+      );
     }
   }
 
   if (date) {
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) {
-      return NextResponse.json({ error: 'date is not a valid date.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'date is not a valid date.' },
+        { status: 400 }
+      );
     }
   }
 

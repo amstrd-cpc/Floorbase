@@ -72,16 +72,24 @@ export async function createDepositPaymentIntent(input: {
   };
 }
 
-export async function markDepositPaidByPaymentIntent(paymentIntentId: string): Promise<void> {
+export async function markDepositPaidByPaymentIntent(
+  paymentIntentId: string
+): Promise<void> {
   await prisma.deposit.updateMany({
     where: { provider: STRIPE_PROVIDER, providerRef: paymentIntentId },
     data: { status: 'PAID', paidAt: new Date() }
   });
 }
 
-export async function markDepositFailedByPaymentIntent(paymentIntentId: string): Promise<void> {
+export async function markDepositFailedByPaymentIntent(
+  paymentIntentId: string
+): Promise<void> {
   await prisma.deposit.updateMany({
-    where: { provider: STRIPE_PROVIDER, providerRef: paymentIntentId, status: { not: 'PAID' } },
+    where: {
+      provider: STRIPE_PROVIDER,
+      providerRef: paymentIntentId,
+      status: { not: 'PAID' }
+    },
     data: { status: 'FAILED' }
   });
 }

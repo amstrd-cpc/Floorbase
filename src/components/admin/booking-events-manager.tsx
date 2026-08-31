@@ -103,13 +103,19 @@ function describeOverrideItem(key: string, value: unknown): string {
     return value === 'AUTO_CONFIRM' ? 'Auto-confirm' : 'Require approval';
   }
   if (key === 'placementMode') {
-    return value === 'AUTO_ASSIGN' ? 'Auto-assign table' : 'Guest chooses table';
+    return value === 'AUTO_ASSIGN'
+      ? 'Auto-assign table'
+      : 'Guest chooses table';
   }
   if (key === 'minPartySize') return `Min party: ${String(value)}`;
-  if (key === 'maxOnlinePartySize') return `Max party (online): ${String(value)}`;
-  if (key === 'minAdvanceNoticeMinutes') return `Min notice: ${formatMinutes(value as number)}`;
-  if (key === 'maxDaysAhead') return `Bookable up to ${String(value)} days ahead`;
-  if (key === 'durationMinutes') return `Duration: ${formatMinutes(value as number)}`;
+  if (key === 'maxOnlinePartySize')
+    return `Max party (online): ${String(value)}`;
+  if (key === 'minAdvanceNoticeMinutes')
+    return `Min notice: ${formatMinutes(value as number)}`;
+  if (key === 'maxDaysAhead')
+    return `Bookable up to ${String(value)} days ahead`;
+  if (key === 'durationMinutes')
+    return `Duration: ${formatMinutes(value as number)}`;
   return String(value);
 }
 
@@ -127,7 +133,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<Omit<BookingEvent, 'id'>>(EMPTY_EVENT);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    kind: 'ok' | 'err';
+  } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -154,10 +163,13 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
   function validateForm(): string | null {
     if (!form.name.trim()) return 'Event name is required.';
-    if (form.eventType === 'SINGLE_DATE' && !form.singleDate) return 'Select a date.';
+    if (form.eventType === 'SINGLE_DATE' && !form.singleDate)
+      return 'Select a date.';
     if (form.eventType === 'DATE_RANGE') {
-      if (!form.dateStart || !form.dateEnd) return 'Select both a start and end date.';
-      if (form.dateEnd < form.dateStart) return 'End date must be on or after start date.';
+      if (!form.dateStart || !form.dateEnd)
+        return 'Select both a start and end date.';
+      if (form.dateEnd < form.dateStart)
+        return 'End date must be on or after start date.';
     }
     if (form.eventType === 'WEEKLY_RECURRING' && form.weekdays.length === 0) {
       return 'Select at least one day of the week.';
@@ -182,12 +194,18 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to save event.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to save event.',
+          kind: 'err'
+        });
         return;
       }
       setForm(EMPTY_EVENT);
       setEditingId(null);
-      setMessage({ text: editingId ? 'Event updated.' : 'Event created.', kind: 'ok' });
+      setMessage({
+        text: editingId ? 'Event updated.' : 'Event created.',
+        kind: 'ok'
+      });
       await loadData();
     } catch {
       setMessage({ text: 'Failed to save event.', kind: 'err' });
@@ -197,9 +215,12 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   async function removeEvent(id: string) {
     if (!window.confirm('Delete this event? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/admin/venues/${venueId}/booking-events?id=${id}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(
+        `/api/admin/venues/${venueId}/booking-events?id=${id}`,
+        {
+          method: 'DELETE'
+        }
+      );
       if (!res.ok) {
         setMessage({ text: 'Failed to delete event.', kind: 'err' });
         return;
@@ -216,7 +237,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
       const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fromEventToForm(event), name: `${event.name} (Copy)` })
+        body: JSON.stringify({
+          ...fromEventToForm(event),
+          name: `${event.name} (Copy)`
+        })
       });
       if (!res.ok) {
         setMessage({ text: 'Failed to duplicate event.', kind: 'err' });
@@ -234,13 +258,20 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
       const res = await fetch(`/api/admin/venues/${venueId}/booking-events`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: event.id, ...fromEventToForm(event), isActive: !event.isActive })
+        body: JSON.stringify({
+          id: event.id,
+          ...fromEventToForm(event),
+          isActive: !event.isActive
+        })
       });
       if (!res.ok) {
         setMessage({ text: 'Failed to update event status.', kind: 'err' });
         return;
       }
-      setMessage({ text: event.isActive ? 'Event disabled.' : 'Event enabled.', kind: 'ok' });
+      setMessage({
+        text: event.isActive ? 'Event disabled.' : 'Event enabled.',
+        kind: 'ok'
+      });
       await loadData();
     } catch {
       setMessage({ text: 'Failed to update event status.', kind: 'err' });
@@ -250,7 +281,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   const describeWhen = useMemo(() => {
     return (event: BookingEvent) => {
       if (event.eventType === 'SINGLE_DATE') {
-        return event.singleDate ? `On ${event.singleDate.slice(0, 10)}` : 'Date missing';
+        return event.singleDate
+          ? `On ${event.singleDate.slice(0, 10)}`
+          : 'Date missing';
       }
       if (event.eventType === 'DATE_RANGE') {
         return event.dateStart && event.dateEnd
@@ -265,20 +298,42 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   const describeOverrides = useMemo(() => {
     return (event: BookingEvent): string[] => {
       const parts: string[] = [];
-      if (event.confirmationMode) parts.push(describeOverrideItem('confirmationMode', event.confirmationMode));
-      if (event.placementMode) parts.push(describeOverrideItem('placementMode', event.placementMode));
-      if (event.minPartySize !== null) parts.push(describeOverrideItem('minPartySize', event.minPartySize));
-      if (event.maxOnlinePartySize !== null) parts.push(describeOverrideItem('maxOnlinePartySize', event.maxOnlinePartySize));
-      if (event.minAdvanceNoticeMinutes !== null) parts.push(describeOverrideItem('minAdvanceNoticeMinutes', event.minAdvanceNoticeMinutes));
-      if (event.maxDaysAhead !== null) parts.push(describeOverrideItem('maxDaysAhead', event.maxDaysAhead));
-      if (event.durationMinutes !== null) parts.push(describeOverrideItem('durationMinutes', event.durationMinutes));
+      if (event.confirmationMode)
+        parts.push(
+          describeOverrideItem('confirmationMode', event.confirmationMode)
+        );
+      if (event.placementMode)
+        parts.push(describeOverrideItem('placementMode', event.placementMode));
+      if (event.minPartySize !== null)
+        parts.push(describeOverrideItem('minPartySize', event.minPartySize));
+      if (event.maxOnlinePartySize !== null)
+        parts.push(
+          describeOverrideItem('maxOnlinePartySize', event.maxOnlinePartySize)
+        );
+      if (event.minAdvanceNoticeMinutes !== null)
+        parts.push(
+          describeOverrideItem(
+            'minAdvanceNoticeMinutes',
+            event.minAdvanceNoticeMinutes
+          )
+        );
+      if (event.maxDaysAhead !== null)
+        parts.push(describeOverrideItem('maxDaysAhead', event.maxDaysAhead));
+      if (event.durationMinutes !== null)
+        parts.push(
+          describeOverrideItem('durationMinutes', event.durationMinutes)
+        );
       if (event.publicLabel) parts.push('Custom public label');
       if (event.publicInstructions) parts.push('Custom public instructions');
       if (event.allowedAreaIds.length) {
-        parts.push(`${event.allowedAreaIds.length} area restriction${event.allowedAreaIds.length === 1 ? '' : 's'}`);
+        parts.push(
+          `${event.allowedAreaIds.length} area restriction${event.allowedAreaIds.length === 1 ? '' : 's'}`
+        );
       }
       if (event.allowedTableIds.length) {
-        parts.push(`${event.allowedTableIds.length} table restriction${event.allowedTableIds.length === 1 ? '' : 's'}`);
+        parts.push(
+          `${event.allowedTableIds.length} table restriction${event.allowedTableIds.length === 1 ? '' : 's'}`
+        );
       }
       return parts;
     };
@@ -303,12 +358,17 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
       ) : null}
 
       <p className="text-xs text-muted-foreground">
-        Event overrides take precedence over default venue settings. When multiple events match the same date, more specific events win: Single Date beats Date Range (shortest span wins), which beats Weekly Recurring.
+        Event overrides take precedence over default venue settings. When
+        multiple events match the same date, more specific events win: Single
+        Date beats Date Range (shortest span wins), which beats Weekly
+        Recurring.
       </p>
 
       <div className="space-y-4 rounded border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold">{editingId ? 'Edit event' : 'Create event'}</p>
+          <p className="text-sm font-semibold">
+            {editingId ? 'Edit event' : 'Create event'}
+          </p>
           {editingId ? (
             <button
               type="button"
@@ -343,7 +403,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
               className="rounded border p-2 text-sm"
               value={form.eventType}
               onChange={(e) =>
-                setForm({ ...form, eventType: e.target.value as BookingEvent['eventType'] })
+                setForm({
+                  ...form,
+                  eventType: e.target.value as BookingEvent['eventType']
+                })
               }
             >
               <option value="SINGLE_DATE">Single date</option>
@@ -354,7 +417,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
               <input
                 type="checkbox"
                 checked={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                onChange={(e) =>
+                  setForm({ ...form, isActive: e.target.checked })
+                }
               />
               Active (applies to bookings)
             </label>
@@ -362,12 +427,16 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
           {form.eventType === 'SINGLE_DATE' ? (
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Date</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Date
+              </label>
               <input
                 type="date"
                 className="rounded border p-2 text-sm"
                 value={toDateInputValue(form.singleDate)}
-                onChange={(e) => setForm({ ...form, singleDate: e.target.value || null })}
+                onChange={(e) =>
+                  setForm({ ...form, singleDate: e.target.value || null })
+                }
               />
             </div>
           ) : null}
@@ -375,21 +444,29 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
           {form.eventType === 'DATE_RANGE' ? (
             <div className="grid gap-2 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Start date</label>
+                <label className="mb-1 block text-xs text-muted-foreground">
+                  Start date
+                </label>
                 <input
                   type="date"
                   className="rounded border p-2 text-sm"
                   value={toDateInputValue(form.dateStart)}
-                  onChange={(e) => setForm({ ...form, dateStart: e.target.value || null })}
+                  onChange={(e) =>
+                    setForm({ ...form, dateStart: e.target.value || null })
+                  }
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">End date</label>
+                <label className="mb-1 block text-xs text-muted-foreground">
+                  End date
+                </label>
                 <input
                   type="date"
                   className="rounded border p-2 text-sm"
                   value={toDateInputValue(form.dateEnd)}
-                  onChange={(e) => setForm({ ...form, dateEnd: e.target.value || null })}
+                  onChange={(e) =>
+                    setForm({ ...form, dateEnd: e.target.value || null })
+                  }
                 />
               </div>
             </div>
@@ -397,14 +474,18 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
 
           {form.eventType === 'WEEKLY_RECURRING' ? (
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Applies every</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Applies every
+              </label>
               <div className="flex flex-wrap gap-2 text-xs">
                 {WEEKDAY_LABELS.map((label, index) => (
                   <button
                     key={label}
                     type="button"
                     className={`rounded border px-2 py-1 ${
-                      form.weekdays.includes(index) ? 'bg-foreground text-background' : ''
+                      form.weekdays.includes(index)
+                        ? 'bg-foreground text-background'
+                        : ''
                     }`}
                     onClick={() =>
                       setForm((cur) => ({
@@ -424,17 +505,22 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
         </div>
 
         <div className="space-y-2">
-          <SectionLabel>Booking rules (leave blank to use venue defaults)</SectionLabel>
+          <SectionLabel>
+            Booking rules (leave blank to use venue defaults)
+          </SectionLabel>
           <div className="grid gap-2 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Confirmation mode</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Confirmation mode
+              </label>
               <select
                 className="w-full rounded border p-2 text-sm"
                 value={form.confirmationMode ?? ''}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    confirmationMode: (e.target.value || null) as BookingEvent['confirmationMode']
+                    confirmationMode: (e.target.value ||
+                      null) as BookingEvent['confirmationMode']
                   })
                 }
               >
@@ -444,14 +530,17 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Table placement</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Table placement
+              </label>
               <select
                 className="w-full rounded border p-2 text-sm"
                 value={form.placementMode ?? ''}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    placementMode: (e.target.value || null) as BookingEvent['placementMode']
+                    placementMode: (e.target.value ||
+                      null) as BookingEvent['placementMode']
                   })
                 }
               >
@@ -463,7 +552,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
           </div>
           <div className="grid gap-2 md:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Min party size</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Min party size
+              </label>
               <input
                 type="number"
                 min={1}
@@ -471,7 +562,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 placeholder="e.g. 2"
                 value={form.minPartySize ?? ''}
                 onChange={(e) =>
-                  setForm({ ...form, minPartySize: e.target.value ? Number(e.target.value) : null })
+                  setForm({
+                    ...form,
+                    minPartySize: e.target.value ? Number(e.target.value) : null
+                  })
                 }
               />
             </div>
@@ -488,7 +582,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    maxOnlinePartySize: e.target.value ? Number(e.target.value) : null
+                    maxOnlinePartySize: e.target.value
+                      ? Number(e.target.value)
+                      : null
                   })
                 }
               />
@@ -506,7 +602,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    durationMinutes: e.target.value ? Number(e.target.value) : null
+                    durationMinutes: e.target.value
+                      ? Number(e.target.value)
+                      : null
                   })
                 }
               />
@@ -526,7 +624,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    minAdvanceNoticeMinutes: e.target.value ? Number(e.target.value) : null
+                    minAdvanceNoticeMinutes: e.target.value
+                      ? Number(e.target.value)
+                      : null
                   })
                 }
               />
@@ -542,7 +642,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 placeholder="e.g. 60"
                 value={form.maxDaysAhead ?? ''}
                 onChange={(e) =>
-                  setForm({ ...form, maxDaysAhead: e.target.value ? Number(e.target.value) : null })
+                  setForm({
+                    ...form,
+                    maxDaysAhead: e.target.value ? Number(e.target.value) : null
+                  })
                 }
               />
             </div>
@@ -559,27 +662,35 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
               className="w-full rounded border p-2 text-sm"
               placeholder="e.g. Valentine's Day Menu"
               value={form.publicLabel ?? ''}
-              onChange={(e) => setForm({ ...form, publicLabel: e.target.value || null })}
+              onChange={(e) =>
+                setForm({ ...form, publicLabel: e.target.value || null })
+              }
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Public instructions</label>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Public instructions
+            </label>
             <textarea
               className="w-full rounded border p-2 text-sm"
               rows={2}
               placeholder="e.g. A fixed prix-fixe menu applies on this date."
               value={form.publicInstructions ?? ''}
-              onChange={(e) => setForm({ ...form, publicInstructions: e.target.value || null })}
+              onChange={(e) =>
+                setForm({ ...form, publicInstructions: e.target.value || null })
+              }
             />
           </div>
         </div>
 
         {areas.length > 0 ? (
           <div className="space-y-2">
-            <SectionLabel>Restrict to specific areas / tables (optional)</SectionLabel>
+            <SectionLabel>
+              Restrict to specific areas / tables (optional)
+            </SectionLabel>
             <p className="text-xs text-muted-foreground">
-              If selected, only these areas/tables will be available for booking during this event.
-              Leave unchecked to allow all.
+              If selected, only these areas/tables will be available for booking
+              during this event. Leave unchecked to allow all.
             </p>
             {areas.map((area) => (
               <div key={area.id} className="rounded border p-2">
@@ -609,7 +720,10 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                           onChange={() =>
                             setForm((cur) => ({
                               ...cur,
-                              allowedTableIds: toggleId(cur.allowedTableIds, table.id)
+                              allowedTableIds: toggleId(
+                                cur.allowedTableIds,
+                                table.id
+                              )
                             }))
                           }
                         />
@@ -641,8 +755,8 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
         ) : null}
         {!isLoading && events.length === 0 ? (
           <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
-            No events yet. Create one to override booking rules for a specific date, date range, or
-            recurring weekly schedule.
+            No events yet. Create one to override booking rules for a specific
+            date, date range, or recurring weekly schedule.
           </p>
         ) : null}
         {events.map((event) => {
@@ -662,14 +776,19 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{eventTypeLabel(event.eventType)}</span>
+                <span className="font-medium text-foreground">
+                  {eventTypeLabel(event.eventType)}
+                </span>
                 {' · '}
                 {describeWhen(event)}
               </p>
               {overrides.length > 0 ? (
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                   {overrides.map((o) => (
-                    <span key={o} className="text-xs text-muted-foreground before:mr-1 before:content-['·']">
+                    <span
+                      key={o}
+                      className="text-xs text-muted-foreground before:mr-1 before:content-['·']"
+                    >
                       {o}
                     </span>
                   ))}

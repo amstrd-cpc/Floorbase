@@ -1,4 +1,11 @@
-import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
+import {
+  AuthShell,
+  AuthNotice,
+  AuthLink,
+  fieldInput,
+  fieldLabel,
+  primaryButton
+} from '@/components/auth/auth-ui';
 
 type LoginPageProps = {
   searchParams?: {
@@ -42,10 +49,12 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       footer={
         <>
           <p>
-            Need an invite? Ask your organization admin, then return using the invite URL.
+            Need an invite? Ask your organization admin, then return using the
+            invite URL.
           </p>
           <p>
-            New customer? <AuthLink href="/signup">Start a free 14-day trial</AuthLink>
+            New customer?{' '}
+            <AuthLink href="/signup">Start a free 14-day trial</AuthLink>
           </p>
           <p>
             Back to <AuthLink href="/">home</AuthLink>
@@ -56,15 +65,29 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       {error ? <AuthNotice>{error}</AuthNotice> : null}
 
       {inviteToken ? (
-        <form action="/api/auth/invite/accept" method="post" className="mt-6 space-y-4">
+        <form
+          action="/api/auth/invite/accept"
+          method="post"
+          className="mt-6 space-y-4"
+        >
           <input type="hidden" name="token" value={inviteToken} />
           <label className={fieldLabel}>
             First name
-            <input required name="firstName" placeholder="First name" className={fieldInput} />
+            <input
+              required
+              name="firstName"
+              placeholder="First name"
+              className={fieldInput}
+            />
           </label>
           <label className={fieldLabel}>
             Last name
-            <input required name="lastName" placeholder="Last name" className={fieldInput} />
+            <input
+              required
+              name="lastName"
+              placeholder="Last name"
+              className={fieldInput}
+            />
           </label>
           <label className={fieldLabel}>
             Password

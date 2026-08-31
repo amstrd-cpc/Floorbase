@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { tableShapeSchema } from '@/server/floor/validation';
 
-export const floorAreaInputSchema = z
+const floorAreaInputSchema = z
   .object({
     id: z.string().cuid(),
     areaId: z.string().cuid().nullable(),
@@ -11,7 +11,7 @@ export const floorAreaInputSchema = z
   })
   .strict();
 
-export const floorTableInputSchema = z
+const floorTableInputSchema = z
   .object({
     id: z.string().cuid(),
     tableId: z.string().cuid(),

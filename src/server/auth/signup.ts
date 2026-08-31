@@ -3,12 +3,48 @@ import { hashPassword } from './password';
 import { isValidIanaTimeZone } from '@/lib/timezone';
 
 const DEFAULT_STATUSES = [
-  { code: 'PENDING',   label: 'Pending',   color: '#f59e0b', sortOrder: 10, isDefault: true  },
-  { code: 'CONFIRMED', label: 'Confirmed', color: '#16a34a', sortOrder: 20, isDefault: false },
-  { code: 'SEATED',    label: 'Seated',    color: '#2563eb', sortOrder: 30, isDefault: false },
-  { code: 'COMPLETED', label: 'Completed', color: '#6b7280', sortOrder: 40, isDefault: false },
-  { code: 'NO_SHOW',   label: 'No Show',   color: '#dc2626', sortOrder: 50, isDefault: false },
-  { code: 'CANCELLED', label: 'Cancelled', color: '#9ca3af', sortOrder: 60, isDefault: false },
+  {
+    code: 'PENDING',
+    label: 'Pending',
+    color: '#f59e0b',
+    sortOrder: 10,
+    isDefault: true
+  },
+  {
+    code: 'CONFIRMED',
+    label: 'Confirmed',
+    color: '#16a34a',
+    sortOrder: 20,
+    isDefault: false
+  },
+  {
+    code: 'SEATED',
+    label: 'Seated',
+    color: '#2563eb',
+    sortOrder: 30,
+    isDefault: false
+  },
+  {
+    code: 'COMPLETED',
+    label: 'Completed',
+    color: '#6b7280',
+    sortOrder: 40,
+    isDefault: false
+  },
+  {
+    code: 'NO_SHOW',
+    label: 'No Show',
+    color: '#dc2626',
+    sortOrder: 50,
+    isDefault: false
+  },
+  {
+    code: 'CANCELLED',
+    label: 'Cancelled',
+    color: '#9ca3af',
+    sortOrder: 60,
+    isDefault: false
+  }
 ];
 
 function toSlug(name: string, suffix: string): string {
@@ -57,7 +93,10 @@ export async function createAccount(input: {
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new SignupError('EMAIL_TAKEN', 'An account with that email already exists.');
+    throw new SignupError(
+      'EMAIL_TAKEN',
+      'An account with that email already exists.'
+    );
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -71,8 +110,8 @@ export async function createAccount(input: {
         slug: toSlug(orgName, suffix),
         onboardingComplete: false,
         trialEndsAt,
-        subscriptionStatus: 'TRIALING',
-      },
+        subscriptionStatus: 'TRIALING'
+      }
     });
 
     const venue = await tx.venue.create({
@@ -82,8 +121,8 @@ export async function createAccount(input: {
         slug: toSlug(venueName, suffix),
         timezone: input.timezone,
         isActive: true,
-        publicBookingEnabled: false,
-      },
+        publicBookingEnabled: false
+      }
     });
 
     const user = await tx.user.create({
@@ -91,8 +130,8 @@ export async function createAccount(input: {
         email,
         passwordHash,
         organizationId: org.id,
-        isActive: true,
-      },
+        isActive: true
+      }
     });
 
     const scopeKey = `${user.id}:ORGANIZATION_ADMIN:${org.id}:global`;
@@ -102,8 +141,8 @@ export async function createAccount(input: {
         role: 'ORGANIZATION_ADMIN',
         organizationId: org.id,
         scopeKey,
-        isActive: true,
-      },
+        isActive: true
+      }
     });
 
     for (const status of DEFAULT_STATUSES) {
@@ -114,8 +153,8 @@ export async function createAccount(input: {
           label: status.label,
           color: status.color,
           sortOrder: status.sortOrder,
-          isDefault: status.isDefault,
-        },
+          isDefault: status.isDefault
+        }
       });
     }
 

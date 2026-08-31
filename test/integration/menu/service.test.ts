@@ -63,7 +63,10 @@ async function seedVenue() {
 test('createMenuCategory then createMenuItem builds a listable catalog', async () => {
   const venue = await seedVenue();
 
-  const category = await createMenuCategory({ venueId: venue.id, name: 'Mains' });
+  const category = await createMenuCategory({
+    venueId: venue.id,
+    name: 'Mains'
+  });
   const item = await createMenuItem({
     venueId: venue.id,
     categoryId: category.id,
@@ -92,7 +95,10 @@ test('createMenuCategory rejects a duplicate name in the same venue', async () =
 test('createMenuItem rejects a category from a different venue', async () => {
   const venueA = await seedVenue();
   const venueB = await seedVenue();
-  const categoryOnA = await createMenuCategory({ venueId: venueA.id, name: 'Starters' });
+  const categoryOnA = await createMenuCategory({
+    venueId: venueA.id,
+    name: 'Starters'
+  });
 
   await assert.rejects(
     () =>
@@ -109,7 +115,10 @@ test('createMenuItem rejects a category from a different venue', async () => {
 test('updateMenuItem moves an item between categories in the same venue', async () => {
   const venue = await seedVenue();
   const mains = await createMenuCategory({ venueId: venue.id, name: 'Mains' });
-  const desserts = await createMenuCategory({ venueId: venue.id, name: 'Desserts' });
+  const desserts = await createMenuCategory({
+    venueId: venue.id,
+    name: 'Desserts'
+  });
   const item = await createMenuItem({
     venueId: venue.id,
     categoryId: mains.id,
@@ -128,8 +137,14 @@ test('updateMenuItem moves an item between categories in the same venue', async 
 test('updateMenuItem rejects moving an item to a category from a different venue', async () => {
   const venueA = await seedVenue();
   const venueB = await seedVenue();
-  const categoryOnA = await createMenuCategory({ venueId: venueA.id, name: 'Mains' });
-  const categoryOnB = await createMenuCategory({ venueId: venueB.id, name: 'Mains' });
+  const categoryOnA = await createMenuCategory({
+    venueId: venueA.id,
+    name: 'Mains'
+  });
+  const categoryOnB = await createMenuCategory({
+    venueId: venueB.id,
+    name: 'Mains'
+  });
   const item = await createMenuItem({
     venueId: venueA.id,
     categoryId: categoryOnA.id,
@@ -138,14 +153,21 @@ test('updateMenuItem rejects moving an item to a category from a different venue
   });
 
   await assert.rejects(
-    () => updateMenuItem({ itemId: item.id, payload: { categoryId: categoryOnB.id } }),
+    () =>
+      updateMenuItem({
+        itemId: item.id,
+        payload: { categoryId: categoryOnB.id }
+      }),
     (error: unknown) => error instanceof MenuValidationError
   );
 });
 
 test('deleteMenuCategory cascades to its items', async () => {
   const venue = await seedVenue();
-  const category = await createMenuCategory({ venueId: venue.id, name: 'Sides' });
+  const category = await createMenuCategory({
+    venueId: venue.id,
+    name: 'Sides'
+  });
   const item = await createMenuItem({
     venueId: venue.id,
     categoryId: category.id,
@@ -168,7 +190,11 @@ test('deleteMenuItem on an unknown id throws MenuNotFoundError', async () => {
 
 test('updateMenuCategory on an unknown id throws MenuNotFoundError', async () => {
   await assert.rejects(
-    () => updateMenuCategory({ categoryId: 'cnonexistentcategoryid001', payload: { name: 'X' } }),
+    () =>
+      updateMenuCategory({
+        categoryId: 'cnonexistentcategoryid001',
+        payload: { name: 'X' }
+      }),
     (error: unknown) => error instanceof MenuNotFoundError
   );
 });

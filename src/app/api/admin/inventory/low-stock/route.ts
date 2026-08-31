@@ -6,7 +6,10 @@ import { getVenueScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof InventoryError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status }
+    );
   }
 
   throw error;

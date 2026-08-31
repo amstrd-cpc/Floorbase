@@ -13,7 +13,10 @@ const bodySchema = z
 
 function toErrorResponse(error: unknown) {
   if (error instanceof OrderPaymentError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status }
+    );
   }
 
   throw error;
@@ -35,19 +38,28 @@ export async function POST(
     try {
       rawBody = JSON.parse(text);
     } catch {
-      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body.' },
+        { status: 400 }
+      );
     }
   }
 
   const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid refund amount.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid refund amount.' },
+      { status: 400 }
+    );
   }
 
   try {
     const paymentScope = await getOrderPaymentScope(params.paymentId);
     if (!paymentScope) {
-      return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Payment not found.' },
+        { status: 404 }
+      );
     }
 
     if (

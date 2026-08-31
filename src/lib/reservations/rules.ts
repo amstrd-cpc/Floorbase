@@ -4,7 +4,7 @@ export const MIN_RESERVATION_DURATION_MINUTES = 30;
 export const MAX_RESERVATION_DURATION_MINUTES = 300;
 export const MAX_PARTY_SIZE = 50;
 
-export const BOOKING_STATUS_CODES = [
+const BOOKING_STATUS_CODES = [
   'PENDING',
   'CONFIRMED',
   'SEATED',
@@ -16,8 +16,21 @@ export const BOOKING_STATUS_CODES = [
 const terminalStatuses = new Set(['COMPLETED', 'NO_SHOW', 'CANCELLED']);
 
 const allowedStatusTransitions: Record<string, ReadonlySet<string>> = {
-  PENDING: new Set(['PENDING', 'CONFIRMED', 'SEATED', 'COMPLETED', 'NO_SHOW', 'CANCELLED']),
-  CONFIRMED: new Set(['CONFIRMED', 'SEATED', 'COMPLETED', 'NO_SHOW', 'CANCELLED']),
+  PENDING: new Set([
+    'PENDING',
+    'CONFIRMED',
+    'SEATED',
+    'COMPLETED',
+    'NO_SHOW',
+    'CANCELLED'
+  ]),
+  CONFIRMED: new Set([
+    'CONFIRMED',
+    'SEATED',
+    'COMPLETED',
+    'NO_SHOW',
+    'CANCELLED'
+  ]),
   SEATED: new Set(['SEATED', 'COMPLETED', 'CANCELLED']),
   COMPLETED: new Set(['COMPLETED']),
   NO_SHOW: new Set(['NO_SHOW']),
@@ -45,7 +58,10 @@ export function validateSlotAligned(date: Date) {
   return date.getUTCMinutes() % RESERVATION_SLOT_MINUTES === 0;
 }
 
-export function canTransitionReservationStatus(fromCode: string, toCode: string) {
+export function canTransitionReservationStatus(
+  fromCode: string,
+  toCode: string
+) {
   const normalizedFrom = normalizeBookingStatusCode(fromCode);
   const normalizedTo = normalizeBookingStatusCode(toCode);
   const allowed = allowedStatusTransitions[normalizedFrom];

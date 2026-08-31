@@ -8,12 +8,22 @@ const SETTLED_STATUSES = ['SUCCEEDED', 'PARTIALLY_REFUNDED'] as const;
 
 export function computeOrderPaymentSummary(input: {
   lines: Array<{ priceMinorSnapshot: number; quantity: number }>;
-  payments: Array<{ status: string; amountMinor: number; tipMinor: number; refundedMinor: number }>;
+  payments: Array<{
+    status: string;
+    amountMinor: number;
+    tipMinor: number;
+    refundedMinor: number;
+  }>;
 }) {
   const orderTotalMinor = computeOrderTotalMinor(input.lines);
   const paidTowardOrderMinor = input.payments
-    .filter((payment) => (SETTLED_STATUSES as readonly string[]).includes(payment.status))
-    .reduce((sum, payment) => sum + (payment.amountMinor - payment.refundedMinor), 0);
+    .filter((payment) =>
+      (SETTLED_STATUSES as readonly string[]).includes(payment.status)
+    )
+    .reduce(
+      (sum, payment) => sum + (payment.amountMinor - payment.refundedMinor),
+      0
+    );
   const remainingMinor = Math.max(0, orderTotalMinor - paidTowardOrderMinor);
 
   return { orderTotalMinor, paidTowardOrderMinor, remainingMinor };
@@ -23,7 +33,13 @@ export async function createOrderPaymentIntent(input: {
   orderId: string;
   amountMinor: number;
   tipMinor?: number;
-}): Promise<{ paymentId: string; clientSecret: string; amountMinor: number; tipMinor: number; currency: string }> {
+}): Promise<{
+  paymentId: string;
+  clientSecret: string;
+  amountMinor: number;
+  tipMinor: number;
+  currency: string;
+}> {
   if (input.amountMinor <= 0) {
     throw new OrderPaymentError('Payment amount must be greater than zero.');
   }
@@ -94,18 +110,27 @@ export async function refundOrderPayment(input: {
   orderPaymentId: string;
   amountMinor?: number;
 }): Promise<void> {
-  const payment = await prisma.orderPayment.findUnique({ where: { id: input.orderPaymentId } });
+  const payment = await prisma.orderPayment.findUnique({
+    where: { id: input.orderPaymentId }
+  });
   if (!payment) {
     throw new OrderPaymentError('Payment not found.', 404);
   }
   if (!(SETTLED_STATUSES as readonly string[]).includes(payment.status)) {
-    throw new OrderPaymentError('Only a succeeded payment can be refunded.', 409);
+    throw new OrderPaymentError(
+      'Only a succeeded payment can be refunded.',
+      409
+    );
   }
   if (!payment.provider || !payment.providerRef) {
-    throw new OrderPaymentError('Payment has no linked provider charge to refund.', 409);
+    throw new OrderPaymentError(
+      'Payment has no linked provider charge to refund.',
+      409
+    );
   }
 
-  const refundableMinor = payment.amountMinor + payment.tipMinor - payment.refundedMinor;
+  const refundableMinor =
+    payment.amountMinor + payment.tipMinor - payment.refundedMinor;
   const requestedMinor = input.amountMinor ?? refundableMinor;
 
   if (requestedMinor <= 0 || requestedMinor > refundableMinor) {
@@ -121,7 +146,8 @@ export async function refundOrderPayment(input: {
   });
 
   const newRefundedMinor = payment.refundedMinor + requestedMinor;
-  const isFullyRefunded = newRefundedMinor >= payment.amountMinor + payment.tipMinor;
+  const isFullyRefunded =
+    newRefundedMinor >= payment.amountMinor + payment.tipMinor;
 
   await prisma.orderPayment.update({
     where: { id: payment.id },
@@ -132,7 +158,9 @@ export async function refundOrderPayment(input: {
   });
 }
 
-export async function markOrderPaymentSucceededByIntent(paymentIntentId: string): Promise<void> {
+export async function markOrderPaymentSucceededByIntent(
+  paymentIntentId: string
+): Promise<void> {
   await prisma.orderPayment.updateMany({
     where: {
       provider: STRIPE_PROVIDER,
@@ -143,9 +171,15 @@ export async function markOrderPaymentSucceededByIntent(paymentIntentId: string)
   });
 }
 
-export async function markOrderPaymentFailedByIntent(paymentIntentId: string): Promise<void> {
+export async function markOrderPaymentFailedByIntent(
+  paymentIntentId: string
+): Promise<void> {
   await prisma.orderPayment.updateMany({
-    where: { provider: STRIPE_PROVIDER, providerRef: paymentIntentId, status: 'PENDING' },
+    where: {
+      provider: STRIPE_PROVIDER,
+      providerRef: paymentIntentId,
+      status: 'PENDING'
+    },
     data: { status: 'FAILED' }
   });
 }

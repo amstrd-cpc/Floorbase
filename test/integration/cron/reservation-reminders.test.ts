@@ -55,7 +55,10 @@ function callCron(authHeader?: string) {
   );
 }
 
-async function createReservationAt(startAt: Date, overrides: { withEmail?: boolean } = {}) {
+async function createReservationAt(
+  startAt: Date,
+  overrides: { withEmail?: boolean } = {}
+) {
   const withEmail = overrides.withEmail ?? true;
   return createReservation({
     organizationId: fixture.organizationId,
@@ -67,7 +70,9 @@ async function createReservationAt(startAt: Date, overrides: { withEmail?: boole
       partySize: 2,
       guest: {
         fullName: 'Reminder Guest',
-        email: withEmail ? `reminder-${Date.now()}-${Math.random()}@example.com` : null,
+        email: withEmail
+          ? `reminder-${Date.now()}-${Math.random()}@example.com`
+          : null,
         phone: withEmail ? undefined : '+15551230000'
       },
       tableIds: [fixture.tableId],
@@ -98,7 +103,10 @@ test('sends a reminder for a reservation inside the 24h window and logs it', asy
   assert.equal(body.sent, 1);
 
   const log = await prisma.notificationLog.findFirstOrThrow({
-    where: { reservationId: reservation.id, templateKey: 'reservation_reminder' }
+    where: {
+      reservationId: reservation.id,
+      templateKey: 'reservation_reminder'
+    }
   });
   assert.equal(log.status, 'SKIPPED'); // no RESEND_API_KEY in this test env
 });
@@ -110,7 +118,11 @@ test('does not re-send a reminder for a reservation already reminded', async () 
   assert.equal((await first.json()).sent, 1);
 
   const second = await callCron(`Bearer ${CRON_SECRET}`);
-  assert.equal((await second.json()).sent, 0, 'the dedup check should exclude an already-reminded reservation');
+  assert.equal(
+    (await second.json()).sent,
+    0,
+    'the dedup check should exclude an already-reminded reservation'
+  );
 });
 
 test('ignores reservations outside the 24h reminder window', async () => {

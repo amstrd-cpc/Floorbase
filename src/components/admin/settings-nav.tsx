@@ -7,14 +7,14 @@ import { cn } from '@/lib/utils';
 const ITEMS = [
   { href: '/admin/settings', label: 'Venue' },
   { href: '/admin/settings/hours', label: 'Hours' },
-  { href: '/admin/settings/team', label: 'Team' },
+  { href: '/admin/settings/team', label: 'Team' }
 ];
 
 export function SettingsNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 border-b pb-0 mb-4">
+    <nav className="mb-4 flex gap-1 border-b pb-0">
       {ITEMS.map((item) => {
         const isActive = pathname === item.href;
         return (
@@ -22,7 +22,7 @@ export function SettingsNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'px-3 py-2 text-sm font-medium border-b-2 -mb-px',
+              '-mb-px border-b-2 px-3 py-2 text-sm font-medium',
               isActive
                 ? 'border-foreground text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'

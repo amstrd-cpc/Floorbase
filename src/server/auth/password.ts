@@ -59,9 +59,16 @@ export async function verifyPassword(password: string, encodedHash: string) {
 
   // Reject params outside safe bounds to prevent DoS via crafted hashes.
   if (
-    !Number.isInteger(N) || N < 1024 || N > 131072 || (N & (N - 1)) !== 0 ||
-    !Number.isInteger(rVal) || rVal < 1 || rVal > 32 ||
-    !Number.isInteger(pVal) || pVal < 1 || pVal > 4
+    !Number.isInteger(N) ||
+    N < 1024 ||
+    N > 131072 ||
+    (N & (N - 1)) !== 0 ||
+    !Number.isInteger(rVal) ||
+    rVal < 1 ||
+    rVal > 32 ||
+    !Number.isInteger(pVal) ||
+    pVal < 1 ||
+    pVal > 4
   ) {
     return false;
   }

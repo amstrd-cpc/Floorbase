@@ -13,7 +13,9 @@ export function RevokeUserButton({ userId }: { userId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? 'Failed to revoke access.');
@@ -40,7 +42,13 @@ export function RevokeUserButton({ userId }: { userId: string }) {
         >
           {loading ? 'Revoking…' : 'Yes, revoke'}
         </button>
-        <button onClick={() => { setConfirming(false); setError(null); }} className="text-muted-foreground underline">
+        <button
+          onClick={() => {
+            setConfirming(false);
+            setError(null);
+          }}
+          className="text-muted-foreground underline"
+        >
           Cancel
         </button>
       </span>

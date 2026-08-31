@@ -76,21 +76,38 @@ async function seedVenueWithTrackedItem(stockQty = 5, lowStockThreshold = 1) {
     }
   });
   const untrackedItem = await prisma.menuItem.create({
-    data: { venueId: venue.id, categoryId: category.id, name: 'Soda', priceMinor: 300, isActive: true }
+    data: {
+      venueId: venue.id,
+      categoryId: category.id,
+      name: 'Soda',
+      priceMinor: 300,
+      isActive: true
+    }
   });
 
   return { venue, trackedItem, untrackedItem };
 }
 
 test('addOrderLine decrements stock for a tracked item and is a no-op for an untracked one', async () => {
-  const { venue, trackedItem, untrackedItem } = await seedVenueWithTrackedItem(5);
+  const { venue, trackedItem, untrackedItem } =
+    await seedVenueWithTrackedItem(5);
   const order = await createOrder({ payload: { venueId: venue.id } });
 
-  await addOrderLine({ orderId: order.id, payload: { menuItemId: trackedItem.id, quantity: 2 } });
-  await addOrderLine({ orderId: order.id, payload: { menuItemId: untrackedItem.id, quantity: 10 } });
+  await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: trackedItem.id, quantity: 2 }
+  });
+  await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: untrackedItem.id, quantity: 10 }
+  });
 
-  const trackedAfter = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
-  const untrackedAfter = await prisma.menuItem.findUniqueOrThrow({ where: { id: untrackedItem.id } });
+  const trackedAfter = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
+  const untrackedAfter = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: untrackedItem.id }
+  });
   assert.equal(trackedAfter.stockQty, 3);
   assert.equal(untrackedAfter.stockQty, 0);
 });
@@ -100,12 +117,22 @@ test('addOrderLine rejects when requested quantity exceeds stock', async () => {
   const order = await createOrder({ payload: { venueId: venue.id } });
 
   await assert.rejects(
-    () => addOrderLine({ orderId: order.id, payload: { menuItemId: trackedItem.id, quantity: 5 } }),
+    () =>
+      addOrderLine({
+        orderId: order.id,
+        payload: { menuItemId: trackedItem.id, quantity: 5 }
+      }),
     (error: unknown) => error instanceof OrderValidationError
   );
 
-  const afterFailedAttempt = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
-  assert.equal(afterFailedAttempt.stockQty, 1, 'a rejected reservation must not partially decrement stock');
+  const afterFailedAttempt = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
+  assert.equal(
+    afterFailedAttempt.stockQty,
+    1,
+    'a rejected reservation must not partially decrement stock'
+  );
 });
 
 test('updateOrderLine quantity change adjusts reserved stock by the delta', async () => {
@@ -118,11 +145,15 @@ test('updateOrderLine quantity change adjusts reserved stock by the delta', asyn
   const lineId = withLine.lines[0].id;
 
   await updateOrderLine({ lineId, payload: { quantity: 5 } });
-  let after = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
+  let after = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
   assert.equal(after.stockQty, 5); // 10 - 5
 
   await updateOrderLine({ lineId, payload: { quantity: 1 } });
-  after = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
+  after = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
   assert.equal(after.stockQty, 9); // 10 - 1
 });
 
@@ -135,14 +166,21 @@ test('removeOrderLine and cancelOrder release reserved stock', async () => {
   });
   await removeOrderLine({ lineId: withLine.lines[0].id });
 
-  const afterRemoval = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
+  const afterRemoval = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
   assert.equal(afterRemoval.stockQty, 10);
 
   const secondOrder = await createOrder({ payload: { venueId: venue.id } });
-  await addOrderLine({ orderId: secondOrder.id, payload: { menuItemId: trackedItem.id, quantity: 4 } });
+  await addOrderLine({
+    orderId: secondOrder.id,
+    payload: { menuItemId: trackedItem.id, quantity: 4 }
+  });
   await cancelOrder({ orderId: secondOrder.id });
 
-  const afterCancel = await prisma.menuItem.findUniqueOrThrow({ where: { id: trackedItem.id } });
+  const afterCancel = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
   assert.equal(afterCancel.stockQty, 10);
 });
 
@@ -156,7 +194,11 @@ test('adjustMenuItemStock restocks and rejects going below zero', async () => {
   assert.equal(restocked.stockQty, 25);
 
   await assert.rejects(
-    () => adjustMenuItemStock({ menuItemId: trackedItem.id, payload: { quantityDelta: -100 } }),
+    () =>
+      adjustMenuItemStock({
+        menuItemId: trackedItem.id,
+        payload: { quantityDelta: -100 }
+      }),
     (error: unknown) => error instanceof InventoryError
   );
 });
@@ -165,7 +207,11 @@ test('adjustMenuItemStock rejects an item that does not track inventory', async 
   const { untrackedItem } = await seedVenueWithTrackedItem();
 
   await assert.rejects(
-    () => adjustMenuItemStock({ menuItemId: untrackedItem.id, payload: { quantityDelta: 5 } }),
+    () =>
+      adjustMenuItemStock({
+        menuItemId: untrackedItem.id,
+        payload: { quantityDelta: 5 }
+      }),
     (error: unknown) => error instanceof InventoryError && error.status === 409
   );
 });
@@ -177,7 +223,10 @@ test('listLowStockItems returns only tracked items at or below their threshold',
   assert.equal(lowStock.length, 1);
   assert.equal(lowStock[0].id, trackedItem.id);
 
-  await adjustMenuItemStock({ menuItemId: trackedItem.id, payload: { quantityDelta: 10 } });
+  await adjustMenuItemStock({
+    menuItemId: trackedItem.id,
+    payload: { quantityDelta: 10 }
+  });
   const afterRestock = await listLowStockItems({ venueId: venue.id });
   assert.equal(afterRestock.length, 0);
 });

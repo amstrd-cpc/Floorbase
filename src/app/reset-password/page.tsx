@@ -2,7 +2,14 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
+import {
+  AuthShell,
+  AuthNotice,
+  AuthLink,
+  fieldInput,
+  fieldLabel,
+  primaryButton
+} from '@/components/auth/auth-ui';
 import { apiFetch, ApiError } from '@/lib/client/api';
 
 function ResetPasswordForm() {
@@ -29,7 +36,7 @@ function ResetPasswordForm() {
       await apiFetch<unknown>('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, password })
       });
       setSuccess(true);
     } catch (e) {

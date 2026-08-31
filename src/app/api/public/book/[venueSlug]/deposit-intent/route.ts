@@ -14,7 +14,9 @@ export async function POST(
   request: Request,
   { params }: { params: { venueSlug: string } }
 ) {
-  const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
+  const ip =
+    (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
+    'unknown';
   const rate = await checkRateLimit({
     key: `deposit-intent:${params.venueSlug}:${ip}`,
     limit: 10,
@@ -31,12 +33,18 @@ export async function POST(
   try {
     rawBody = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid request body.' },
+      { status: 400 }
+    );
   }
 
   const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'A valid reservationId is required.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'A valid reservationId is required.' },
+      { status: 400 }
+    );
   }
 
   try {
@@ -47,7 +55,10 @@ export async function POST(
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof DepositError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
     }
 
     console.error('Deposit payment intent error', error);

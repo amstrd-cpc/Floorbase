@@ -12,12 +12,8 @@ let closeOrder: typeof import('@/server/orders/service').closeOrder;
 let computeOrderPaymentSummary: typeof import('@/server/order-payments/service').computeOrderPaymentSummary;
 let createOrderPaymentIntent: typeof import('@/server/order-payments/service').createOrderPaymentIntent;
 let refundOrderPayment: typeof import('@/server/order-payments/service').refundOrderPayment;
-let markOrderPaymentSucceededByIntent: typeof import(
-  '@/server/order-payments/service'
-).markOrderPaymentSucceededByIntent;
-let markOrderPaymentFailedByIntent: typeof import(
-  '@/server/order-payments/service'
-).markOrderPaymentFailedByIntent;
+let markOrderPaymentSucceededByIntent: typeof import('@/server/order-payments/service').markOrderPaymentSucceededByIntent;
+let markOrderPaymentFailedByIntent: typeof import('@/server/order-payments/service').markOrderPaymentFailedByIntent;
 let OrderPaymentError: typeof import('@/server/order-payments/errors').OrderPaymentError;
 
 before(async () => {
@@ -39,8 +35,10 @@ before(async () => {
   computeOrderPaymentSummary = paymentsService.computeOrderPaymentSummary;
   createOrderPaymentIntent = paymentsService.createOrderPaymentIntent;
   refundOrderPayment = paymentsService.refundOrderPayment;
-  markOrderPaymentSucceededByIntent = paymentsService.markOrderPaymentSucceededByIntent;
-  markOrderPaymentFailedByIntent = paymentsService.markOrderPaymentFailedByIntent;
+  markOrderPaymentSucceededByIntent =
+    paymentsService.markOrderPaymentSucceededByIntent;
+  markOrderPaymentFailedByIntent =
+    paymentsService.markOrderPaymentFailedByIntent;
   OrderPaymentError = errors.OrderPaymentError;
 });
 
@@ -55,7 +53,10 @@ function uniqueSuffix() {
 async function seedOrderWithLine(priceMinor = 1000) {
   const suffix = uniqueSuffix();
   const organization = await prisma.organization.create({
-    data: { name: 'Order Payments Test Org', slug: `order-payments-org-${suffix}` }
+    data: {
+      name: 'Order Payments Test Org',
+      slug: `order-payments-org-${suffix}`
+    }
   });
   const venue = await prisma.venue.create({
     data: {
@@ -71,11 +72,20 @@ async function seedOrderWithLine(priceMinor = 1000) {
     data: { venueId: venue.id, name: 'Mains', isActive: true }
   });
   const menuItem = await prisma.menuItem.create({
-    data: { venueId: venue.id, categoryId: category.id, name: 'Burger', priceMinor, isActive: true }
+    data: {
+      venueId: venue.id,
+      categoryId: category.id,
+      name: 'Burger',
+      priceMinor,
+      isActive: true
+    }
   });
 
   const order = await createOrder({ payload: { venueId: venue.id } });
-  await addOrderLine({ orderId: order.id, payload: { menuItemId: menuItem.id, quantity: 1 } });
+  await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: menuItem.id, quantity: 1 }
+  });
 
   return order;
 }
@@ -86,7 +96,12 @@ test('computeOrderPaymentSummary sums lines and only counts settled payments tow
     { status: 'PENDING', amountMinor: 500, tipMinor: 0, refundedMinor: 0 },
     { status: 'FAILED', amountMinor: 500, tipMinor: 0, refundedMinor: 0 },
     { status: 'SUCCEEDED', amountMinor: 800, tipMinor: 100, refundedMinor: 0 },
-    { status: 'PARTIALLY_REFUNDED', amountMinor: 400, tipMinor: 0, refundedMinor: 100 }
+    {
+      status: 'PARTIALLY_REFUNDED',
+      amountMinor: 400,
+      tipMinor: 0,
+      refundedMinor: 100
+    }
   ];
 
   const summary = computeOrderPaymentSummary({ lines, payments });
@@ -99,15 +114,24 @@ test('computeOrderPaymentSummary sums lines and only counts settled payments tow
 
 test('createOrderPaymentIntent rejects a non-positive amount before touching the DB', async () => {
   await assert.rejects(
-    () => createOrderPaymentIntent({ orderId: 'cnonexistentorderid000001', amountMinor: 0 }),
+    () =>
+      createOrderPaymentIntent({
+        orderId: 'cnonexistentorderid000001',
+        amountMinor: 0
+      }),
     (error: unknown) => error instanceof OrderPaymentError
   );
 });
 
 test('createOrderPaymentIntent throws 404 for an unknown order', async () => {
   await assert.rejects(
-    () => createOrderPaymentIntent({ orderId: 'cnonexistentorderid000002', amountMinor: 500 }),
-    (error: unknown) => error instanceof OrderPaymentError && error.status === 404
+    () =>
+      createOrderPaymentIntent({
+        orderId: 'cnonexistentorderid000002',
+        amountMinor: 500
+      }),
+    (error: unknown) =>
+      error instanceof OrderPaymentError && error.status === 404
   );
 });
 
@@ -117,7 +141,8 @@ test('createOrderPaymentIntent rejects a closed order', async () => {
 
   await assert.rejects(
     () => createOrderPaymentIntent({ orderId: order.id, amountMinor: 500 }),
-    (error: unknown) => error instanceof OrderPaymentError && error.status === 409
+    (error: unknown) =>
+      error instanceof OrderPaymentError && error.status === 409
   );
 });
 
@@ -133,19 +158,26 @@ test('createOrderPaymentIntent rejects an amount above the remaining balance', a
 test('refundOrderPayment throws 404 for an unknown payment', async () => {
   await assert.rejects(
     () => refundOrderPayment({ orderPaymentId: 'cnonexistentpaymentid001' }),
-    (error: unknown) => error instanceof OrderPaymentError && error.status === 404
+    (error: unknown) =>
+      error instanceof OrderPaymentError && error.status === 404
   );
 });
 
 test('refundOrderPayment rejects a payment that never succeeded', async () => {
   const order = await seedOrderWithLine();
   const payment = await prisma.orderPayment.create({
-    data: { orderId: order.id, amountMinor: 500, provider: 'stripe', providerRef: 'pi_never_succeeded' }
+    data: {
+      orderId: order.id,
+      amountMinor: 500,
+      provider: 'stripe',
+      providerRef: 'pi_never_succeeded'
+    }
   });
 
   await assert.rejects(
     () => refundOrderPayment({ orderPaymentId: payment.id }),
-    (error: unknown) => error instanceof OrderPaymentError && error.status === 409
+    (error: unknown) =>
+      error instanceof OrderPaymentError && error.status === 409
   );
 });
 
@@ -171,7 +203,12 @@ test('refundOrderPayment rejects an amount above what is refundable', async () =
 test('markOrderPaymentSucceededByIntent moves PENDING to SUCCEEDED but never regresses a refund', async () => {
   const order = await seedOrderWithLine();
   const pending = await prisma.orderPayment.create({
-    data: { orderId: order.id, amountMinor: 500, provider: 'stripe', providerRef: 'pi_pending_001' }
+    data: {
+      orderId: order.id,
+      amountMinor: 500,
+      provider: 'stripe',
+      providerRef: 'pi_pending_001'
+    }
   });
   const refunded = await prisma.orderPayment.create({
     data: {
@@ -187,16 +224,29 @@ test('markOrderPaymentSucceededByIntent moves PENDING to SUCCEEDED but never reg
   await markOrderPaymentSucceededByIntent('pi_pending_001');
   await markOrderPaymentSucceededByIntent('pi_refunded_001');
 
-  const pendingAfter = await prisma.orderPayment.findUniqueOrThrow({ where: { id: pending.id } });
-  const refundedAfter = await prisma.orderPayment.findUniqueOrThrow({ where: { id: refunded.id } });
+  const pendingAfter = await prisma.orderPayment.findUniqueOrThrow({
+    where: { id: pending.id }
+  });
+  const refundedAfter = await prisma.orderPayment.findUniqueOrThrow({
+    where: { id: refunded.id }
+  });
   assert.equal(pendingAfter.status, 'SUCCEEDED');
-  assert.equal(refundedAfter.status, 'REFUNDED', 'a stale succeeded webhook must not un-refund a payment');
+  assert.equal(
+    refundedAfter.status,
+    'REFUNDED',
+    'a stale succeeded webhook must not un-refund a payment'
+  );
 });
 
 test('markOrderPaymentFailedByIntent moves PENDING to FAILED but leaves SUCCEEDED alone', async () => {
   const order = await seedOrderWithLine();
   const pending = await prisma.orderPayment.create({
-    data: { orderId: order.id, amountMinor: 500, provider: 'stripe', providerRef: 'pi_pending_002' }
+    data: {
+      orderId: order.id,
+      amountMinor: 500,
+      provider: 'stripe',
+      providerRef: 'pi_pending_002'
+    }
   });
   const succeeded = await prisma.orderPayment.create({
     data: {
@@ -211,8 +261,16 @@ test('markOrderPaymentFailedByIntent moves PENDING to FAILED but leaves SUCCEEDE
   await markOrderPaymentFailedByIntent('pi_pending_002');
   await markOrderPaymentFailedByIntent('pi_succeeded_002');
 
-  const pendingAfter = await prisma.orderPayment.findUniqueOrThrow({ where: { id: pending.id } });
-  const succeededAfter = await prisma.orderPayment.findUniqueOrThrow({ where: { id: succeeded.id } });
+  const pendingAfter = await prisma.orderPayment.findUniqueOrThrow({
+    where: { id: pending.id }
+  });
+  const succeededAfter = await prisma.orderPayment.findUniqueOrThrow({
+    where: { id: succeeded.id }
+  });
   assert.equal(pendingAfter.status, 'FAILED');
-  assert.equal(succeededAfter.status, 'SUCCEEDED', 'a stale failure webhook must not downgrade a succeeded payment');
+  assert.equal(
+    succeededAfter.status,
+    'SUCCEEDED',
+    'a stale failure webhook must not downgrade a succeeded payment'
+  );
 });

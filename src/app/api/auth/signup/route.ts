@@ -20,32 +20,59 @@ function isStrongPassword(password: string): boolean {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  const rate = await checkRateLimit({ key: `signup_ip:${ip}`, limit: 5, windowMs: 60 * 60_000 });
+  const rate = await checkRateLimit({
+    key: `signup_ip:${ip}`,
+    limit: 5,
+    windowMs: 60 * 60_000
+  });
   if (!rate.allowed) {
-    return NextResponse.redirect(new URL('/signup?error=too_many_requests', request.url));
+    return NextResponse.redirect(
+      new URL('/signup?error=too_many_requests', request.url)
+    );
   }
 
   const formData = await request.formData();
-  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const email = String(formData.get('email') ?? '')
+    .trim()
+    .toLowerCase();
   const password = String(formData.get('password') ?? '');
   const orgName = String(formData.get('orgName') ?? '').trim();
   const venueName = String(formData.get('venueName') ?? '').trim();
   const timezone = String(formData.get('timezone') ?? '').trim();
 
-  if (!email || !orgName || !venueName || !timezone || !isStrongPassword(password)) {
-    return NextResponse.redirect(new URL('/signup?error=invalid_input', request.url));
+  if (
+    !email ||
+    !orgName ||
+    !venueName ||
+    !timezone ||
+    !isStrongPassword(password)
+  ) {
+    return NextResponse.redirect(
+      new URL('/signup?error=invalid_input', request.url)
+    );
   }
 
   try {
-    const { userId } = await createAccount({ email, password, orgName, venueName, timezone });
+    const { userId } = await createAccount({
+      email,
+      password,
+      orgName,
+      venueName,
+      timezone
+    });
     await createSession(userId);
     return NextResponse.redirect(new URL('/onboarding', request.url));
   } catch (error) {
     if (error instanceof SignupError) {
-      const code = error.code === 'EMAIL_TAKEN' ? 'email_taken' : 'invalid_input';
-      return NextResponse.redirect(new URL(`/signup?error=${code}`, request.url));
+      const code =
+        error.code === 'EMAIL_TAKEN' ? 'email_taken' : 'invalid_input';
+      return NextResponse.redirect(
+        new URL(`/signup?error=${code}`, request.url)
+      );
     }
     console.error('Signup error', error);
-    return NextResponse.redirect(new URL('/signup?error=server_error', request.url));
+    return NextResponse.redirect(
+      new URL('/signup?error=server_error', request.url)
+    );
   }
 }

@@ -49,11 +49,18 @@ function parsePriceToMinor(price: string): number | null {
 export function MenuManager({ venueId }: { venueId: string }) {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    kind: 'ok' | 'err';
+  } | null>(null);
 
   const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY_FORM);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null
+  );
+  const [categoryFormError, setCategoryFormError] = useState<string | null>(
+    null
+  );
 
   const [itemForm, setItemForm] = useState(EMPTY_ITEM_FORM);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -96,19 +103,23 @@ export function MenuManager({ venueId }: { venueId: string }) {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          editingCategoryId
-            ? categoryForm
-            : { ...categoryForm, venueId }
+          editingCategoryId ? categoryForm : { ...categoryForm, venueId }
         )
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to save category.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to save category.',
+          kind: 'err'
+        });
         return;
       }
       setCategoryForm(EMPTY_CATEGORY_FORM);
       setEditingCategoryId(null);
-      setMessage({ text: editingCategoryId ? 'Category updated.' : 'Category created.', kind: 'ok' });
+      setMessage({
+        text: editingCategoryId ? 'Category updated.' : 'Category created.',
+        kind: 'ok'
+      });
       await loadData();
     } catch {
       setMessage({ text: 'Failed to save category.', kind: 'err' });
@@ -116,12 +127,22 @@ export function MenuManager({ venueId }: { venueId: string }) {
   }
 
   async function removeCategory(categoryId: string) {
-    if (!window.confirm('Delete this category? All items in it will also be deleted.')) return;
+    if (
+      !window.confirm(
+        'Delete this category? All items in it will also be deleted.'
+      )
+    )
+      return;
     try {
-      const res = await fetch(`/api/admin/menu/categories/${categoryId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/menu/categories/${categoryId}`, {
+        method: 'DELETE'
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to delete category.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to delete category.',
+          kind: 'err'
+        });
         return;
       }
       setMessage({ text: 'Category deleted.', kind: 'ok' });
@@ -150,12 +171,16 @@ export function MenuManager({ venueId }: { venueId: string }) {
 
     try {
       const method = editingItemId ? 'PUT' : 'POST';
-      const url = editingItemId ? `/api/admin/menu/items/${editingItemId}` : '/api/admin/menu/items';
+      const url = editingItemId
+        ? `/api/admin/menu/items/${editingItemId}`
+        : '/api/admin/menu/items';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(editingItemId ? {} : { venueId, stockQty: Number(itemForm.stockQty) || 0 }),
+          ...(editingItemId
+            ? {}
+            : { venueId, stockQty: Number(itemForm.stockQty) || 0 }),
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || null,
@@ -173,7 +198,10 @@ export function MenuManager({ venueId }: { venueId: string }) {
       }
       setItemForm(EMPTY_ITEM_FORM);
       setEditingItemId(null);
-      setMessage({ text: editingItemId ? 'Item updated.' : 'Item created.', kind: 'ok' });
+      setMessage({
+        text: editingItemId ? 'Item updated.' : 'Item created.',
+        kind: 'ok'
+      });
       await loadData();
     } catch {
       setMessage({ text: 'Failed to save item.', kind: 'err' });
@@ -199,7 +227,10 @@ export function MenuManager({ venueId }: { venueId: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to adjust stock.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to adjust stock.',
+          kind: 'err'
+        });
         return;
       }
       setMessage({ text: 'Stock updated.', kind: 'ok' });
@@ -212,10 +243,15 @@ export function MenuManager({ venueId }: { venueId: string }) {
   async function removeItem(itemId: string) {
     if (!window.confirm('Delete this item?')) return;
     try {
-      const res = await fetch(`/api/admin/menu/items/${itemId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/menu/items/${itemId}`, {
+        method: 'DELETE'
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to delete item.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to delete item.',
+          kind: 'err'
+        });
         return;
       }
       setMessage({ text: 'Item deleted.', kind: 'ok' });
@@ -242,7 +278,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-2 rounded border p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">{editingCategoryId ? 'Edit category' : 'Add category'}</p>
+            <p className="text-sm font-semibold">
+              {editingCategoryId ? 'Edit category' : 'Add category'}
+            </p>
             {editingCategoryId ? (
               <button
                 type="button"
@@ -266,13 +304,17 @@ export function MenuManager({ venueId }: { venueId: string }) {
             className="w-full rounded border p-2 text-sm"
             placeholder="Category name (e.g. Mains, Drinks)"
             value={categoryForm.name}
-            onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+            onChange={(e) =>
+              setCategoryForm({ ...categoryForm, name: e.target.value })
+            }
           />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={categoryForm.isActive}
-              onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })}
+              onChange={(e) =>
+                setCategoryForm({ ...categoryForm, isActive: e.target.checked })
+              }
             />
             Active
           </label>
@@ -287,7 +329,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
 
         <div className="space-y-2 rounded border p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">{editingItemId ? 'Edit item' : 'Add item'}</p>
+            <p className="text-sm font-semibold">
+              {editingItemId ? 'Edit item' : 'Add item'}
+            </p>
             {editingItemId ? (
               <button
                 type="button"
@@ -310,7 +354,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
           <select
             className="w-full rounded border p-2 text-sm"
             value={itemForm.categoryId}
-            onChange={(e) => setItemForm({ ...itemForm, categoryId: e.target.value })}
+            onChange={(e) =>
+              setItemForm({ ...itemForm, categoryId: e.target.value })
+            }
           >
             <option value="">Select category…</option>
             {categories.map((category) => (
@@ -330,7 +376,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
             rows={2}
             placeholder="Description (optional)"
             value={itemForm.description}
-            onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
+            onChange={(e) =>
+              setItemForm({ ...itemForm, description: e.target.value })
+            }
           />
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -340,13 +388,17 @@ export function MenuManager({ venueId }: { venueId: string }) {
               className="rounded border p-2 text-sm"
               placeholder="Price (e.g. 12.50)"
               value={itemForm.price}
-              onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+              onChange={(e) =>
+                setItemForm({ ...itemForm, price: e.target.value })
+              }
             />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={itemForm.isActive}
-                onChange={(e) => setItemForm({ ...itemForm, isActive: e.target.checked })}
+                onChange={(e) =>
+                  setItemForm({ ...itemForm, isActive: e.target.checked })
+                }
               />
               Active
             </label>
@@ -355,7 +407,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
             <input
               type="checkbox"
               checked={itemForm.trackInventory}
-              onChange={(e) => setItemForm({ ...itemForm, trackInventory: e.target.checked })}
+              onChange={(e) =>
+                setItemForm({ ...itemForm, trackInventory: e.target.checked })
+              }
             />
             Track inventory
           </label>
@@ -368,7 +422,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
                   className="rounded border p-2 text-sm"
                   placeholder="Starting stock"
                   value={itemForm.stockQty}
-                  onChange={(e) => setItemForm({ ...itemForm, stockQty: e.target.value })}
+                  onChange={(e) =>
+                    setItemForm({ ...itemForm, stockQty: e.target.value })
+                  }
                 />
               )}
               <input
@@ -377,7 +433,12 @@ export function MenuManager({ venueId }: { venueId: string }) {
                 className="rounded border p-2 text-sm"
                 placeholder="Low-stock threshold"
                 value={itemForm.lowStockThreshold}
-                onChange={(e) => setItemForm({ ...itemForm, lowStockThreshold: e.target.value })}
+                onChange={(e) =>
+                  setItemForm({
+                    ...itemForm,
+                    lowStockThreshold: e.target.value
+                  })
+                }
               />
             </div>
           ) : null}
@@ -393,7 +454,9 @@ export function MenuManager({ venueId }: { venueId: string }) {
 
       <div className="space-y-3">
         {isLoading ? (
-          <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">Loading…</p>
+          <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
+            Loading…
+          </p>
         ) : null}
         {!isLoading && categories.length === 0 ? (
           <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
@@ -451,19 +514,27 @@ export function MenuManager({ venueId }: { venueId: string }) {
                         </span>
                       ) : null}
                     </p>
-                    <p className="font-mono text-xs">{formatPrice(item.priceMinor)}</p>
+                    <p className="font-mono text-xs">
+                      {formatPrice(item.priceMinor)}
+                    </p>
                   </div>
                   {item.description ? (
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.description}
+                    </p>
                   ) : null}
                   {item.trackInventory ? (
                     <p
                       className={`mt-1 text-xs ${
-                        item.stockQty <= item.lowStockThreshold ? 'font-semibold text-red-700' : 'text-muted-foreground'
+                        item.stockQty <= item.lowStockThreshold
+                          ? 'font-semibold text-red-700'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       Stock: {item.stockQty}
-                      {item.stockQty <= item.lowStockThreshold ? ' — low stock' : ''}
+                      {item.stockQty <= item.lowStockThreshold
+                        ? ' — low stock'
+                        : ''}
                     </p>
                   ) : null}
                   <div className="mt-1 flex gap-2">

@@ -11,7 +11,7 @@ const DEFAULT_HOURS = [
   { dayOfWeek: 3, isClosed: false, openTime: '11:30', closeTime: '22:00' },
   { dayOfWeek: 4, isClosed: false, openTime: '11:30', closeTime: '23:00' },
   { dayOfWeek: 5, isClosed: false, openTime: '10:30', closeTime: '23:00' },
-  { dayOfWeek: 6, isClosed: false, openTime: '10:30', closeTime: '21:30' },
+  { dayOfWeek: 6, isClosed: false, openTime: '10:30', closeTime: '21:30' }
 ];
 
 export default async function HoursSettingsPage() {
@@ -20,7 +20,7 @@ export default async function HoursSettingsPage() {
 
   const dbHours = await prisma.businessHours.findMany({
     where: { venueId },
-    orderBy: { dayOfWeek: 'asc' },
+    orderBy: { dayOfWeek: 'asc' }
   });
 
   // Merge DB rows over defaults so all 7 days are always present.
@@ -28,7 +28,12 @@ export default async function HoursSettingsPage() {
   const hours = DEFAULT_HOURS.map((d) => {
     const row = hoursMap.get(d.dayOfWeek);
     return row
-      ? { dayOfWeek: row.dayOfWeek, isClosed: row.isClosed, openTime: row.openTime, closeTime: row.closeTime }
+      ? {
+          dayOfWeek: row.dayOfWeek,
+          isClosed: row.isClosed,
+          openTime: row.openTime,
+          closeTime: row.closeTime
+        }
       : d;
   });
 

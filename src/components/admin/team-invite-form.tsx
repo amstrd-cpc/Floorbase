@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 
 export function TeamInviteForm({
   organizationId,
-  venueId,
+  venueId
 }: {
   organizationId: string;
   venueId: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'HOST' | 'VENUE_MANAGER' | 'ORGANIZATION_ADMIN'>('HOST');
+  const [role, setRole] = useState<
+    'HOST' | 'VENUE_MANAGER' | 'ORGANIZATION_ADMIN'
+  >('HOST');
   const [saving, setSaving] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,10 @@ export function TeamInviteForm({
     if (role !== 'ORGANIZATION_ADMIN') body.append('venueId', venueId);
 
     try {
-      const res = await fetch('/api/admin/users/invite', { method: 'POST', body });
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        body
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Failed to create invite.');
@@ -82,7 +87,9 @@ export function TeamInviteForm({
           <p className="mt-1 break-all text-xs text-muted-foreground">
             Share this link: <strong>{inviteUrl}</strong>
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Expires in 72 hours.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Expires in 72 hours.
+          </p>
         </div>
       )}
 

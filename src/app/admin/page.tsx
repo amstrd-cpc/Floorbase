@@ -68,7 +68,9 @@ export default async function AdminHomePage() {
         >
           <div className="space-y-2 text-sm">
             {todayReservations.length === 0 ? (
-              <p className="text-muted-foreground">No reservations for today.</p>
+              <p className="text-muted-foreground">
+                No reservations for today.
+              </p>
             ) : (
               todayReservations.map(
                 (reservation: {
@@ -84,7 +86,8 @@ export default async function AdminHomePage() {
                     className="flex items-center justify-between rounded border p-2 hover:bg-slate-50"
                   >
                     <span>
-                      {reservation.guest.fullName ?? 'Guest'} · {reservation.partySize}p
+                      {reservation.guest.fullName ?? 'Guest'} ·{' '}
+                      {reservation.partySize}p
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatTime(new Date(reservation.startAt), timezone)} ·{' '}
@@ -119,7 +122,8 @@ export default async function AdminHomePage() {
                     className="flex items-center justify-between rounded border p-2 hover:bg-slate-50"
                   >
                     <span>
-                      {reservation.guest.fullName ?? 'Guest'} · {reservation.partySize}p
+                      {reservation.guest.fullName ?? 'Guest'} ·{' '}
+                      {reservation.partySize}p
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDate(new Date(reservation.startAt), timezone)} ·{' '}

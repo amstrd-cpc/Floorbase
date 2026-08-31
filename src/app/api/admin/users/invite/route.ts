@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       'organizationId is required for scoped invites.',
       'SUPER_ADMIN invites cannot include organization or venue scope.',
       'Invite venue does not exist or is inactive.',
-      'Invite venue must belong to invite organization.',
+      'Invite venue must belong to invite organization.'
     ]);
     const msg = error instanceof Error ? error.message : '';
     return NextResponse.json(

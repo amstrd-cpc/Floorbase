@@ -11,7 +11,7 @@ export const tableShapeSchema = z.enum([
   'CUSTOM'
 ]);
 
-export const tableTypeSchema = z.enum([
+const tableTypeSchema = z.enum([
   'STANDARD',
   'OUTDOOR',
   'BAR',

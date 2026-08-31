@@ -8,7 +8,7 @@ export type AssignableTable = {
   combineGroup?: string | null;
 };
 
-export function rankTablesForParty(tables: AssignableTable[], partySize: number) {
+function rankTablesForParty(tables: AssignableTable[], partySize: number) {
   return tables
     .filter((table) => table.isActive)
     .filter((table) => partySize <= table.capacityMax)
@@ -32,7 +32,10 @@ function compareTableSets(
   partySize: number
 ) {
   const leftCapacity = left.reduce((sum, table) => sum + table.capacityMax, 0);
-  const rightCapacity = right.reduce((sum, table) => sum + table.capacityMax, 0);
+  const rightCapacity = right.reduce(
+    (sum, table) => sum + table.capacityMax,
+    0
+  );
   const leftOverflow = leftCapacity - partySize;
   const rightOverflow = rightCapacity - partySize;
 
@@ -44,12 +47,16 @@ function compareTableSets(
     return left.length - right.length;
   }
 
-  return left.map((table) => table.label).join('|').localeCompare(
-    right.map((table) => table.label).join('|')
-  );
+  return left
+    .map((table) => table.label)
+    .join('|')
+    .localeCompare(right.map((table) => table.label).join('|'));
 }
 
-export function chooseBestTableSet(tables: AssignableTable[], partySize: number) {
+export function chooseBestTableSet(
+  tables: AssignableTable[],
+  partySize: number
+) {
   const single = chooseBestTable(tables, partySize);
   if (single) {
     return [single];
@@ -58,7 +65,9 @@ export function chooseBestTableSet(tables: AssignableTable[], partySize: number)
   const candidates = tables
     .filter((table) => table.isActive)
     .filter((table) => !table.capacityMin || partySize >= table.capacityMin)
-    .filter((table) => (table.canCombine ?? false) && Boolean(table.combineGroup));
+    .filter(
+      (table) => (table.canCombine ?? false) && Boolean(table.combineGroup)
+    );
 
   const grouped = new Map<string, AssignableTable[]>();
   for (const table of candidates) {

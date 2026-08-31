@@ -6,11 +6,11 @@ import {
 } from '@/server/reservations/availability-service';
 import { createReservation } from '@/server/reservations/service';
 import { ReservationValidationError } from '@/server/reservations/errors';
-import {
-  formatDateTimeForTimeZone,
-  zonedTimeToUtc
-} from '@/lib/timezone';
-import type { FloorLayoutDto } from '@/lib/floor-layout/types';
+import { formatDateTimeForTimeZone, zonedTimeToUtc } from '@/lib/timezone';
+import type {
+  FloorLayoutDto,
+  PublicTableVisualState
+} from '@/lib/floor-layout/types';
 import {
   publicSlotQuerySchema,
   createPublicBookingSchema,
@@ -47,17 +47,6 @@ type PublicErrorCode =
   | 'TOO_FAR'
   | 'SLOT_UNAVAILABLE'
   | 'UNKNOWN';
-
-export type PublicTableVisualState = {
-  status:
-    | 'AVAILABLE'
-    | 'UNAVAILABLE_BOOKED'
-    | 'UNAVAILABLE_RULE'
-    | 'UNAVAILABLE_EVENT'
-    | 'INACTIVE';
-  reason: string;
-  selectable: boolean;
-};
 
 export class PublicBookingError extends Error {
   constructor(
@@ -279,9 +268,11 @@ export async function getPublicSlots(input: {
                 (table) => table.capacityMax >= input.partySize
               )
             : slot.availableTables,
-        tableStates:
-          tableStatesBySlot[slot.startAt.toISOString()] ?? {},
-        localStartAt: formatDateTimeForTimeZone(slot.startAt, input.venue.timezone)
+        tableStates: tableStatesBySlot[slot.startAt.toISOString()] ?? {},
+        localStartAt: formatDateTimeForTimeZone(
+          slot.startAt,
+          input.venue.timezone
+        )
       }))
       .filter(
         (slot) =>
@@ -291,7 +282,9 @@ export async function getPublicSlots(input: {
   };
 }
 
-async function getPublishedLayoutForPublic(venueId: string): Promise<FloorLayoutDto | null> {
+async function getPublishedLayoutForPublic(
+  venueId: string
+): Promise<FloorLayoutDto | null> {
   const layout = await prisma.floorLayout.findFirst({
     where: {
       venueId,
@@ -359,7 +352,9 @@ function buildSlotTableStates(input: {
 
   return Object.fromEntries(
     input.slots.map((slot) => {
-      const availableTableIds = new Set(slot.availableTables.map((table) => table.id));
+      const availableTableIds = new Set(
+        slot.availableTables.map((table) => table.id)
+      );
 
       const states = Object.fromEntries(
         input.layout.tables.map((table) => {
@@ -373,7 +368,8 @@ function buildSlotTableStates(input: {
             allowedAreaSet.size > 0 &&
             areaId != null &&
             !allowedAreaSet.has(areaId);
-          const belowMin = table.capacityMin != null && input.partySize < table.capacityMin;
+          const belowMin =
+            table.capacityMin != null && input.partySize < table.capacityMin;
           const aboveMax = input.partySize > table.capacityMax;
 
           let state: PublicTableVisualState;
@@ -420,7 +416,7 @@ function buildSlotTableStates(input: {
 
 export async function getPublicReservationConfirmation(
   venueSlug: string,
-  reservationId: string,
+  reservationId: string
 ) {
   const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
@@ -432,9 +428,17 @@ export async function getPublicReservationConfirmation(
       bookingStatus: true,
       specialRequests: true,
       guest: { select: { fullName: true, firstName: true, email: true } },
-      venue: { select: { name: true, slug: true, timezone: true, addressLine: true, city: true } },
-      status: { select: { label: true, code: true } },
-    },
+      venue: {
+        select: {
+          name: true,
+          slug: true,
+          timezone: true,
+          addressLine: true,
+          city: true
+        }
+      },
+      status: { select: { label: true, code: true } }
+    }
   });
 
   if (!reservation || reservation.venue.slug !== venueSlug) {
@@ -491,7 +495,10 @@ export async function createPublicBooking(input: {
   const startAtUtc = new Date(parsed.data.slotId);
 
   if (Number.isNaN(startAtUtc.getTime())) {
-    throw new PublicBookingError('INVALID_INPUT', 'Please select a valid time slot.');
+    throw new PublicBookingError(
+      'INVALID_INPUT',
+      'Please select a valid time slot.'
+    );
   }
 
   const resolved = resolveBookingConfig({

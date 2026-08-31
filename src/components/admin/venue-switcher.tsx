@@ -8,7 +8,7 @@ type Venue = { id: string; name: string };
 
 export function VenueSwitcher({
   venues,
-  activeVenueId,
+  activeVenueId
 }: {
   venues: Venue[];
   activeVenueId: string;
@@ -28,7 +28,7 @@ export function VenueSwitcher({
       await apiFetch<unknown>('/api/admin/switch-venue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venueId }),
+        body: JSON.stringify({ venueId })
       });
       router.refresh();
     } catch (e) {

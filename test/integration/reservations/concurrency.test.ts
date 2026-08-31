@@ -17,13 +17,9 @@ let fixture: TestFixture;
 // connects to the disposable test DB instead of whatever DATABASE_URL was at
 // process start.
 let createReservation: typeof import('@/server/reservations/service').createReservation;
-let setReservationTableAssignment: typeof import(
-  '@/server/reservations/assignment-service'
-).setReservationTableAssignment;
+let setReservationTableAssignment: typeof import('@/server/reservations/assignment-service').setReservationTableAssignment;
 let createPublicBooking: typeof import('@/server/public-booking/service').createPublicBooking;
-let getPublicVenueBySlug: typeof import(
-  '@/server/public-booking/service'
-).getPublicVenueBySlug;
+let getPublicVenueBySlug: typeof import('@/server/public-booking/service').getPublicVenueBySlug;
 let PublicBookingError: typeof import('@/server/public-booking/service').PublicBookingError;
 
 before(async () => {
@@ -33,11 +29,13 @@ before(async () => {
   process.env.DATABASE_URL = db.url;
 
   const service = await import('@/server/reservations/service');
-  const assignmentService = await import('@/server/reservations/assignment-service');
+  const assignmentService =
+    await import('@/server/reservations/assignment-service');
   const publicBookingService = await import('@/server/public-booking/service');
 
   createReservation = service.createReservation;
-  setReservationTableAssignment = assignmentService.setReservationTableAssignment;
+  setReservationTableAssignment =
+    assignmentService.setReservationTableAssignment;
   createPublicBooking = publicBookingService.createPublicBooking;
   getPublicVenueBySlug = publicBookingService.getPublicVenueBySlug;
   PublicBookingError = publicBookingService.PublicBookingError;
@@ -81,15 +79,24 @@ function buildCreateReservationPayload(input: {
   };
 }
 
-async function raceSettled<T>(count: number, fn: (index: number) => Promise<T>) {
-  return Promise.allSettled(Array.from({ length: count }, (_, index) => fn(index)));
+async function raceSettled<T>(
+  count: number,
+  fn: (index: number) => Promise<T>
+) {
+  return Promise.allSettled(
+    Array.from({ length: count }, (_, index) => fn(index))
+  );
 }
 
 function countFulfilled<T>(results: PromiseSettledResult<T>[]) {
   return results.filter((result) => result.status === 'fulfilled').length;
 }
 
-async function assertExactlyOneReservationTableRow(input: { tableId: string; startAt: Date; endAt: Date }) {
+async function assertExactlyOneReservationTableRow(input: {
+  tableId: string;
+  startAt: Date;
+  endAt: Date;
+}) {
   const rows = await prisma.reservationTable.findMany({
     where: { tableId: input.tableId },
     include: { reservation: { select: { startAt: true, endAt: true } } }
@@ -108,7 +115,9 @@ async function assertExactlyOneReservationTableRow(input: { tableId: string; sta
   );
 }
 
-async function assertRejectedWithTypedConflict(results: PromiseSettledResult<unknown>[]) {
+async function assertRejectedWithTypedConflict(
+  results: PromiseSettledResult<unknown>[]
+) {
   const rejected = results.filter(
     (result): result is PromiseRejectedResult => result.status === 'rejected'
   );
@@ -130,14 +139,26 @@ test('createReservation: N=2 concurrent bookings for the same table/window — e
   const results = await raceSettled(2, (index) =>
     createReservation({
       organizationId: fixture.organizationId,
-      payload: buildCreateReservationPayload({ tableId: fixture.tableId, startAt, guestSuffix: index }),
+      payload: buildCreateReservationPayload({
+        tableId: fixture.tableId,
+        startAt,
+        guestSuffix: index
+      }),
       context: { actorUserId: fixture.actorUserId }
     })
   );
 
-  assert.equal(countFulfilled(results), 1, 'expected exactly 1 of 2 concurrent creates to succeed');
+  assert.equal(
+    countFulfilled(results),
+    1,
+    'expected exactly 1 of 2 concurrent creates to succeed'
+  );
   await assertRejectedWithTypedConflict(results);
-  await assertExactlyOneReservationTableRow({ tableId: fixture.tableId, startAt, endAt });
+  await assertExactlyOneReservationTableRow({
+    tableId: fixture.tableId,
+    startAt,
+    endAt
+  });
 });
 
 test('createReservation: N=10 concurrent bookings for the same table/window — exactly one wins', async () => {
@@ -147,14 +168,26 @@ test('createReservation: N=10 concurrent bookings for the same table/window — 
   const results = await raceSettled(10, (index) =>
     createReservation({
       organizationId: fixture.organizationId,
-      payload: buildCreateReservationPayload({ tableId: fixture.tableId, startAt, guestSuffix: index }),
+      payload: buildCreateReservationPayload({
+        tableId: fixture.tableId,
+        startAt,
+        guestSuffix: index
+      }),
       context: { actorUserId: fixture.actorUserId }
     })
   );
 
-  assert.equal(countFulfilled(results), 1, 'expected exactly 1 of 10 concurrent creates to succeed');
+  assert.equal(
+    countFulfilled(results),
+    1,
+    'expected exactly 1 of 10 concurrent creates to succeed'
+  );
   await assertRejectedWithTypedConflict(results);
-  await assertExactlyOneReservationTableRow({ tableId: fixture.tableId, startAt, endAt });
+  await assertExactlyOneReservationTableRow({
+    tableId: fixture.tableId,
+    startAt,
+    endAt
+  });
 });
 
 test('createPublicBooking: concurrent public bookings for the same table/window — exactly one wins', async () => {
@@ -176,7 +209,11 @@ test('createPublicBooking: concurrent public bookings for the same table/window 
     })
   );
 
-  assert.equal(countFulfilled(results), 1, 'expected exactly 1 of 5 concurrent public bookings to succeed');
+  assert.equal(
+    countFulfilled(results),
+    1,
+    'expected exactly 1 of 5 concurrent public bookings to succeed'
+  );
 
   const rejected = results.filter(
     (result): result is PromiseRejectedResult => result.status === 'rejected'
@@ -186,10 +223,17 @@ test('createPublicBooking: concurrent public bookings for the same table/window 
       result.reason instanceof PublicBookingError,
       `expected a typed PublicBookingError, got: ${String(result.reason)}`
     );
-    assert.equal((result.reason as InstanceType<typeof PublicBookingError>).status, 409);
+    assert.equal(
+      (result.reason as InstanceType<typeof PublicBookingError>).status,
+      409
+    );
   }
 
-  await assertExactlyOneReservationTableRow({ tableId: fixture.tableId, startAt, endAt });
+  await assertExactlyOneReservationTableRow({
+    tableId: fixture.tableId,
+    startAt,
+    endAt
+  });
 });
 
 test('setReservationTableAssignment: two reservations racing to claim the same table — exactly one wins', async () => {
@@ -200,12 +244,20 @@ test('setReservationTableAssignment: two reservations racing to claim the same t
   // (both targeting fixture.tableId) is under test here.
   const reservationA = await createReservation({
     organizationId: fixture.organizationId,
-    payload: buildCreateReservationPayload({ tableId: fixture.secondaryTableId, startAt, guestSuffix: 'A' }),
+    payload: buildCreateReservationPayload({
+      tableId: fixture.secondaryTableId,
+      startAt,
+      guestSuffix: 'A'
+    }),
     context: { actorUserId: fixture.actorUserId }
   });
   const reservationB = await createReservation({
     organizationId: fixture.organizationId,
-    payload: buildCreateReservationPayload({ tableId: fixture.tertiaryTableId, startAt, guestSuffix: 'B' }),
+    payload: buildCreateReservationPayload({
+      tableId: fixture.tertiaryTableId,
+      startAt,
+      guestSuffix: 'B'
+    }),
     context: { actorUserId: fixture.actorUserId }
   });
 
@@ -224,11 +276,19 @@ test('setReservationTableAssignment: two reservations racing to claim the same t
     })
   ]);
 
-  assert.equal(countFulfilled(results), 1, 'expected exactly 1 of 2 concurrent reassignments to succeed');
+  assert.equal(
+    countFulfilled(results),
+    1,
+    'expected exactly 1 of 2 concurrent reassignments to succeed'
+  );
   await assertRejectedWithTypedConflict(results);
 
   const endAt = new Date(startAt.getTime() + 90 * 60_000);
-  await assertExactlyOneReservationTableRow({ tableId: fixture.tableId, startAt, endAt });
+  await assertExactlyOneReservationTableRow({
+    tableId: fixture.tableId,
+    startAt,
+    endAt
+  });
 });
 
 function fixtureDurationMinutes() {

@@ -16,7 +16,9 @@ export default async function PublicBookingPage({
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <div className="eyebrow text-muted-foreground">Online reservations</div>
-        <h1 className="mt-3 text-[clamp(28px,5vw,40px)] font-bold tracking-tightest">Book {venue.name}</h1>
+        <h1 className="mt-3 text-[clamp(28px,5vw,40px)] font-bold tracking-tightest">
+          Book {venue.name}
+        </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Select a date, choose an available time, and submit your details.
         </p>

@@ -1,6 +1,10 @@
 import { prisma } from '@/server/db/prisma/client';
 import { InventoryError } from './errors';
-import { type AdjustStockInput, adjustStockSchema, listLowStockSchema } from './validation';
+import {
+  type AdjustStockInput,
+  adjustStockSchema,
+  listLowStockSchema
+} from './validation';
 
 type DbClient = Pick<typeof prisma, 'menuItem'>;
 
@@ -49,7 +53,9 @@ export async function adjustMenuItemStock(input: {
 }) {
   const parsed = adjustStockSchema.safeParse(input.payload);
   if (!parsed.success) {
-    throw new InventoryError('quantityDelta is required and must be a non-zero integer.');
+    throw new InventoryError(
+      'quantityDelta is required and must be a non-zero integer.'
+    );
   }
 
   const item = await prisma.menuItem.findUnique({

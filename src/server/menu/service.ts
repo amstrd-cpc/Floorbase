@@ -22,7 +22,10 @@ function mapZodErrors(
 }
 
 function toValidationError(error: unknown) {
-  if (error instanceof MenuValidationError || error instanceof MenuNotFoundError) {
+  if (
+    error instanceof MenuValidationError ||
+    error instanceof MenuNotFoundError
+  ) {
     return error;
   }
 
@@ -47,7 +50,10 @@ async function assertVenue(venueId: string) {
   }
 }
 
-async function assertCategoryInVenue(input: { categoryId: string; venueId: string }) {
+async function assertCategoryInVenue(input: {
+  categoryId: string;
+  venueId: string;
+}) {
   const category = await prisma.menuCategory.findFirst({
     where: { id: input.categoryId, venueId: input.venueId },
     select: { id: true }
@@ -61,7 +67,10 @@ async function assertCategoryInVenue(input: { categoryId: string; venueId: strin
 export async function listMenu(input: { venueId: string }) {
   const parsed = listMenuSchema.safeParse(input);
   if (!parsed.success) {
-    throw new MenuValidationError('Invalid query params.', mapZodErrors(parsed.error.issues));
+    throw new MenuValidationError(
+      'Invalid query params.',
+      mapZodErrors(parsed.error.issues)
+    );
   }
 
   await assertVenue(parsed.data.venueId);
@@ -213,12 +222,15 @@ export async function updateMenuItem(input: {
         categoryId: parsed.data.categoryId ?? current.categoryId,
         name: parsed.data.name ?? current.name,
         description:
-          parsed.data.description === undefined ? current.description : parsed.data.description,
+          parsed.data.description === undefined
+            ? current.description
+            : parsed.data.description,
         priceMinor: parsed.data.priceMinor ?? current.priceMinor,
         sortOrder: parsed.data.sortOrder ?? current.sortOrder,
         isActive: parsed.data.isActive ?? current.isActive,
         trackInventory: parsed.data.trackInventory ?? current.trackInventory,
-        lowStockThreshold: parsed.data.lowStockThreshold ?? current.lowStockThreshold
+        lowStockThreshold:
+          parsed.data.lowStockThreshold ?? current.lowStockThreshold
       }
     });
   } catch (error) {

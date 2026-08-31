@@ -70,7 +70,10 @@ export default async function ReservationListPage({
       where: {
         organizationId,
         venueId,
-        startAt: { gte: dateFrom ?? todayStart, ...(dateTo ? { lte: dateTo } : {}) },
+        startAt: {
+          gte: dateFrom ?? todayStart,
+          ...(dateTo ? { lte: dateTo } : {})
+        },
         ...(searchParams?.statusId
           ? { reservationStatusId: searchParams.statusId }
           : {})
@@ -90,7 +93,9 @@ export default async function ReservationListPage({
       <PageHeader
         title="Reservation List"
         description="Operational list with quick scanning and status context."
-        actions={[{ href: '/admin/reservations/new', label: 'New Reservation' }]}
+        actions={[
+          { href: '/admin/reservations/new', label: 'New Reservation' }
+        ]}
       />
       <SectionCard title="Filters">
         <form className="grid gap-3 md:grid-cols-4" method="get">
@@ -99,7 +104,10 @@ export default async function ReservationListPage({
             <input
               type="date"
               name="dateFrom"
-              defaultValue={searchParams?.dateFrom ?? formatDateForTimeZone(todayStart, timezone)}
+              defaultValue={
+                searchParams?.dateFrom ??
+                formatDateForTimeZone(todayStart, timezone)
+              }
               className="mt-1 w-full rounded border p-2"
             />
           </label>
@@ -159,7 +167,9 @@ export default async function ReservationListPage({
                   reservationTables: Array<{ table: { name: string } }>;
                 }) => (
                   <tr key={reservation.id} className="border-b">
-                    <td className="py-2">{formatDateTime(new Date(reservation.startAt), timezone)}</td>
+                    <td className="py-2">
+                      {formatDateTime(new Date(reservation.startAt), timezone)}
+                    </td>
                     <td>{reservation.guest.fullName ?? 'Guest'}</td>
                     <td>{reservation.partySize}</td>
                     <td>{reservation.status.label}</td>

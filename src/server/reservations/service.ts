@@ -11,7 +11,10 @@ import {
   computeReservationWindow,
   validateSlotAligned
 } from './availability';
-import { canPlaceReservation, lockTablesForBooking } from './availability-service';
+import {
+  canPlaceReservation,
+  lockTablesForBooking
+} from './availability-service';
 import {
   type CancelReservationInput,
   type ChangeReservationStatusInput,
@@ -27,19 +30,6 @@ import {
   ReservationNotFoundError,
   ReservationValidationError
 } from './errors';
-
-type ReservationWithRelations = Prisma.ReservationGetPayload<{
-  include: {
-    guest: true;
-    status: true;
-    reservationTables: {
-      include: {
-        table: true;
-      };
-    };
-    deposit: true;
-  };
-}>;
 
 type ReservationMutationContext = {
   actorUserId: string;
@@ -323,11 +313,7 @@ async function writeAuditLog(
     actorUserId: string;
     reservationId: string;
     action:
-      | 'CREATE'
-      | 'UPDATE'
-      | 'STATUS_CHANGE'
-      | 'ASSIGN_TABLE'
-      | 'NOTE_ADDED';
+      'CREATE' | 'UPDATE' | 'STATUS_CHANGE' | 'ASSIGN_TABLE' | 'NOTE_ADDED';
     changes?: Prisma.InputJsonValue;
     metadata?: Prisma.InputJsonValue;
   }
@@ -894,5 +880,3 @@ export async function cancelReservation(input: {
     return getReservationByIdInternal(tx, current.id, input.organizationId);
   });
 }
-
-export type ReservationRecord = ReservationWithRelations;

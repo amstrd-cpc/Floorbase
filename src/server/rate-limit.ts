@@ -34,7 +34,9 @@ export async function checkRateLimit(input: {
   // ponytail: probabilistic cleanup of expired buckets instead of a cron job —
   // fine at this key cardinality; move to a scheduled delete if it isn't.
   if (Math.random() < 0.01) {
-    await prisma.rateLimitBucket.deleteMany({ where: { resetAt: { lt: new Date() } } });
+    await prisma.rateLimitBucket.deleteMany({
+      where: { resetAt: { lt: new Date() } }
+    });
   }
 
   return {

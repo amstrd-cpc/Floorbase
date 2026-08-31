@@ -14,12 +14,15 @@ export async function POST() {
   try {
     const checkoutUrl = await createCheckoutSession(organizationId, {
       successUrl,
-      cancelUrl,
+      cancelUrl
     });
     return NextResponse.redirect(checkoutUrl, { status: 303 });
   } catch (error) {
     console.error('Checkout session error', error);
-    const msg = error instanceof Error ? error.message : 'Failed to create checkout session.';
+    const msg =
+      error instanceof Error
+        ? error.message
+        : 'Failed to create checkout session.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

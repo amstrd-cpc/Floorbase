@@ -57,7 +57,7 @@ function formatTime(date: Date, timeZone: string) {
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
-    minute: '2-digit',
+    minute: '2-digit'
   }).format(date);
 }
 
@@ -115,7 +115,7 @@ export async function sendGuestConfirmation(input: {
       from: env.EMAIL_FROM,
       to: input.to,
       subject,
-      html,
+      html
     });
     await logNotification({
       organizationId: input.organizationId,
@@ -185,7 +185,7 @@ export async function sendGuestReminder(input: {
       from: env.EMAIL_FROM,
       to: input.to,
       subject,
-      html,
+      html
     });
     await logNotification({
       organizationId: input.organizationId,
@@ -234,7 +234,7 @@ export async function sendPasswordResetEmail(input: {
       from: env.EMAIL_FROM,
       to: input.to,
       subject,
-      html,
+      html
     });
   } catch (err) {
     console.error('sendPasswordResetEmail failed', err);
@@ -296,7 +296,7 @@ export async function sendVenueNewReservationAlert(input: {
       from: env.EMAIL_FROM,
       to: input.to,
       subject,
-      html,
+      html
     });
     await logNotification({
       organizationId: input.organizationId,

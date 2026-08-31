@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch, ApiError } from "@/lib/client/api";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch, ApiError } from '@/lib/client/api';
 
 type Status = { id: string; label: string };
 
@@ -10,7 +10,7 @@ export function ReservationActions({
   reservationId,
   organizationId,
   statuses,
-  currentStatusId,
+  currentStatusId
 }: {
   reservationId: string;
   organizationId: string;
@@ -29,18 +29,18 @@ export function ReservationActions({
     setStatusLoading(true);
     setError(null);
     try {
-      await apiFetch<unknown>("/api/admin/reservations/" + reservationId, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      await apiFetch<unknown>('/api/admin/reservations/' + reservationId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId,
-          action: "status",
-          reservationStatusId: selectedStatusId,
-        }),
+          action: 'status',
+          reservationStatusId: selectedStatusId
+        })
       });
       router.refresh();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Failed to update status.");
+      setError(e instanceof ApiError ? e.message : 'Failed to update status.');
     } finally {
       setStatusLoading(false);
     }
@@ -50,14 +50,16 @@ export function ReservationActions({
     setCancelLoading(true);
     setError(null);
     try {
-      await apiFetch<unknown>("/api/admin/reservations/" + reservationId, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId, action: "cancel" }),
+      await apiFetch<unknown>('/api/admin/reservations/' + reservationId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId, action: 'cancel' })
       });
       router.refresh();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Failed to cancel reservation.");
+      setError(
+        e instanceof ApiError ? e.message : 'Failed to cancel reservation.'
+      );
       setCancelConfirming(false);
     } finally {
       setCancelLoading(false);
@@ -67,7 +69,9 @@ export function ReservationActions({
   return (
     <div className="space-y-4">
       {error ? (
-        <p className="border border-foreground bg-secondary p-2 text-sm text-foreground">{error}</p>
+        <p className="border border-foreground bg-secondary p-2 text-sm text-foreground">
+          {error}
+        </p>
       ) : null}
 
       <div className="flex items-end gap-2">
@@ -90,7 +94,7 @@ export function ReservationActions({
           disabled={statusLoading || selectedStatusId === currentStatusId}
           className="bg-foreground px-3 py-2 text-sm text-background disabled:opacity-40"
         >
-          {statusLoading ? "Saving…" : "Update"}
+          {statusLoading ? 'Saving…' : 'Update'}
         </button>
       </div>
 
@@ -103,7 +107,7 @@ export function ReservationActions({
               disabled={cancelLoading}
               className="text-foreground underline disabled:opacity-50"
             >
-              {cancelLoading ? "Cancelling…" : "Yes, cancel"}
+              {cancelLoading ? 'Cancelling…' : 'Yes, cancel'}
             </button>
             <button
               onClick={() => setCancelConfirming(false)}

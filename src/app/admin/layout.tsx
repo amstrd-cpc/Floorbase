@@ -6,7 +6,11 @@ import { VenueSwitcher } from '@/components/admin/venue-switcher';
 import { getAdminContext } from '@/server/auth/admin-context';
 import { prisma } from '@/server/db/prisma/client';
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
   const { user, organizationId, venueId } = await getAdminContext();
 
   const isSuperAdmin = user.adminRoles.some((r) => r.role === 'SUPER_ADMIN');
@@ -28,14 +32,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           onboardingComplete: true,
           subscriptionStatus: true,
           trialEndsAt: true,
-          subscriptionId: true,
-        },
+          subscriptionId: true
+        }
       }),
       prisma.venue.findMany({
         where: { organizationId, isActive: true },
         select: { id: true, name: true },
-        orderBy: { createdAt: 'asc' },
-      }),
+        orderBy: { createdAt: 'asc' }
+      })
     ]);
 
     if (org && !org.onboardingComplete) {
@@ -59,11 +63,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="sticky top-0 flex h-screen w-[236px] shrink-0 flex-col border-r border-border bg-background">
         <div className="border-b border-border px-[22px] py-5">
           <span className="flex items-center gap-2.5">
-            <span className="relative inline-block h-[17px] w-[17px]" aria-hidden="true">
+            <span
+              className="relative inline-block h-[17px] w-[17px]"
+              aria-hidden="true"
+            >
               <span className="absolute inset-0 bg-foreground" />
               <span className="absolute bottom-0 right-0 h-1/2 w-1/2 rounded-full bg-background" />
             </span>
-            <span className="text-[16px] font-bold tracking-tightest">Floorbase</span>
+            <span className="text-[16px] font-bold tracking-tightest">
+              Floorbase
+            </span>
           </span>
           <div className="ml-[27px] mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground/70">
             Admin
@@ -79,7 +88,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {(user.email[0] ?? 'U').toUpperCase()}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[12.5px] font-semibold">{user.email}</span>
+              <span className="block truncate text-[12.5px] font-semibold">
+                {user.email}
+              </span>
               <form action="/api/auth/logout" method="post">
                 <button
                   className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70 hover:text-foreground"
@@ -96,25 +107,35 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {org && (
-          <BillingBanner status={org.subscriptionStatus} trialEndsAt={org.trialEndsAt} />
+          <BillingBanner
+            status={org.subscriptionStatus}
+            trialEndsAt={org.trialEndsAt}
+          />
         )}
 
         {isBillingWall ? (
           <main className="mx-auto w-full max-w-6xl p-5 md:p-8">
             <div className="space-y-4 border border-border bg-card p-8 text-center">
               <h2 className="text-xl font-bold tracking-tight">
-                {isExpiredTrial ? 'Your free trial has ended' : 'Your subscription has ended'}
+                {isExpiredTrial
+                  ? 'Your free trial has ended'
+                  : 'Your subscription has ended'}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Subscribe to restore access to your dashboard and reservation data.
+                Subscribe to restore access to your dashboard and reservation
+                data.
               </p>
               <div className="flex justify-center">
-                <BillingActions hasSubscription={Boolean(org?.subscriptionId)} />
+                <BillingActions
+                  hasSubscription={Boolean(org?.subscriptionId)}
+                />
               </div>
             </div>
           </main>
         ) : (
-          <main className="mx-auto w-full max-w-6xl p-5 md:p-8">{children}</main>
+          <main className="mx-auto w-full max-w-6xl p-5 md:p-8">
+            {children}
+          </main>
         )}
       </div>
     </div>

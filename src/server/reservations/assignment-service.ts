@@ -111,15 +111,21 @@ async function assertTableAssignable(input: {
   });
 
   if (!table) {
-    throw new ReservationValidationError('Selected table is outside reservation venue scope.', {
-      tableId: 'invalid scope'
-    });
+    throw new ReservationValidationError(
+      'Selected table is outside reservation venue scope.',
+      {
+        tableId: 'invalid scope'
+      }
+    );
   }
 
   if (!table.isActive || !table.area.isActive) {
-    throw new ReservationValidationError('Selected table is inactive and cannot be assigned.', {
-      tableId: 'inactive'
-    });
+    throw new ReservationValidationError(
+      'Selected table is inactive and cannot be assigned.',
+      {
+        tableId: 'inactive'
+      }
+    );
   }
 
   if (input.partySize > table.capacityMax) {
@@ -202,16 +208,22 @@ async function assertTableAssignable(input: {
   if (overlaps) {
     const overlapGuest =
       overlaps.reservation.guest.fullName ??
-      ([overlaps.reservation.guest.firstName, overlaps.reservation.guest.lastName]
+      ([
+        overlaps.reservation.guest.firstName,
+        overlaps.reservation.guest.lastName
+      ]
         .filter(Boolean)
         .join(' ') ||
         'another reservation');
 
-    throw new ReservationConflictError('Table is already assigned for an overlapping reservation window.', {
-      tableId: 'overlap conflict',
-      conflictReservationId: overlaps.reservation.id,
-      conflictGuest: overlapGuest
-    });
+    throw new ReservationConflictError(
+      'Table is already assigned for an overlapping reservation window.',
+      {
+        tableId: 'overlap conflict',
+        conflictReservationId: overlaps.reservation.id,
+        conflictGuest: overlapGuest
+      }
+    );
   }
 }
 
@@ -250,7 +262,9 @@ export async function getReservationAssignmentSnapshot(input: {
         startAt: reservation.startAt,
         endAt: reservation.endAt,
         bookingStatus: reservation.bookingStatus,
-        assignedTableIds: reservation.reservationTables.map((item) => item.tableId)
+        assignedTableIds: reservation.reservationTables.map(
+          (item) => item.tableId
+        )
       },
       publishedLayout: null,
       tableStates: [] as AssignmentSnapshotTable[]
@@ -303,54 +317,56 @@ export async function getReservationAssignmentSnapshot(input: {
     reservation.reservationTables.map((item) => item.tableId)
   );
 
-  const tableStates: AssignmentSnapshotTable[] = publishedLayout.tables.map((layoutTable) => {
-    if (!layoutTable.isActive) {
-      return {
-        layoutTableId: layoutTable.id,
-        tableId: layoutTable.tableId,
-        tableName: layoutTable.label,
-        isActive: false,
-        status: 'inactive',
-        reason: 'Table is inactive in published layout.',
-        conflictingReservationId: null
-      };
-    }
+  const tableStates: AssignmentSnapshotTable[] = publishedLayout.tables.map(
+    (layoutTable) => {
+      if (!layoutTable.isActive) {
+        return {
+          layoutTableId: layoutTable.id,
+          tableId: layoutTable.tableId,
+          tableName: layoutTable.label,
+          isActive: false,
+          status: 'inactive',
+          reason: 'Table is inactive in published layout.',
+          conflictingReservationId: null
+        };
+      }
 
-    if (assignedTableIds.has(layoutTable.tableId)) {
+      if (assignedTableIds.has(layoutTable.tableId)) {
+        return {
+          layoutTableId: layoutTable.id,
+          tableId: layoutTable.tableId,
+          tableName: layoutTable.label,
+          isActive: true,
+          status: 'assigned-selected',
+          reason: 'Assigned to selected reservation.',
+          conflictingReservationId: null
+        };
+      }
+
+      const conflict = conflictByTable.get(layoutTable.tableId);
+      if (conflict) {
+        return {
+          layoutTableId: layoutTable.id,
+          tableId: layoutTable.tableId,
+          tableName: layoutTable.label,
+          isActive: true,
+          status: 'conflict',
+          reason: 'Table already has another overlapping reservation.',
+          conflictingReservationId: conflict.reservationId
+        };
+      }
+
       return {
         layoutTableId: layoutTable.id,
         tableId: layoutTable.tableId,
         tableName: layoutTable.label,
         isActive: true,
-        status: 'assigned-selected',
-        reason: 'Assigned to selected reservation.',
+        status: 'free',
+        reason: 'Table available for selected reservation window.',
         conflictingReservationId: null
       };
     }
-
-    const conflict = conflictByTable.get(layoutTable.tableId);
-    if (conflict) {
-      return {
-        layoutTableId: layoutTable.id,
-        tableId: layoutTable.tableId,
-        tableName: layoutTable.label,
-        isActive: true,
-        status: 'conflict',
-        reason: 'Table already has another overlapping reservation.',
-        conflictingReservationId: conflict.reservationId
-      };
-    }
-
-    return {
-      layoutTableId: layoutTable.id,
-      tableId: layoutTable.tableId,
-      tableName: layoutTable.label,
-      isActive: true,
-      status: 'free',
-      reason: 'Table available for selected reservation window.',
-      conflictingReservationId: null
-    };
-  });
+  );
 
   return {
     reservation: {
@@ -360,7 +376,9 @@ export async function getReservationAssignmentSnapshot(input: {
       startAt: reservation.startAt,
       endAt: reservation.endAt,
       bookingStatus: reservation.bookingStatus,
-      assignedTableIds: reservation.reservationTables.map((item) => item.tableId)
+      assignedTableIds: reservation.reservationTables.map(
+        (item) => item.tableId
+      )
     },
     publishedLayout,
     tableStates
@@ -387,7 +405,9 @@ export async function setReservationTableAssignment(input: {
       );
     }
 
-    const previousTableIds = reservation.reservationTables.map((item) => item.tableId);
+    const previousTableIds = reservation.reservationTables.map(
+      (item) => item.tableId
+    );
 
     if (input.tableId) {
       await lockTablesForBooking(tx, [input.tableId]);
@@ -403,7 +423,9 @@ export async function setReservationTableAssignment(input: {
       });
     }
 
-    await tx.reservationTable.deleteMany({ where: { reservationId: reservation.id } });
+    await tx.reservationTable.deleteMany({
+      where: { reservationId: reservation.id }
+    });
 
     if (input.tableId) {
       await tx.reservationTable.create({
@@ -425,7 +447,6 @@ export async function setReservationTableAssignment(input: {
         mode: 'SINGLE_TABLE_MVP'
       })
     });
-
   });
 
   return getReservationAssignmentSnapshot({

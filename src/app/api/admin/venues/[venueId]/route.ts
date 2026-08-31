@@ -33,7 +33,8 @@ const updateVenueSchema = z
     if (value.timezone && !isValidIanaTimeZone(value.timezone)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'timezone must be a valid IANA timezone, for example Europe/Berlin.',
+        message:
+          'timezone must be a valid IANA timezone, for example Europe/Berlin.',
         path: ['timezone']
       });
     }
@@ -54,7 +55,8 @@ const updateVenueSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'defaultReservationDurationMinutes must be in 15-minute increments.',
+        message:
+          'defaultReservationDurationMinutes must be in 15-minute increments.',
         path: ['defaultReservationDurationMinutes']
       });
     }
@@ -174,15 +176,25 @@ export async function PUT(
   };
 
   if (payload.isActive !== undefined) updateData.isActive = payload.isActive;
-  if (payload.publicBookingEnabled !== undefined) updateData.publicBookingEnabled = payload.publicBookingEnabled;
-  if (payload.bookingMode !== undefined) updateData.bookingMode = payload.bookingMode;
-  if (payload.placementMode !== undefined) updateData.placementMode = payload.placementMode;
-  if (payload.minPartySize !== undefined) updateData.minPartySize = payload.minPartySize;
-  if (payload.maxOnlinePartySize !== undefined) updateData.maxOnlinePartySize = payload.maxOnlinePartySize;
-  if (payload.minAdvanceNoticeMinutes !== undefined) updateData.minAdvanceNoticeMinutes = payload.minAdvanceNoticeMinutes;
-  if (payload.maxDaysAhead !== undefined) updateData.maxDaysAhead = payload.maxDaysAhead;
-  if (payload.defaultReservationDurationMinutes !== undefined) updateData.defaultReservationDurationMinutes = payload.defaultReservationDurationMinutes;
-  if (payload.publicInstructions !== undefined) updateData.publicInstructions = payload.publicInstructions?.trim() || null;
+  if (payload.publicBookingEnabled !== undefined)
+    updateData.publicBookingEnabled = payload.publicBookingEnabled;
+  if (payload.bookingMode !== undefined)
+    updateData.bookingMode = payload.bookingMode;
+  if (payload.placementMode !== undefined)
+    updateData.placementMode = payload.placementMode;
+  if (payload.minPartySize !== undefined)
+    updateData.minPartySize = payload.minPartySize;
+  if (payload.maxOnlinePartySize !== undefined)
+    updateData.maxOnlinePartySize = payload.maxOnlinePartySize;
+  if (payload.minAdvanceNoticeMinutes !== undefined)
+    updateData.minAdvanceNoticeMinutes = payload.minAdvanceNoticeMinutes;
+  if (payload.maxDaysAhead !== undefined)
+    updateData.maxDaysAhead = payload.maxDaysAhead;
+  if (payload.defaultReservationDurationMinutes !== undefined)
+    updateData.defaultReservationDurationMinutes =
+      payload.defaultReservationDurationMinutes;
+  if (payload.publicInstructions !== undefined)
+    updateData.publicInstructions = payload.publicInstructions?.trim() || null;
 
   try {
     const venue = await prisma.venue.update({
@@ -192,8 +204,14 @@ export async function PUT(
 
     return NextResponse.json({ venue });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-      return NextResponse.json({ error: 'Slug already in use.' }, { status: 409 });
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
+      return NextResponse.json(
+        { error: 'Slug already in use.' },
+        { status: 409 }
+      );
     }
     throw e;
   }

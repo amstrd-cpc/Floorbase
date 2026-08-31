@@ -187,7 +187,9 @@ export function ReservationForm(props: ReservationFormProps) {
       router.push(`/admin/reservations/${reservationId}`);
       router.refresh();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Unable to save reservation.');
+      setError(
+        e instanceof ApiError ? e.message : 'Unable to save reservation.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -216,12 +218,21 @@ export function ReservationForm(props: ReservationFormProps) {
       const body = await apiFetch<{
         reason?: string;
         recommendedTableIds?: string[];
-        availableTables?: Array<{ id: string; name: string; capacityMax: number }>;
+        availableTables?: Array<{
+          id: string;
+          name: string;
+          capacityMax: number;
+        }>;
       }>(`/api/admin/reservations/availability?${params.toString()}`);
       if (seq !== availabilitySeqRef.current) return;
       if (body.recommendedTableIds && body.recommendedTableIds.length > 0) {
-        setValues((previous) => ({ ...previous, tableIds: body.recommendedTableIds ?? [] }));
-        setAvailabilityNote(`Found availability. Recommended tables have been selected (${body.recommendedTableIds!.length}).`);
+        setValues((previous) => ({
+          ...previous,
+          tableIds: body.recommendedTableIds ?? []
+        }));
+        setAvailabilityNote(
+          `Found availability. Recommended tables have been selected (${body.recommendedTableIds!.length}).`
+        );
         return;
       }
       const availableCount = body.availableTables?.length ?? 0;
@@ -232,7 +243,11 @@ export function ReservationForm(props: ReservationFormProps) {
       );
     } catch (e) {
       if (seq !== availabilitySeqRef.current) return;
-      setAvailabilityNote(e instanceof ApiError ? e.message : 'Unable to check availability right now.');
+      setAvailabilityNote(
+        e instanceof ApiError
+          ? e.message
+          : 'Unable to check availability right now.'
+      );
     } finally {
       if (seq === availabilitySeqRef.current) setCheckingAvailability(false);
     }
@@ -376,7 +391,9 @@ export function ReservationForm(props: ReservationFormProps) {
         disabled={checkingAvailability}
         className="rounded border px-3 py-2 text-sm"
       >
-        {checkingAvailability ? 'Checking…' : 'Check Availability / Suggest Tables'}
+        {checkingAvailability
+          ? 'Checking…'
+          : 'Check Availability / Suggest Tables'}
       </button>
       <label className="block text-sm">
         Guest Notes / Special Requests

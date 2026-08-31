@@ -32,7 +32,9 @@ export function getZonedDateTimeParts(
   });
 
   const parts = formatter.formatToParts(date);
-  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const lookup = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
 
   return {
     year: Number(lookup.year),
@@ -99,39 +101,6 @@ export function formatDateForTimeZone(date: Date, timeZone: string) {
 export function formatDateTimeForTimeZone(date: Date, timeZone: string) {
   const parts = getZonedDateTimeParts(date, timeZone);
   return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
-}
-
-export function parseLocalDateTimeInTimeZone(
-  value: string,
-  timeZone: string
-): Date | null {
-  const [datePart, timePart] = value.split('T');
-  if (!datePart || !timePart) return null;
-
-  const [yearText, monthText, dayText] = datePart.split('-');
-  const [hourText, minuteText] = timePart.split(':');
-
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const hour = Number(hourText);
-  const minute = Number(minuteText);
-
-  if (
-    [year, month, day, hour, minute].some((part) => Number.isNaN(part)) ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > 31 ||
-    hour < 0 ||
-    hour > 23 ||
-    minute < 0 ||
-    minute > 59
-  ) {
-    return null;
-  }
-
-  return zonedTimeToUtc({ year, month, day, hour, minute, timeZone });
 }
 
 export function startOfZonedDayUtc(date: Date, timeZone: string) {

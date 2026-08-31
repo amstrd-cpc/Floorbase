@@ -22,7 +22,9 @@ async function startTestcontainer(): Promise<{
   }
 
   try {
-    const container = await new PostgreSqlContainer('postgres:16-alpine').start();
+    const container = await new PostgreSqlContainer(
+      'postgres:16-alpine'
+    ).start();
     return {
       url: container.getConnectionUri(),
       stop: async () => {
@@ -65,7 +67,9 @@ export async function setupTestDatabase(): Promise<TestDatabase> {
 
   runMigrations(databaseUrl);
 
-  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+  const prisma = new PrismaClient({
+    datasources: { db: { url: databaseUrl } }
+  });
   await prisma.$connect();
 
   return {
@@ -110,7 +114,10 @@ export type TestFixture = {
  */
 export async function seedFixture(prisma: PrismaClient): Promise<TestFixture> {
   const organization = await prisma.organization.create({
-    data: { name: 'Concurrency Test Org', slug: `concurrency-org-${Date.now()}` }
+    data: {
+      name: 'Concurrency Test Org',
+      slug: `concurrency-org-${Date.now()}`
+    }
   });
 
   const venue = await prisma.venue.create({
@@ -210,7 +217,12 @@ export async function seedFixture(prisma: PrismaClient): Promise<TestFixture> {
   });
 
   const layoutArea = await prisma.floorLayoutArea.create({
-    data: { floorLayoutId: layout.id, areaId: area.id, name: area.name, isActive: true }
+    data: {
+      floorLayoutId: layout.id,
+      areaId: area.id,
+      name: area.name,
+      isActive: true
+    }
   });
 
   for (const t of [table, tableB, tableC]) {

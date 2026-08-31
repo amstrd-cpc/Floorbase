@@ -1,20 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { FloorLayoutDto } from '@/lib/floor-layout/types';
+import type {
+  FloorLayoutDto,
+  PublicTableVisualState
+} from '@/lib/floor-layout/types';
 import { cn } from '@/lib/utils';
 import { useFitScale } from './use-fit-scale';
-
-export type PublicTableVisualState = {
-  status:
-    | 'AVAILABLE'
-    | 'UNAVAILABLE_BOOKED'
-    | 'UNAVAILABLE_RULE'
-    | 'UNAVAILABLE_EVENT'
-    | 'INACTIVE';
-  reason: string;
-  selectable: boolean;
-};
 
 type Props = {
   layout: FloorLayoutDto;
@@ -33,7 +25,10 @@ function shapeClass(shape: string) {
 const HATCH =
   'repeating-linear-gradient(45deg, transparent, transparent 4px, hsl(var(--border)) 4px, hsl(var(--border)) 5px)';
 
-function tableTone(status: PublicTableVisualState['status'], selected: boolean) {
+function tableTone(
+  status: PublicTableVisualState['status'],
+  selected: boolean
+) {
   if (selected) {
     return 'border-foreground bg-foreground text-background ring-1 ring-foreground';
   }
@@ -50,9 +45,16 @@ function tableTone(status: PublicTableVisualState['status'], selected: boolean) 
   return 'border-border bg-secondary text-muted-foreground/70';
 }
 
-function isHatched(status: PublicTableVisualState['status'], selected: boolean) {
+function isHatched(
+  status: PublicTableVisualState['status'],
+  selected: boolean
+) {
   if (selected) return false;
-  return status === 'UNAVAILABLE_BOOKED' || status === 'UNAVAILABLE_RULE' || status === 'INACTIVE';
+  return (
+    status === 'UNAVAILABLE_BOOKED' ||
+    status === 'UNAVAILABLE_RULE' ||
+    status === 'INACTIVE'
+  );
 }
 
 export function FloorLayoutCanvas({
@@ -67,11 +69,18 @@ export function FloorLayoutCanvas({
     maxScale: 1
   });
 
-  const canvasHeight = useMemo(() => layout.canvasHeight * scale, [layout.canvasHeight, scale]);
+  const canvasHeight = useMemo(
+    () => layout.canvasHeight * scale,
+    [layout.canvasHeight, scale]
+  );
 
   return (
     <div className="border border-border bg-secondary p-3">
-      <div ref={containerRef} className="w-full" style={{ height: `${canvasHeight}px` }}>
+      <div
+        ref={containerRef}
+        className="w-full"
+        style={{ height: `${canvasHeight}px` }}
+      >
         <div
           className="relative origin-top-left bg-background"
           style={{
@@ -113,11 +122,20 @@ export function FloorLayoutCanvas({
                   height: `${table.height}px`,
                   transform: `rotate(${table.rotation}deg)`,
                   transformOrigin: 'center center',
-                  backgroundImage: isHatched(state?.status ?? 'UNAVAILABLE_RULE', selected) ? HATCH : undefined
+                  backgroundImage: isHatched(
+                    state?.status ?? 'UNAVAILABLE_RULE',
+                    selected
+                  )
+                    ? HATCH
+                    : undefined
                 }}
               >
-                <span className="block truncate font-medium">{table.label}</span>
-                <span className="block truncate text-[10px]">{state?.reason ?? 'Unavailable'}</span>
+                <span className="block truncate font-medium">
+                  {table.label}
+                </span>
+                <span className="block truncate text-[10px]">
+                  {state?.reason ?? 'Unavailable'}
+                </span>
               </button>
             );
           })}

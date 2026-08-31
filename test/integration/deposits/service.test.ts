@@ -14,12 +14,8 @@ let fixture: TestFixture;
 
 let createReservation: typeof import('@/server/reservations/service').createReservation;
 let createDepositPaymentIntent: typeof import('@/server/deposits/service').createDepositPaymentIntent;
-let markDepositPaidByPaymentIntent: typeof import(
-  '@/server/deposits/service'
-).markDepositPaidByPaymentIntent;
-let markDepositFailedByPaymentIntent: typeof import(
-  '@/server/deposits/service'
-).markDepositFailedByPaymentIntent;
+let markDepositPaidByPaymentIntent: typeof import('@/server/deposits/service').markDepositPaidByPaymentIntent;
+let markDepositFailedByPaymentIntent: typeof import('@/server/deposits/service').markDepositFailedByPaymentIntent;
 let DepositError: typeof import('@/server/deposits/errors').DepositError;
 
 before(async () => {
@@ -37,8 +33,10 @@ before(async () => {
 
   createReservation = reservationService.createReservation;
   createDepositPaymentIntent = depositService.createDepositPaymentIntent;
-  markDepositPaidByPaymentIntent = depositService.markDepositPaidByPaymentIntent;
-  markDepositFailedByPaymentIntent = depositService.markDepositFailedByPaymentIntent;
+  markDepositPaidByPaymentIntent =
+    depositService.markDepositPaidByPaymentIntent;
+  markDepositFailedByPaymentIntent =
+    depositService.markDepositFailedByPaymentIntent;
   DepositError = depositErrors.DepositError;
 });
 
@@ -94,7 +92,10 @@ test('createDepositPaymentIntent throws a 404 DepositError when the reservation 
       startAt: futureSlot(4, 18),
       durationMinutes: 90,
       partySize: 2,
-      guest: { fullName: 'No Deposit Guest', email: `nodeposit-${Date.now()}@example.com` },
+      guest: {
+        fullName: 'No Deposit Guest',
+        email: `nodeposit-${Date.now()}@example.com`
+      },
       tableIds: [fixture.tableId],
       source: 'ADMIN',
       depositRequired: false
@@ -103,7 +104,11 @@ test('createDepositPaymentIntent throws a 404 DepositError when the reservation 
   });
 
   await assert.rejects(
-    () => createDepositPaymentIntent({ venueSlug: fixture.venueSlug, reservationId: reservation.id }),
+    () =>
+      createDepositPaymentIntent({
+        venueSlug: fixture.venueSlug,
+        reservationId: reservation.id
+      }),
     (error: unknown) => error instanceof DepositError && error.status === 404
   );
 });
@@ -112,7 +117,11 @@ test('createDepositPaymentIntent throws a 409 DepositError when the deposit is a
   const reservation = await createReservationWithDeposit('PAID');
 
   await assert.rejects(
-    () => createDepositPaymentIntent({ venueSlug: fixture.venueSlug, reservationId: reservation.id }),
+    () =>
+      createDepositPaymentIntent({
+        venueSlug: fixture.venueSlug,
+        reservationId: reservation.id
+      }),
     (error: unknown) => error instanceof DepositError && error.status === 409
   );
 });
@@ -122,7 +131,10 @@ test('createDepositPaymentIntent throws a 404 DepositError for a reservationId s
 
   await assert.rejects(
     () =>
-      createDepositPaymentIntent({ venueSlug: 'some-other-venue-slug', reservationId: reservation.id }),
+      createDepositPaymentIntent({
+        venueSlug: 'some-other-venue-slug',
+        reservationId: reservation.id
+      }),
     (error: unknown) => error instanceof DepositError && error.status === 404
   );
 });
@@ -136,7 +148,9 @@ test('markDepositPaidByPaymentIntent marks the matching deposit paid and sets pa
 
   await markDepositPaidByPaymentIntent('pi_test_123');
 
-  const deposit = await prisma.deposit.findUniqueOrThrow({ where: { reservationId: reservation.id } });
+  const deposit = await prisma.deposit.findUniqueOrThrow({
+    where: { reservationId: reservation.id }
+  });
   assert.equal(deposit.status, 'PAID');
   assert.ok(deposit.paidAt);
 });
@@ -150,7 +164,9 @@ test('markDepositPaidByPaymentIntent is a no-op for an unrelated payment intent 
 
   await markDepositPaidByPaymentIntent('pi_test_does_not_match');
 
-  const deposit = await prisma.deposit.findUniqueOrThrow({ where: { reservationId: reservation.id } });
+  const deposit = await prisma.deposit.findUniqueOrThrow({
+    where: { reservationId: reservation.id }
+  });
   assert.equal(deposit.status, 'UNPAID');
 });
 
@@ -163,6 +179,12 @@ test('markDepositFailedByPaymentIntent does not regress a deposit that is alread
 
   await markDepositFailedByPaymentIntent('pi_test_789');
 
-  const deposit = await prisma.deposit.findUniqueOrThrow({ where: { reservationId: reservation.id } });
-  assert.equal(deposit.status, 'PAID', 'a late failure webhook must never downgrade an already-paid deposit');
+  const deposit = await prisma.deposit.findUniqueOrThrow({
+    where: { reservationId: reservation.id }
+  });
+  assert.equal(
+    deposit.status,
+    'PAID',
+    'a late failure webhook must never downgrade an already-paid deposit'
+  );
 });

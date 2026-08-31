@@ -1,11 +1,17 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/server/db/prisma/client';
-import { FloorNotFoundError, FloorValidationError } from '@/server/floor/errors';
+import {
+  FloorNotFoundError,
+  FloorValidationError
+} from '@/server/floor/errors';
 import { saveFloorLayoutSchema } from './validation';
 import type { FloorLayoutDto } from '@/lib/floor-layout/types';
 
 function toError(error: unknown) {
-  if (error instanceof FloorValidationError || error instanceof FloorNotFoundError) {
+  if (
+    error instanceof FloorValidationError ||
+    error instanceof FloorNotFoundError
+  ) {
     return error;
   }
 
@@ -70,7 +76,10 @@ function defaultTablePlacement(index: number, grid: number) {
 
 async function createInitialDraft(venueId: string) {
   const [areas, tables] = await Promise.all([
-    prisma.area.findMany({ where: { venueId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
+    prisma.area.findMany({
+      where: { venueId },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
+    }),
     prisma.table.findMany({ where: { venueId }, orderBy: { name: 'asc' } })
   ]);
 
@@ -93,7 +102,9 @@ async function createInitialDraft(venueId: string) {
     include: { areas: true }
   });
 
-  const areaByDomainId = new Map(layout.areas.map((area) => [area.areaId, area.id]));
+  const areaByDomainId = new Map(
+    layout.areas.map((area) => [area.areaId, area.id])
+  );
 
   if (tables.length > 0) {
     await prisma.floorLayoutTable.createMany({
@@ -123,19 +134,27 @@ async function createInitialDraft(venueId: string) {
 
   return prisma.floorLayout.findUniqueOrThrow({
     where: { id: layout.id },
-    include: { areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }, tables: true }
+    include: {
+      areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
+      tables: true
+    }
   });
 }
 
 export async function getOrCreateDraftLayout(venueId: string) {
-  const venue = await prisma.venue.findFirst({ where: { id: venueId, isActive: true } });
+  const venue = await prisma.venue.findFirst({
+    where: { id: venueId, isActive: true }
+  });
   if (!venue) {
     throw new FloorValidationError('Venue does not exist or is inactive.');
   }
 
   let layout = await prisma.floorLayout.findFirst({
     where: { venueId, status: 'DRAFT', isCurrent: true },
-    include: { areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }, tables: true }
+    include: {
+      areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
+      tables: true
+    }
   });
 
   if (!layout) {
@@ -148,7 +167,10 @@ export async function getOrCreateDraftLayout(venueId: string) {
 export async function getPublishedLayout(venueId: string) {
   const layout = await prisma.floorLayout.findFirst({
     where: { venueId, status: 'PUBLISHED', isCurrent: true },
-    include: { areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }, tables: true }
+    include: {
+      areas: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] },
+      tables: true
+    }
   });
 
   if (!layout) return null;
@@ -165,7 +187,9 @@ export async function saveDraftLayout(payload: unknown) {
     });
 
     if (!draft) {
-      throw new FloorNotFoundError('Draft layout not found. Refresh and try again.');
+      throw new FloorNotFoundError(
+        'Draft layout not found. Refresh and try again.'
+      );
     }
 
     const tableIds = parsed.tables.map((table) => table.tableId);
@@ -177,7 +201,9 @@ export async function saveDraftLayout(payload: unknown) {
       : [];
 
     if (venueTables.length !== new Set(tableIds).size) {
-      throw new FloorValidationError('Layout contains table IDs outside the venue scope.');
+      throw new FloorValidationError(
+        'Layout contains table IDs outside the venue scope.'
+      );
     }
 
     const referencedAreaIds = parsed.areas
@@ -192,16 +218,22 @@ export async function saveDraftLayout(payload: unknown) {
       : [];
 
     if (venueAreas.length !== new Set(referencedAreaIds).size) {
-      throw new FloorValidationError('Layout contains area IDs outside the venue scope.');
+      throw new FloorValidationError(
+        'Layout contains area IDs outside the venue scope.'
+      );
     }
 
     const areaIds = new Set(parsed.areas.map((area) => area.id));
     for (const table of parsed.tables) {
       if (table.floorLayoutAreaId && !areaIds.has(table.floorLayoutAreaId)) {
-        throw new FloorValidationError('Table references an unknown area in this draft.');
+        throw new FloorValidationError(
+          'Table references an unknown area in this draft.'
+        );
       }
       if (table.capacityMin && table.capacityMin > table.capacityMax) {
-        throw new FloorValidationError('capacityMin cannot exceed capacityMax.');
+        throw new FloorValidationError(
+          'capacityMin cannot exceed capacityMax.'
+        );
       }
     }
 
@@ -215,7 +247,9 @@ export async function saveDraftLayout(payload: unknown) {
         }
       });
 
-      await tx.floorLayoutArea.deleteMany({ where: { floorLayoutId: draft.id } });
+      await tx.floorLayoutArea.deleteMany({
+        where: { floorLayoutId: draft.id }
+      });
       await tx.floorLayoutArea.createMany({
         data: parsed.areas.map((area) => ({
           id: area.id,
@@ -227,7 +261,9 @@ export async function saveDraftLayout(payload: unknown) {
         }))
       });
 
-      await tx.floorLayoutTable.deleteMany({ where: { floorLayoutId: draft.id } });
+      await tx.floorLayoutTable.deleteMany({
+        where: { floorLayoutId: draft.id }
+      });
       await tx.floorLayoutTable.createMany({
         data: parsed.tables.map((table) => ({
           id: table.id,
@@ -304,7 +340,9 @@ export async function publishDraftLayout(venueId: string) {
     });
 
     const areaMap = new Map(
-      published.areas.map((area, idx) => [draft.areas[idx]?.id, area.id] as const)
+      published.areas.map(
+        (area, idx) => [draft.areas[idx]?.id, area.id] as const
+      )
     );
 
     if (draft.tables.length > 0) {

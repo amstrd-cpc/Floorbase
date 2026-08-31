@@ -49,7 +49,9 @@ export function ReservationFloorAssignment({
   timezone: string;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [selectedLayoutTableId, setSelectedLayoutTableId] = useState<string | null>(null);
+  const [selectedLayoutTableId, setSelectedLayoutTableId] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,11 @@ export function ReservationFloorAssignment({
       );
       setSelectedLayoutTableId(firstAssigned?.layoutTableId ?? null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to load floor assignment state.');
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : 'Failed to load floor assignment state.'
+      );
     } finally {
       setLoading(false);
     }
@@ -84,14 +90,25 @@ export function ReservationFloorAssignment({
 
   const tableByLayoutId = useMemo(() => {
     if (!snapshot) return new Map<string, Snapshot['tableStates'][number]>();
-    return new Map(snapshot.tableStates.map((table) => [table.layoutTableId, table]));
+    return new Map(
+      snapshot.tableStates.map((table) => [table.layoutTableId, table])
+    );
   }, [snapshot]);
 
   const selectedTableState = selectedLayoutTableId
-    ? tableByLayoutId.get(selectedLayoutTableId) ?? null
+    ? (tableByLayoutId.get(selectedLayoutTableId) ?? null)
     : null;
 
-  const rendererStates = useMemo<Record<string, { tone: 'default' | 'free' | 'assigned' | 'conflict' | 'inactive'; badge?: string; subtitle?: string }>>(() => {
+  const rendererStates = useMemo<
+    Record<
+      string,
+      {
+        tone: 'default' | 'free' | 'assigned' | 'conflict' | 'inactive';
+        badge?: string;
+        subtitle?: string;
+      }
+    >
+  >(() => {
     if (!snapshot) return {};
 
     return Object.fromEntries(
@@ -146,16 +163,23 @@ export function ReservationFloorAssignment({
     setError(null);
     setNotice(null);
     try {
-      const body = await apiFetch<{ snapshot: Snapshot }>(`/api/admin/reservations/${reservationId}/assignment`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId, tableId })
-      });
+      const body = await apiFetch<{ snapshot: Snapshot }>(
+        `/api/admin/reservations/${reservationId}/assignment`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ organizationId, tableId })
+        }
+      );
       setSnapshot(body.snapshot);
-      setNotice(tableId ? 'Reservation reassigned.' : 'Reservation unassigned.');
+      setNotice(
+        tableId ? 'Reservation reassigned.' : 'Reservation unassigned.'
+      );
       router.refresh();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to save assignment.');
+      setError(
+        e instanceof ApiError ? e.message : 'Failed to save assignment.'
+      );
     } finally {
       setSaving(false);
     }
@@ -166,9 +190,13 @@ export function ReservationFloorAssignment({
       title="Floor Assignment"
       description="Assign this reservation to a table on the published layout."
     >
-      {loading ? <p className="text-sm text-slate-500">Loading floor assignment view…</p> : null}
+      {loading ? (
+        <p className="text-sm text-slate-500">Loading floor assignment view…</p>
+      ) : null}
       {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+          {error}
+        </p>
       ) : null}
       {notice ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
@@ -178,7 +206,8 @@ export function ReservationFloorAssignment({
 
       {!loading && snapshot && !snapshot.publishedLayout ? (
         <p className="text-sm text-slate-600">
-          No published layout exists yet. Publish a floor layout before assigning reservations visually.
+          No published layout exists yet. Publish a floor layout before
+          assigning reservations visually.
         </p>
       ) : null}
 
@@ -188,7 +217,9 @@ export function ReservationFloorAssignment({
             layout={snapshot.publishedLayout}
             selectedTableId={selectedLayoutTableId}
             tableStates={rendererStates}
-            onSelectTable={(layoutTableId) => setSelectedLayoutTableId(layoutTableId)}
+            onSelectTable={(layoutTableId) =>
+              setSelectedLayoutTableId(layoutTableId)
+            }
           />
 
           <div className="space-y-3">
@@ -198,11 +229,14 @@ export function ReservationFloorAssignment({
                 {formatDateTime(snapshot.reservation.startAt, timezone)} -{' '}
                 {formatDateTime(snapshot.reservation.endAt, timezone)}
               </p>
-              <p className="mt-1 text-slate-600">Party size: {snapshot.reservation.partySize}</p>
+              <p className="mt-1 text-slate-600">
+                Party size: {snapshot.reservation.partySize}
+              </p>
               <p className="mt-1 text-slate-600">
                 Current table:{' '}
-                {snapshot.tableStates.find((table) => table.status === 'assigned-selected')
-                  ?.tableName ?? 'Unassigned'}
+                {snapshot.tableStates.find(
+                  (table) => table.status === 'assigned-selected'
+                )?.tableName ?? 'Unassigned'}
               </p>
             </div>
 
@@ -211,16 +245,23 @@ export function ReservationFloorAssignment({
               {selectedTableState ? (
                 <>
                   <p className="mt-1">{selectedTableState.tableName}</p>
-                  <p className="mt-1 text-slate-600">{selectedTableState.reason ?? 'No details.'}</p>
+                  <p className="mt-1 text-slate-600">
+                    {selectedTableState.reason ?? 'No details.'}
+                  </p>
                   {selectedTableState.conflictingReservationId ? (
                     <p className="mt-1 text-red-700">
-                      Conflicts with reservation {selectedTableState.conflictingReservationId}.
+                      Conflicts with reservation{' '}
+                      {selectedTableState.conflictingReservationId}.
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={saving || selectedTableState.status === 'conflict' || selectedTableState.status === 'inactive'}
+                      disabled={
+                        saving ||
+                        selectedTableState.status === 'conflict' ||
+                        selectedTableState.status === 'inactive'
+                      }
                       onClick={() => saveAssignment(selectedTableState.tableId)}
                       className="rounded bg-slate-900 px-3 py-1.5 text-xs text-white disabled:opacity-50"
                     >
@@ -237,7 +278,9 @@ export function ReservationFloorAssignment({
                   </div>
                 </>
               ) : (
-                <p className="mt-1 text-slate-600">Select a table on the map to assign it.</p>
+                <p className="mt-1 text-slate-600">
+                  Select a table on the map to assign it.
+                </p>
               )}
             </div>
 
@@ -246,7 +289,9 @@ export function ReservationFloorAssignment({
               <ul className="mt-2 space-y-1">
                 <li>• Free: available for this reservation window.</li>
                 <li>• Assigned: currently assigned to this reservation.</li>
-                <li>• Conflict: assigned to another overlapping reservation.</li>
+                <li>
+                  • Conflict: assigned to another overlapping reservation.
+                </li>
                 <li>• Inactive: table cannot receive assignments.</li>
               </ul>
             </div>

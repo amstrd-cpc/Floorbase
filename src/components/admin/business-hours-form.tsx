@@ -2,7 +2,15 @@
 
 import { useState } from 'react';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
 
 type DayHours = {
   dayOfWeek: number;
@@ -11,7 +19,11 @@ type DayHours = {
   closeTime: string;
 };
 
-export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }) {
+export function BusinessHoursForm({
+  initialHours
+}: {
+  initialHours: DayHours[];
+}) {
   const [hours, setHours] = useState<DayHours[]>(initialHours);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<'saved' | 'error' | null>(null);
@@ -22,7 +34,9 @@ export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }
     value: boolean | string
   ) {
     setHours((prev) =>
-      prev.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h))
+      prev.map((h) =>
+        h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h
+      )
     );
     setResult(null);
   }
@@ -34,7 +48,7 @@ export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }
       const res = await fetch('/api/onboarding/hours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours }),
+        body: JSON.stringify({ hours })
       });
       setResult(res.ok ? 'saved' : 'error');
     } catch {
@@ -54,7 +68,9 @@ export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }
               <input
                 type="checkbox"
                 checked={h.isClosed}
-                onChange={(e) => updateField(h.dayOfWeek, 'isClosed', e.target.checked)}
+                onChange={(e) =>
+                  updateField(h.dayOfWeek, 'isClosed', e.target.checked)
+                }
                 className="h-4 w-4"
               />
               <span>Closed</span>
@@ -64,14 +80,18 @@ export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }
                 <input
                   type="time"
                   value={h.openTime}
-                  onChange={(e) => updateField(h.dayOfWeek, 'openTime', e.target.value)}
+                  onChange={(e) =>
+                    updateField(h.dayOfWeek, 'openTime', e.target.value)
+                  }
                   className="rounded border p-1 text-sm"
                 />
                 <span className="text-muted-foreground">–</span>
                 <input
                   type="time"
                   value={h.closeTime}
-                  onChange={(e) => updateField(h.dayOfWeek, 'closeTime', e.target.value)}
+                  onChange={(e) =>
+                    updateField(h.dayOfWeek, 'closeTime', e.target.value)
+                  }
                   className="rounded border p-1 text-sm"
                 />
               </>
@@ -92,7 +112,9 @@ export function BusinessHoursForm({ initialHours }: { initialHours: DayHours[] }
           <p className="text-sm text-green-700">Hours saved.</p>
         )}
         {result === 'error' && (
-          <p className="text-sm text-red-700">Failed to save. Check times and try again.</p>
+          <p className="text-sm text-red-700">
+            Failed to save. Check times and try again.
+          </p>
         )}
       </div>
     </div>

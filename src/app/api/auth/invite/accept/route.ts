@@ -20,7 +20,9 @@ export async function POST(request: Request) {
   const lastName = String(formData.get('lastName') ?? '') || undefined;
 
   if (!token || !isStrongPassword(password)) {
-    return NextResponse.redirect(new URL('/login?error=invalid_invite', request.url));
+    return NextResponse.redirect(
+      new URL('/login?error=invalid_invite', request.url)
+    );
   }
 
   try {
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
 
     return NextResponse.redirect(new URL('/admin', request.url));
   } catch {
-    return NextResponse.redirect(new URL('/login?error=invalid_invite', request.url));
+    return NextResponse.redirect(
+      new URL('/login?error=invalid_invite', request.url)
+    );
   }
 }

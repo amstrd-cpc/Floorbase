@@ -9,7 +9,7 @@ export async function POST() {
 
   await prisma.organization.update({
     where: { id: organizationId },
-    data: { onboardingComplete: true },
+    data: { onboardingComplete: true }
   });
 
   return NextResponse.json({ ok: true });

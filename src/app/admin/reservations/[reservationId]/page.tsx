@@ -36,13 +36,20 @@ export default async function ReservationDetailsPage({
   const [reservation, statuses, venue] = await Promise.all([
     prisma.reservation.findFirst({
       where: { id: params.reservationId, organizationId, venueId },
-      include: { guest: true, status: true, reservationTables: { include: { table: true } } }
+      include: {
+        guest: true,
+        status: true,
+        reservationTables: { include: { table: true } }
+      }
     }),
     prisma.reservationStatus.findMany({
       where: { organizationId, isActive: true },
       orderBy: { sortOrder: 'asc' }
     }),
-    prisma.venue.findUnique({ where: { id: venueId }, select: { timezone: true } })
+    prisma.venue.findUnique({
+      where: { id: venueId },
+      select: { timezone: true }
+    })
   ]);
 
   if (!reservation) return <p>Reservation not found.</p>;
@@ -54,7 +61,10 @@ export default async function ReservationDetailsPage({
         title="Reservation Details"
         description="Review contact data, assignment, and status."
         actions={[
-          { href: `/admin/reservations/${reservation.id}/edit`, label: 'Edit Reservation' },
+          {
+            href: `/admin/reservations/${reservation.id}/edit`,
+            label: 'Edit Reservation'
+          },
           { href: '/admin/reservations', label: 'Back to List' }
         ]}
       />

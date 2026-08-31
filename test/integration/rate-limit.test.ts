@@ -56,8 +56,16 @@ test('different keys are tracked independently', async () => {
   const keyB = uniqueKey('key-b');
 
   await checkRateLimit({ key: keyA, limit: 1, windowMs: 60_000 });
-  const blockedA = await checkRateLimit({ key: keyA, limit: 1, windowMs: 60_000 });
-  const allowedB = await checkRateLimit({ key: keyB, limit: 1, windowMs: 60_000 });
+  const blockedA = await checkRateLimit({
+    key: keyA,
+    limit: 1,
+    windowMs: 60_000
+  });
+  const allowedB = await checkRateLimit({
+    key: keyB,
+    limit: 1,
+    windowMs: 60_000
+  });
 
   assert.equal(blockedA.allowed, false);
   assert.equal(allowedB.allowed, true);
@@ -68,9 +76,15 @@ test('concurrent increments on the same key never exceed the limit', async () =>
   const limit = 5;
 
   const results = await Promise.all(
-    Array.from({ length: 20 }, () => checkRateLimit({ key, limit, windowMs: 60_000 }))
+    Array.from({ length: 20 }, () =>
+      checkRateLimit({ key, limit, windowMs: 60_000 })
+    )
   );
 
   const allowedCount = results.filter((result) => result.allowed).length;
-  assert.equal(allowedCount, limit, 'exactly `limit` requests should be let through, not more');
+  assert.equal(
+    allowedCount,
+    limit,
+    'exactly `limit` requests should be let through, not more'
+  );
 });

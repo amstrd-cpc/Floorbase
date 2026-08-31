@@ -1,4 +1,10 @@
-import { BookingEventType, type BookingEvent, type Venue, type VenueBookingMode, type VenuePlacementMode } from '@prisma/client';
+import {
+  BookingEventType,
+  type BookingEvent,
+  type Venue,
+  type VenueBookingMode,
+  type VenuePlacementMode
+} from '@prisma/client';
 import { formatDateForTimeZone } from '@/lib/timezone';
 
 export type ResolvedBookingConfig = {
@@ -65,7 +71,11 @@ function getWeekdayIndex(date: Date, timeZone: string) {
   return map[weekday.slice(0, 3)] ?? -1;
 }
 
-function eventMatchesDate(event: BookingEvent, bookingDate: Date, timeZone: string) {
+function eventMatchesDate(
+  event: BookingEvent,
+  bookingDate: Date,
+  timeZone: string
+) {
   const bookingDateKey = localDateKey(bookingDate, timeZone);
 
   if (event.eventType === BookingEventType.SINGLE_DATE) {
@@ -87,17 +97,33 @@ function eventMatchesDate(event: BookingEvent, bookingDate: Date, timeZone: stri
 
 function dateRangeSpanDays(event: BookingEvent, timeZone: string) {
   if (!event.dateStart || !event.dateEnd) return Number.POSITIVE_INFINITY;
-  const start = new Date(`${localDateKey(event.dateStart, timeZone)}T00:00:00.000Z`);
-  const end = new Date(`${localDateKey(event.dateEnd, timeZone)}T00:00:00.000Z`);
-  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+  const start = new Date(
+    `${localDateKey(event.dateStart, timeZone)}T00:00:00.000Z`
+  );
+  const end = new Date(
+    `${localDateKey(event.dateEnd, timeZone)}T00:00:00.000Z`
+  );
+  return Math.max(
+    0,
+    Math.round((end.getTime() - start.getTime()) / 86_400_000)
+  );
 }
 
-function compareMatchedEvents(a: BookingEvent, b: BookingEvent, timeZone: string) {
-  const specificityDelta = eventTypeSpecificity(b.eventType) - eventTypeSpecificity(a.eventType);
+function compareMatchedEvents(
+  a: BookingEvent,
+  b: BookingEvent,
+  timeZone: string
+) {
+  const specificityDelta =
+    eventTypeSpecificity(b.eventType) - eventTypeSpecificity(a.eventType);
   if (specificityDelta !== 0) return specificityDelta;
 
-  if (a.eventType === BookingEventType.DATE_RANGE && b.eventType === BookingEventType.DATE_RANGE) {
-    const spanDelta = dateRangeSpanDays(a, timeZone) - dateRangeSpanDays(b, timeZone);
+  if (
+    a.eventType === BookingEventType.DATE_RANGE &&
+    b.eventType === BookingEventType.DATE_RANGE
+  ) {
+    const spanDelta =
+      dateRangeSpanDays(a, timeZone) - dateRangeSpanDays(b, timeZone);
     if (spanDelta !== 0) return spanDelta;
   }
 
@@ -107,23 +133,37 @@ function compareMatchedEvents(a: BookingEvent, b: BookingEvent, timeZone: string
   return b.id.localeCompare(a.id);
 }
 
-function applyEventOverrides(config: ResolvedBookingConfig, event: BookingEvent) {
+function applyEventOverrides(
+  config: ResolvedBookingConfig,
+  event: BookingEvent
+) {
   if (event.confirmationMode) config.confirmationMode = event.confirmationMode;
   if (event.placementMode) config.placementMode = event.placementMode;
-  if (typeof event.minPartySize === 'number') config.minPartySize = event.minPartySize;
-  if (typeof event.maxOnlinePartySize === 'number') config.maxOnlinePartySize = event.maxOnlinePartySize;
+  if (typeof event.minPartySize === 'number')
+    config.minPartySize = event.minPartySize;
+  if (typeof event.maxOnlinePartySize === 'number')
+    config.maxOnlinePartySize = event.maxOnlinePartySize;
   if (typeof event.minAdvanceNoticeMinutes === 'number') {
     config.minAdvanceNoticeMinutes = event.minAdvanceNoticeMinutes;
   }
-  if (typeof event.maxDaysAhead === 'number') config.maxDaysAhead = event.maxDaysAhead;
-  if (typeof event.durationMinutes === 'number') config.durationMinutes = event.durationMinutes;
-  if (typeof event.publicInstructions === 'string') config.publicInstructions = event.publicInstructions;
-  if (typeof event.publicLabel === 'string') config.publicLabel = event.publicLabel;
-  if (event.allowedAreaIds.length > 0) config.allowedAreaIds = event.allowedAreaIds;
-  if (event.allowedTableIds.length > 0) config.allowedTableIds = event.allowedTableIds;
+  if (typeof event.maxDaysAhead === 'number')
+    config.maxDaysAhead = event.maxDaysAhead;
+  if (typeof event.durationMinutes === 'number')
+    config.durationMinutes = event.durationMinutes;
+  if (typeof event.publicInstructions === 'string')
+    config.publicInstructions = event.publicInstructions;
+  if (typeof event.publicLabel === 'string')
+    config.publicLabel = event.publicLabel;
+  if (event.allowedAreaIds.length > 0)
+    config.allowedAreaIds = event.allowedAreaIds;
+  if (event.allowedTableIds.length > 0)
+    config.allowedTableIds = event.allowedTableIds;
 }
 
-export function resolveBookingConfig(input: { venue: BookingVenueWithEvents; bookingDate: Date }) {
+export function resolveBookingConfig(input: {
+  venue: BookingVenueWithEvents;
+  bookingDate: Date;
+}) {
   const base: ResolvedBookingConfig = {
     publicBookingEnabled: input.venue.publicBookingEnabled,
     confirmationMode: input.venue.bookingMode,
@@ -141,7 +181,9 @@ export function resolveBookingConfig(input: { venue: BookingVenueWithEvents; boo
 
   const matchedEvents = input.venue.bookingEvents
     .filter((event) => event.isActive)
-    .filter((event) => eventMatchesDate(event, input.bookingDate, input.venue.timezone))
+    .filter((event) =>
+      eventMatchesDate(event, input.bookingDate, input.venue.timezone)
+    )
     .sort((a, b) => compareMatchedEvents(a, b, input.venue.timezone));
 
   const winningEvent = matchedEvents[0] ?? null;

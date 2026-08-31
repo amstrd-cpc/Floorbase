@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 export const adjustStockSchema = z
   .object({
-    quantityDelta: z.number().int().refine((n) => n !== 0, 'quantityDelta must not be 0')
+    quantityDelta: z
+      .number()
+      .int()
+      .refine((n) => n !== 0, 'quantityDelta must not be 0')
   })
   .strict();
 

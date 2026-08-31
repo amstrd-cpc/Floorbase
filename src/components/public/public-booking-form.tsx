@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { FloorLayoutDto } from '@/lib/floor-layout/types';
+import type {
+  FloorLayoutDto,
+  PublicTableVisualState
+} from '@/lib/floor-layout/types';
 import { apiFetch, ApiError } from '@/lib/client/api';
 import { formatDateForTimeZone } from '@/lib/timezone';
-import {
-  FloorLayoutCanvas,
-  type PublicTableVisualState
-} from './floor-layout-canvas';
+import { FloorLayoutCanvas } from './floor-layout-canvas';
 
 type Slot = {
   startAt: string;
@@ -28,7 +28,8 @@ type ResolvedConfig = {
 
 const bookInput =
   'mt-1.5 w-full border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus:border-foreground focus:ring-1 focus:ring-foreground';
-const stepEyebrow = 'font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground';
+const stepEyebrow =
+  'font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground';
 const primaryBtn =
   'bg-foreground px-4 py-2.5 text-[13px] font-semibold text-background transition hover:opacity-85 disabled:opacity-50';
 
@@ -52,7 +53,9 @@ export function PublicBookingForm({
   const [layout, setLayout] = useState<FloorLayoutDto | null>(null);
   const [slotId, setSlotId] = useState('');
   const [selectedTableId, setSelectedTableId] = useState('');
-  const [resolvedConfig, setResolvedConfig] = useState<ResolvedConfig | null>(null);
+  const [resolvedConfig, setResolvedConfig] = useState<ResolvedConfig | null>(
+    null
+  );
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -68,7 +71,8 @@ export function PublicBookingForm({
 
   const selectedSlot = slots.find((slot) => slot.startAt === slotId) ?? null;
   const tableSelectionEnabled =
-    resolvedConfig?.placementMode === 'TABLE_SELECTION' && Boolean(selectedSlot);
+    resolvedConfig?.placementMode === 'TABLE_SELECTION' &&
+    Boolean(selectedSlot);
 
   async function fetchSlots() {
     if (!date || !partySize) return;
@@ -79,7 +83,11 @@ export function PublicBookingForm({
     setSelectedTableId('');
 
     try {
-      const body = await apiFetch<{ slots?: Slot[]; config?: ResolvedConfig; layout?: FloorLayoutDto }>(
+      const body = await apiFetch<{
+        slots?: Slot[];
+        config?: ResolvedConfig;
+        layout?: FloorLayoutDto;
+      }>(
         `/api/public/book/${venueSlug}/slots?date=${encodeURIComponent(date)}&partySize=${partySize}`
       );
       const nextSlots = (body.slots ?? []) as Slot[];
@@ -87,12 +95,16 @@ export function PublicBookingForm({
       setSlots(nextSlots);
       setLayout((body.layout ?? null) as FloorLayoutDto | null);
       if (nextSlots.length === 0) {
-        setError('No openings match that date and party size. Try a different date or party size.');
+        setError(
+          'No openings match that date and party size. Try a different date or party size.'
+        );
       }
     } catch (e) {
       setSlots([]);
       setLayout(null);
-      setError(e instanceof ApiError ? e.message : 'Unable to load available times.');
+      setError(
+        e instanceof ApiError ? e.message : 'Unable to load available times.'
+      );
     } finally {
       setLoadingSlots(false);
     }
@@ -113,20 +125,25 @@ export function PublicBookingForm({
 
     setSubmitting(true);
     try {
-      const data = await apiFetch<{ reservationId: string }>(`/api/public/book/${venueSlug}/reserve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slotId,
-          partySize,
-          fullName,
-          email,
-          phone,
-          selectedTableId: selectedTableId || undefined,
-          note: note.trim() || undefined,
-        }),
-      });
-      router.push(`/book/${venueSlug}/confirmation?reservationId=${encodeURIComponent(data.reservationId)}`);
+      const data = await apiFetch<{ reservationId: string }>(
+        `/api/public/book/${venueSlug}/reserve`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slotId,
+            partySize,
+            fullName,
+            email,
+            phone,
+            selectedTableId: selectedTableId || undefined,
+            note: note.trim() || undefined
+          })
+        }
+      );
+      router.push(
+        `/book/${venueSlug}/confirmation?reservationId=${encodeURIComponent(data.reservationId)}`
+      );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Unable to submit booking.');
     } finally {
@@ -139,7 +156,9 @@ export function PublicBookingForm({
       {error ? (
         <div className="border border-foreground bg-secondary px-3.5 py-3">
           <div className={stepEyebrow}>Notice</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{error}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-foreground">
+            {error}
+          </p>
         </div>
       ) : null}
 
@@ -189,7 +208,9 @@ export function PublicBookingForm({
 
       {slots.length > 0 ? (
         <section className="space-y-3">
-          <p className={stepEyebrow}>Step 02 — Select a time · {venueTimezone}</p>
+          <p className={stepEyebrow}>
+            Step 02 — Select a time · {venueTimezone}
+          </p>
           <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4 md:grid-cols-6">
             {slots.map((availableSlot) => {
               const label = availableSlot.localStartAt.slice(11, 16);
@@ -220,7 +241,8 @@ export function PublicBookingForm({
         <section className="space-y-3">
           <p className={stepEyebrow}>Step 03 — Choose your table</p>
           <p className="text-xs text-muted-foreground">
-            Outlined tables are open. Shaded tables are already taken for this time.
+            Outlined tables are open. Shaded tables are already taken for this
+            time.
           </p>
           {layout ? (
             <>
@@ -229,7 +251,9 @@ export function PublicBookingForm({
                 selectedTableId={selectedTableId || null}
                 tableStates={selectedSlot?.tableStates ?? {}}
                 onSelectTable={(tableId) =>
-                  setSelectedTableId((current) => (current === tableId ? '' : tableId))
+                  setSelectedTableId((current) =>
+                    current === tableId ? '' : tableId
+                  )
                 }
               />
               <input

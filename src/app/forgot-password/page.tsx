@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
+import {
+  AuthShell,
+  AuthNotice,
+  AuthLink,
+  fieldInput,
+  fieldLabel,
+  primaryButton
+} from '@/components/auth/auth-ui';
 import { apiFetch } from '@/lib/client/api';
 
 export default function ForgotPasswordPage() {
@@ -16,7 +23,7 @@ export default function ForgotPasswordPage() {
       await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email })
       });
     } catch {
       // intentional: don't expose whether email exists
@@ -43,7 +50,8 @@ export default function ForgotPasswordPage() {
     >
       {submitted ? (
         <AuthNotice label="Check your inbox">
-          If that email address is registered, you&apos;ll receive a password reset link shortly.
+          If that email address is registered, you&apos;ll receive a password
+          reset link shortly.
         </AuthNotice>
       ) : (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

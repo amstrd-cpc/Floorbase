@@ -13,9 +13,7 @@ let teardown: () => Promise<void>;
 let fixture: TestFixture;
 let createReservation: typeof import('@/server/reservations/service').createReservation;
 let sendGuestConfirmation: typeof import('@/server/email/service').sendGuestConfirmation;
-let sendVenueNewReservationAlert: typeof import(
-  '@/server/email/service'
-).sendVenueNewReservationAlert;
+let sendVenueNewReservationAlert: typeof import('@/server/email/service').sendVenueNewReservationAlert;
 
 before(async () => {
   const db = await setupTestDatabase();
@@ -60,7 +58,10 @@ async function createTestReservation() {
       startAt,
       durationMinutes: 90,
       partySize: 2,
-      guest: { fullName: 'Notify Guest', email: `notify-${Date.now()}@example.com` },
+      guest: {
+        fullName: 'Notify Guest',
+        email: `notify-${Date.now()}@example.com`
+      },
       tableIds: [fixture.tableId],
       source: 'ADMIN',
       depositRequired: false
@@ -115,7 +116,10 @@ test('sendVenueNewReservationAlert writes a SKIPPED NotificationLog row', async 
   });
 
   const log = await prisma.notificationLog.findFirstOrThrow({
-    where: { reservationId: reservation.id, templateKey: 'venue_new_reservation_alert' }
+    where: {
+      reservationId: reservation.id,
+      templateKey: 'venue_new_reservation_alert'
+    }
   });
   assert.equal(log.status, 'SKIPPED');
   assert.equal(log.recipient, 'owner@example.com');

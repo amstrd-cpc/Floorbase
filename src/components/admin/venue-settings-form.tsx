@@ -35,7 +35,15 @@ const TIMEZONE_SUGGESTIONS = [
   'Asia/Yerevan'
 ];
 
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function Section({
+  title,
+  description,
+  children
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3 border border-border p-4">
       <div>
@@ -69,34 +77,61 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
     setErrorMsg(null);
     setSaving(true);
     try {
-      const body = await apiFetch<{ venue: VenueSettings }>(`/api/admin/venues/${venue.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values)
-      });
+      const body = await apiFetch<{ venue: VenueSettings }>(
+        `/api/admin/venues/${venue.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values)
+        }
+      );
       if (body.venue) setValues(body.venue);
       setSuccessMsg('Venue settings saved.');
     } catch (e) {
-      setErrorMsg(e instanceof ApiError ? e.message : 'Unable to save settings.');
+      setErrorMsg(
+        e instanceof ApiError ? e.message : 'Unable to save settings.'
+      );
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 border border-border bg-card p-4">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4 border border-border bg-card p-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-secondary p-3">
         <div>
           <p className="text-sm font-medium">Default venue configuration</p>
-          <p className="text-xs text-slate-500">These values are used for regular service days. Event overrides are managed in the Events section.</p>
+          <p className="text-xs text-slate-500">
+            These values are used for regular service days. Event overrides are
+            managed in the Events section.
+          </p>
         </div>
-        <button disabled={saving} className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save settings'}</button>
+        <button
+          disabled={saving}
+          className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save settings'}
+        </button>
       </div>
 
-      {successMsg ? <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">{successMsg}</p> : null}
-      {errorMsg ? <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{errorMsg}</p> : null}
+      {successMsg ? (
+        <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
+          {successMsg}
+        </p>
+      ) : null}
+      {errorMsg ? (
+        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+          {errorMsg}
+        </p>
+      ) : null}
 
-      <Section title="General" description="Core identity and public booking URL details.">
+      <Section
+        title="General"
+        description="Core identity and public booking URL details."
+      >
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block text-sm">
             Venue name
@@ -119,13 +154,18 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
           <input
             type="checkbox"
             checked={values.isActive}
-            onChange={(e) => setValues({ ...values, isActive: e.target.checked })}
+            onChange={(e) =>
+              setValues({ ...values, isActive: e.target.checked })
+            }
           />
           Venue is active for operations
         </label>
       </Section>
 
-      <Section title="Location" description="Physical location and local timezone used by admin and booking workflows.">
+      <Section
+        title="Location"
+        description="Physical location and local timezone used by admin and booking workflows."
+      >
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm">
             Country
@@ -133,7 +173,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
               className="mt-1 w-full rounded border p-2"
               placeholder="e.g. United States"
               value={values.country ?? ''}
-              onChange={(e) => setValues({ ...values, country: e.target.value || null })}
+              onChange={(e) =>
+                setValues({ ...values, country: e.target.value || null })
+              }
             />
           </label>
           <label className="text-sm">
@@ -142,7 +184,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
               className="mt-1 w-full rounded border p-2"
               placeholder="e.g. New York"
               value={values.city ?? ''}
-              onChange={(e) => setValues({ ...values, city: e.target.value || null })}
+              onChange={(e) =>
+                setValues({ ...values, city: e.target.value || null })
+              }
             />
           </label>
         </div>
@@ -152,7 +196,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
             className="mt-1 w-full rounded border p-2"
             placeholder="Street, district, or landmark"
             value={values.addressLine ?? ''}
-            onChange={(e) => setValues({ ...values, addressLine: e.target.value || null })}
+            onChange={(e) =>
+              setValues({ ...values, addressLine: e.target.value || null })
+            }
           />
         </label>
         <label className="text-sm">
@@ -170,12 +216,16 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
             ))}
           </datalist>
           <span className="mt-1 block text-xs text-slate-500">
-            Uses IANA timezone values. Browser timezone is only a suggestion and remains manually editable.
+            Uses IANA timezone values. Browser timezone is only a suggestion and
+            remains manually editable.
           </span>
         </label>
       </Section>
 
-      <Section title="Regional" description="Regional display defaults used in customer and admin experiences.">
+      <Section
+        title="Regional"
+        description="Regional display defaults used in customer and admin experiences."
+      >
         <label className="text-sm md:max-w-xs">
           Currency
           <input
@@ -189,7 +239,10 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
         </label>
       </Section>
 
-      <Section title="Booking Defaults" description="Default booking rules for normal days. Use Events for temporary or recurring exceptions.">
+      <Section
+        title="Booking Defaults"
+        description="Default booking rules for normal days. Use Events for temporary or recurring exceptions."
+      >
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -225,7 +278,8 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
               onChange={(e) =>
                 setValues({
                   ...values,
-                  placementMode: e.target.value as VenueSettings['placementMode']
+                  placementMode: e.target
+                    .value as VenueSettings['placementMode']
                 })
               }
             >
@@ -318,7 +372,10 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
             rows={3}
             value={values.publicInstructions ?? ''}
             onChange={(e) =>
-              setValues({ ...values, publicInstructions: e.target.value || null })
+              setValues({
+                ...values,
+                publicInstructions: e.target.value || null
+              })
             }
           />
         </label>

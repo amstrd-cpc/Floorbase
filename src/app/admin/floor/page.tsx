@@ -14,7 +14,10 @@ export default async function FloorManagementPage() {
     getOrCreateDraftLayout(venueId),
     getPublishedLayout(venueId),
     prisma.table.findMany({ where: { venueId }, orderBy: { name: 'asc' } }),
-    prisma.area.findMany({ where: { venueId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] })
+    prisma.area.findMany({
+      where: { venueId },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
+    })
   ]);
 
   return (

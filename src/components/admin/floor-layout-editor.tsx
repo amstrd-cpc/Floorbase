@@ -36,9 +36,21 @@ function newId() {
 }
 
 function getVisualSizeKey(width: number, height: number) {
-  if (width === SIZE_PRESETS.SMALL.width && height === SIZE_PRESETS.SMALL.height) return 'SMALL';
-  if (width === SIZE_PRESETS.MEDIUM.width && height === SIZE_PRESETS.MEDIUM.height) return 'MEDIUM';
-  if (width === SIZE_PRESETS.LARGE.width && height === SIZE_PRESETS.LARGE.height) return 'LARGE';
+  if (
+    width === SIZE_PRESETS.SMALL.width &&
+    height === SIZE_PRESETS.SMALL.height
+  )
+    return 'SMALL';
+  if (
+    width === SIZE_PRESETS.MEDIUM.width &&
+    height === SIZE_PRESETS.MEDIUM.height
+  )
+    return 'MEDIUM';
+  if (
+    width === SIZE_PRESETS.LARGE.width &&
+    height === SIZE_PRESETS.LARGE.height
+  )
+    return 'LARGE';
   return 'CUSTOM';
 }
 
@@ -59,9 +71,9 @@ export function FloorLayoutEditor({
   const [published, setPublished] = useState(initialPublished);
   const [tables, setTables] = useState(initialTables);
   const [areas, setAreas] = useState(initialAreas);
-  const [selectedTableInventoryId, setSelectedTableInventoryId] = useState<string | null>(
-    initialDraft.tables[0]?.tableId ?? initialTables[0]?.id ?? null
-  );
+  const [selectedTableInventoryId, setSelectedTableInventoryId] = useState<
+    string | null
+  >(initialDraft.tables[0]?.tableId ?? initialTables[0]?.id ?? null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,8 +90,9 @@ export function FloorLayoutEditor({
 
   const selectedPlacedTable = useMemo(
     () =>
-      draft.tables.find((table) => table.tableId === selectedTableInventoryId) ??
-      null,
+      draft.tables.find(
+        (table) => table.tableId === selectedTableInventoryId
+      ) ?? null,
     [draft.tables, selectedTableInventoryId]
   );
 
@@ -104,28 +117,35 @@ export function FloorLayoutEditor({
     });
   }
 
-  async function saveDraft(currentDraft = draft): Promise<FloorLayoutDto | null> {
+  async function saveDraft(
+    currentDraft = draft
+  ): Promise<FloorLayoutDto | null> {
     setError(null);
     setIsSaving(true);
     try {
-      const body = await apiFetch<{ draft: FloorLayoutDto }>('/api/admin/floor-layout', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          venueId,
-          canvasWidth: currentDraft.canvasWidth,
-          canvasHeight: currentDraft.canvasHeight,
-          gridSize: currentDraft.gridSize,
-          areas: currentDraft.areas,
-          tables: currentDraft.tables
-        })
-      });
+      const body = await apiFetch<{ draft: FloorLayoutDto }>(
+        '/api/admin/floor-layout',
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            venueId,
+            canvasWidth: currentDraft.canvasWidth,
+            canvasHeight: currentDraft.canvasHeight,
+            gridSize: currentDraft.gridSize,
+            areas: currentDraft.areas,
+            tables: currentDraft.tables
+          })
+        }
+      );
       setDraft(body.draft);
       setDirty(false);
       setSuccess('Draft saved.');
       return body.draft;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to save draft layout.');
+      setError(
+        e instanceof ApiError ? e.message : 'Failed to save draft layout.'
+      );
       return null;
     } finally {
       setIsSaving(false);
@@ -144,11 +164,14 @@ export function FloorLayoutEditor({
     setError(null);
     setIsPublishing(true);
     try {
-      const body = await apiFetch<{ published: FloorLayoutDto }>('/api/admin/floor-layout/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venueId })
-      });
+      const body = await apiFetch<{ published: FloorLayoutDto }>(
+        '/api/admin/floor-layout/publish',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ venueId })
+        }
+      );
       setPublished(body.published);
       setSuccess('Layout published.');
     } catch (e) {
@@ -164,12 +187,27 @@ export function FloorLayoutEditor({
     if (!name) return;
 
     try {
-      const body = await apiFetch<{ area: { id: string; name: string; sortOrder: number; isActive: boolean } }>('/api/admin/areas', {
+      const body = await apiFetch<{
+        area: {
+          id: string;
+          name: string;
+          sortOrder: number;
+          isActive: boolean;
+        };
+      }>('/api/admin/areas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venueId, name, sortOrder: draft.areas.length, isActive: true })
+        body: JSON.stringify({
+          venueId,
+          name,
+          sortOrder: draft.areas.length,
+          isActive: true
+        })
       });
-      setAreas((current) => [...current, { id: body.area.id, name: body.area.name }]);
+      setAreas((current) => [
+        ...current,
+        { id: body.area.id, name: body.area.name }
+      ]);
       setDraft((currentDraft) => ({
         ...currentDraft,
         areas: [
@@ -204,7 +242,9 @@ export function FloorLayoutEditor({
         body: JSON.stringify({ name: trimmed })
       });
       setAreas((current) =>
-        current.map((area) => (area.id === areaId ? { ...area, name: trimmed } : area))
+        current.map((area) =>
+          area.id === areaId ? { ...area, name: trimmed } : area
+        )
       );
       setDraft((currentDraft) => ({
         ...currentDraft,
@@ -233,14 +273,18 @@ export function FloorLayoutEditor({
     if (!window.confirm(msg)) return;
 
     try {
-      await apiFetch<unknown>(`/api/admin/areas/${areaId}`, { method: 'DELETE' });
+      await apiFetch<unknown>(`/api/admin/areas/${areaId}`, {
+        method: 'DELETE'
+      });
       setAreas((current) => current.filter((area) => area.id !== areaId));
       setDraft((currentDraft) => ({
         ...currentDraft,
         areas: currentDraft.areas.filter((area) => area.areaId !== areaId),
         tables: currentDraft.tables.map((t) => {
           const la = currentDraft.areas.find((a) => a.areaId === areaId);
-          return la && t.floorLayoutAreaId === la.id ? { ...t, floorLayoutAreaId: null } : t;
+          return la && t.floorLayoutAreaId === la.id
+            ? { ...t, floorLayoutAreaId: null }
+            : t;
         })
       }));
       setDirty(true);
@@ -260,7 +304,8 @@ export function FloorLayoutEditor({
       id: newId(),
       tableId: domainTable.id,
       floorLayoutAreaId:
-        currentDraft.areas.find((area) => area.areaId === domainTable.areaId)?.id ?? null,
+        currentDraft.areas.find((area) => area.areaId === domainTable.areaId)
+          ?.id ?? null,
       label: domainTable.name,
       capacityMin: domainTable.capacityMin,
       capacityMax: domainTable.capacityMax,
@@ -271,7 +316,9 @@ export function FloorLayoutEditor({
       height: SIZE_PRESETS.MEDIUM.height,
       rotation: 0,
       isActive: domainTable.isActive,
-      combinableMeta: domainTable.canCombine ? { combineGroup: domainTable.combineGroup } : null
+      combinableMeta: domainTable.canCombine
+        ? { combineGroup: domainTable.combineGroup }
+        : null
     };
   }
 
@@ -306,7 +353,11 @@ export function FloorLayoutEditor({
       setTables((current) => [...current, nextTable]);
       setSelectedTableInventoryId(nextTable.id);
       setDraft((currentDraft) => {
-        const entry = buildPlacedTableEntry(nextTable, currentDraft, currentDraft.tables.length);
+        const entry = buildPlacedTableEntry(
+          nextTable,
+          currentDraft,
+          currentDraft.tables.length
+        );
         return { ...currentDraft, tables: [...currentDraft.tables, entry] };
       });
       setDirty(true);
@@ -321,7 +372,11 @@ export function FloorLayoutEditor({
     if (!domainTable) return;
     if (placedByDomainId.has(tableId)) return;
 
-    const entry = buildPlacedTableEntry(domainTable, draft, draft.tables.length);
+    const entry = buildPlacedTableEntry(
+      domainTable,
+      draft,
+      draft.tables.length
+    );
     markDirty({ ...draft, tables: [...draft.tables, entry] });
     setSelectedTableInventoryId(tableId);
   }
@@ -332,13 +387,18 @@ export function FloorLayoutEditor({
     const selectedPlacedTableId = selectedPlacedTable?.id;
 
     try {
-      const body = await apiFetch<{ table: DomainTable }>(`/api/admin/tables/${selectedDomainTable.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const body = await apiFetch<{ table: DomainTable }>(
+        `/api/admin/tables/${selectedDomainTable.id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
       const next = body.table;
-      setTables((current) => current.map((table) => (table.id === next.id ? next : table)));
+      setTables((current) =>
+        current.map((table) => (table.id === next.id ? next : table))
+      );
       if (selectedPlacedTableId) {
         setDraft((currentDraft) => ({
           ...currentDraft,
@@ -351,9 +411,13 @@ export function FloorLayoutEditor({
                   capacityMax: next.capacityMax,
                   shape: next.shape,
                   isActive: next.isActive,
-                  combinableMeta: next.canCombine ? { combineGroup: next.combineGroup } : null,
+                  combinableMeta: next.canCombine
+                    ? { combineGroup: next.combineGroup }
+                    : null,
                   floorLayoutAreaId:
-                    currentDraft.areas.find((area) => area.areaId === next.areaId)?.id ?? null
+                    currentDraft.areas.find(
+                      (area) => area.areaId === next.areaId
+                    )?.id ?? null
                 }
               : table
           )
@@ -389,23 +453,33 @@ export function FloorLayoutEditor({
       setTables((current) => [...current, body.table]);
       setSelectedTableInventoryId(body.table.id);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Failed to duplicate table.');
+      setError(
+        e instanceof ApiError ? e.message : 'Failed to duplicate table.'
+      );
     }
   }
 
   async function deleteSelectedTable() {
     if (!selectedDomainTable) return;
-    if (!window.confirm('Delete this table permanently? It will be removed from all layouts.'))
+    if (
+      !window.confirm(
+        'Delete this table permanently? It will be removed from all layouts.'
+      )
+    )
       return;
 
     try {
       await apiFetch<unknown>(`/api/admin/tables/${selectedDomainTable.id}`, {
         method: 'DELETE'
       });
-      setTables((current) => current.filter((table) => table.id !== selectedDomainTable.id));
+      setTables((current) =>
+        current.filter((table) => table.id !== selectedDomainTable.id)
+      );
       setDraft((currentDraft) => ({
         ...currentDraft,
-        tables: currentDraft.tables.filter((table) => table.tableId !== selectedDomainTable.id)
+        tables: currentDraft.tables.filter(
+          (table) => table.tableId !== selectedDomainTable.id
+        )
       }));
       setDirty(true);
       setSelectedTableInventoryId(null);
@@ -417,12 +491,18 @@ export function FloorLayoutEditor({
 
   function removeFromDraftOnly() {
     if (!selectedPlacedTable) return;
-    if (!window.confirm('Remove this table from this layout? It will still exist in inventory.'))
+    if (
+      !window.confirm(
+        'Remove this table from this layout? It will still exist in inventory.'
+      )
+    )
       return;
 
     markDirty({
       ...draft,
-      tables: draft.tables.filter((table) => table.id !== selectedPlacedTable.id)
+      tables: draft.tables.filter(
+        (table) => table.id !== selectedPlacedTable.id
+      )
     });
   }
 
@@ -449,7 +529,11 @@ export function FloorLayoutEditor({
             disabled={isBusy}
             onClick={publishDraft}
             className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            title={dirty ? 'Will save draft automatically before publishing' : undefined}
+            title={
+              dirty
+                ? 'Will save draft automatically before publishing'
+                : undefined
+            }
           >
             {isPublishing
               ? 'Publishing…'
@@ -463,7 +547,9 @@ export function FloorLayoutEditor({
       </div>
 
       {error ? (
-        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        <p className="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+          {error}
+        </p>
       ) : null}
       {success ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
@@ -478,10 +564,16 @@ export function FloorLayoutEditor({
           description="Select, drag, resize, and rotate placed tables."
         >
           <FloorLayoutRenderer
-            layout={{ ...draft, canvasWidth: Math.min(draft.canvasWidth, 1200), canvasHeight: Math.min(draft.canvasHeight, 760) }}
+            layout={{
+              ...draft,
+              canvasWidth: Math.min(draft.canvasWidth, 1200),
+              canvasHeight: Math.min(draft.canvasHeight, 760)
+            }}
             selectedTableId={selectedPlacedTable?.id ?? null}
             onSelectTable={(layoutTableId) => {
-              const hit = draft.tables.find((table) => table.id === layoutTableId);
+              const hit = draft.tables.find(
+                (table) => table.id === layoutTableId
+              );
               setSelectedTableInventoryId(hit?.tableId ?? null);
             }}
           >
@@ -489,7 +581,10 @@ export function FloorLayoutEditor({
               <>
                 <div
                   className="absolute h-4 w-4 cursor-se-resize rounded border border-foreground bg-background"
-                  style={{ left: selectedPlacedTable.x + selectedPlacedTable.width - 8, top: selectedPlacedTable.y + selectedPlacedTable.height - 8 }}
+                  style={{
+                    left: selectedPlacedTable.x + selectedPlacedTable.width - 8,
+                    top: selectedPlacedTable.y + selectedPlacedTable.height - 8
+                  }}
                   onMouseDown={(event) => {
                     event.preventDefault();
                     const startX = event.clientX;
@@ -498,11 +593,19 @@ export function FloorLayoutEditor({
                     const initialH = selectedPlacedTable.height;
 
                     const onMove = (moveEvent: MouseEvent) => {
-                      const nextW = Math.max(40, initialW + (moveEvent.clientX - startX));
-                      const nextH = Math.max(40, initialH + (moveEvent.clientY - startY));
+                      const nextW = Math.max(
+                        40,
+                        initialW + (moveEvent.clientX - startX)
+                      );
+                      const nextH = Math.max(
+                        40,
+                        initialH + (moveEvent.clientY - startY)
+                      );
                       patchPlacedTable({
-                        width: Math.round(nextW / draft.gridSize) * draft.gridSize,
-                        height: Math.round(nextH / draft.gridSize) * draft.gridSize
+                        width:
+                          Math.round(nextW / draft.gridSize) * draft.gridSize,
+                        height:
+                          Math.round(nextH / draft.gridSize) * draft.gridSize
                       });
                     };
 
@@ -518,7 +621,12 @@ export function FloorLayoutEditor({
 
                 <div
                   className="absolute cursor-move"
-                  style={{ left: selectedPlacedTable.x, top: selectedPlacedTable.y, width: selectedPlacedTable.width, height: selectedPlacedTable.height }}
+                  style={{
+                    left: selectedPlacedTable.x,
+                    top: selectedPlacedTable.y,
+                    width: selectedPlacedTable.width,
+                    height: selectedPlacedTable.height
+                  }}
                   onMouseDown={(event) => {
                     event.preventDefault();
                     const startX = event.clientX;
@@ -527,8 +635,14 @@ export function FloorLayoutEditor({
                     const initialY = selectedPlacedTable.y;
 
                     const onMove = (moveEvent: MouseEvent) => {
-                      const nextX = Math.max(0, initialX + (moveEvent.clientX - startX));
-                      const nextY = Math.max(0, initialY + (moveEvent.clientY - startY));
+                      const nextX = Math.max(
+                        0,
+                        initialX + (moveEvent.clientX - startX)
+                      );
+                      const nextY = Math.max(
+                        0,
+                        initialY + (moveEvent.clientY - startY)
+                      );
                       patchPlacedTable({
                         x: Math.round(nextX / draft.gridSize) * draft.gridSize,
                         y: Math.round(nextY / draft.gridSize) * draft.gridSize
@@ -550,34 +664,83 @@ export function FloorLayoutEditor({
         </SectionCard>
 
         <div className="min-w-0 space-y-3">
-          <SectionCard title="Tables" description="Venue table inventory and floor placement status.">
-            <form action={createTable} className="mb-3 space-y-2 rounded border p-2">
-              <input name="name" required placeholder="New table name" className="w-full rounded border p-1.5 text-sm" />
+          <SectionCard
+            title="Tables"
+            description="Venue table inventory and floor placement status."
+          >
+            <form
+              action={createTable}
+              className="mb-3 space-y-2 rounded border p-2"
+            >
+              <input
+                name="name"
+                required
+                placeholder="New table name"
+                className="w-full rounded border p-1.5 text-sm"
+              />
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-0.5 block text-xs text-slate-500">Zone</label>
-                  <select name="areaId" className="w-full rounded border p-1.5 text-sm" defaultValue={areas[0]?.id}>
-                    {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
+                  <label className="mb-0.5 block text-xs text-slate-500">
+                    Zone
+                  </label>
+                  <select
+                    name="areaId"
+                    className="w-full rounded border p-1.5 text-sm"
+                    defaultValue={areas[0]?.id}
+                  >
+                    {areas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-xs text-slate-500">Shape</label>
-                  <select name="shape" className="w-full rounded border p-1.5 text-sm" defaultValue="SQUARE">
-                    {SHAPES.map((shape) => <option key={shape} value={shape}>{shape}</option>)}
+                  <label className="mb-0.5 block text-xs text-slate-500">
+                    Shape
+                  </label>
+                  <select
+                    name="shape"
+                    className="w-full rounded border p-1.5 text-sm"
+                    defaultValue="SQUARE"
+                  >
+                    {SHAPES.map((shape) => (
+                      <option key={shape} value={shape}>
+                        {shape}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-0.5 block text-xs text-slate-500">Min seats</label>
-                  <input name="capacityMin" type="number" min={1} defaultValue={1} className="w-full rounded border p-1.5 text-sm" />
+                  <label className="mb-0.5 block text-xs text-slate-500">
+                    Min seats
+                  </label>
+                  <input
+                    name="capacityMin"
+                    type="number"
+                    min={1}
+                    defaultValue={1}
+                    className="w-full rounded border p-1.5 text-sm"
+                  />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-xs text-slate-500">Max seats</label>
-                  <input name="capacityMax" type="number" min={1} defaultValue={4} className="w-full rounded border p-1.5 text-sm" />
+                  <label className="mb-0.5 block text-xs text-slate-500">
+                    Max seats
+                  </label>
+                  <input
+                    name="capacityMax"
+                    type="number"
+                    min={1}
+                    defaultValue={4}
+                    className="w-full rounded border p-1.5 text-sm"
+                  />
                 </div>
               </div>
-              <button className="rounded border px-2 py-1 text-xs">Create &amp; add to floor</button>
+              <button className="rounded border px-2 py-1 text-xs">
+                Create &amp; add to floor
+              </button>
             </form>
 
             <ul className="max-h-56 space-y-1 overflow-auto text-sm">
@@ -592,7 +755,9 @@ export function FloorLayoutEditor({
                       className={`flex w-full items-center justify-between rounded border px-2 py-1 text-left ${selected ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}
                     >
                       <span>{table.name}</span>
-                      <span className={`text-xs ${placed ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      <span
+                        className={`text-xs ${placed ? 'text-emerald-700' : 'text-slate-500'}`}
+                      >
                         {placed ? 'On floor' : 'Not placed'}
                       </span>
                     </button>
@@ -604,27 +769,49 @@ export function FloorLayoutEditor({
             {selectedDomainTable ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedPlacedTable ? (
-                  <button onClick={removeFromDraftOnly} className="rounded border px-2 py-1 text-xs">
+                  <button
+                    onClick={removeFromDraftOnly}
+                    className="rounded border px-2 py-1 text-xs"
+                  >
                     Remove from layout
                   </button>
                 ) : (
-                  <button onClick={() => addTableToDraft(selectedDomainTable.id)} className="rounded border px-2 py-1 text-xs">
+                  <button
+                    onClick={() => addTableToDraft(selectedDomainTable.id)}
+                    className="rounded border px-2 py-1 text-xs"
+                  >
                     Add to floor
                   </button>
                 )}
-                <button onClick={duplicateSelectedTable} className="rounded border px-2 py-1 text-xs">Duplicate</button>
+                <button
+                  onClick={duplicateSelectedTable}
+                  className="rounded border px-2 py-1 text-xs"
+                >
+                  Duplicate
+                </button>
               </div>
             ) : null}
           </SectionCard>
 
-          <SectionCard title="Zones" description="Zone labels used for table grouping.">
+          <SectionCard
+            title="Zones"
+            description="Zone labels used for table grouping."
+          >
             <form action={createZone} className="mb-2 flex gap-2">
-              <input name="name" className="w-full rounded border p-1.5 text-sm" placeholder="New zone name" required />
+              <input
+                name="name"
+                className="w-full rounded border p-1.5 text-sm"
+                placeholder="New zone name"
+                required
+              />
               <button className="rounded border px-2 text-sm">Add</button>
             </form>
             <ul className="space-y-1 text-sm">
               {draft.areas.map((area) => (
-                <li key={area.id} className="flex items-center justify-between gap-2 rounded border p-1.5">
+                <li
+                  key={area.id}
+                  className="flex items-center justify-between gap-2 rounded border p-1.5"
+                >
                   {editingZoneId === area.areaId ? (
                     <input
                       autoFocus
@@ -636,7 +823,8 @@ export function FloorLayoutEditor({
                           renameViaEnterRef.current = false;
                           return;
                         }
-                        if (area.areaId) void renameZone(area.areaId, editingZoneName);
+                        if (area.areaId)
+                          void renameZone(area.areaId, editingZoneName);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && area.areaId) {
@@ -664,7 +852,10 @@ export function FloorLayoutEditor({
                     <button
                       type="button"
                       className="shrink-0 text-xs text-red-600 hover:underline"
-                      onClick={() => { if (area.areaId) void deleteZone(area.areaId, area.name); }}
+                      onClick={() => {
+                        if (area.areaId)
+                          void deleteZone(area.areaId, area.name);
+                      }}
                     >
                       Remove
                     </button>
@@ -674,13 +865,20 @@ export function FloorLayoutEditor({
             </ul>
           </SectionCard>
 
-          <SectionCard title="Selected Table" description="Business settings and layout properties for the selected table.">
+          <SectionCard
+            title="Selected Table"
+            description="Business settings and layout properties for the selected table."
+          >
             {!selectedDomainTable ? (
-              <p className="text-sm text-slate-500">Select a table from the list or canvas.</p>
+              <p className="text-sm text-slate-500">
+                Select a table from the list or canvas.
+              </p>
             ) : (
               <div className="space-y-2 text-sm">
                 <label className="block">
-                  <span className="mb-1 block text-xs text-slate-500">Name</span>
+                  <span className="mb-1 block text-xs text-slate-500">
+                    Name
+                  </span>
                   <input
                     value={selectedDomainTable.name}
                     onChange={(event) =>
@@ -692,14 +890,18 @@ export function FloorLayoutEditor({
                         )
                       )
                     }
-                    onBlur={() => updateDomainTable({ name: selectedDomainTable.name })}
+                    onBlur={() =>
+                      updateDomainTable({ name: selectedDomainTable.name })
+                    }
                     className="w-full rounded border p-1.5"
                   />
                 </label>
 
                 <div className="grid grid-cols-2 gap-2">
                   <label>
-                    <span className="mb-1 block text-xs text-slate-500">Min seats</span>
+                    <span className="mb-1 block text-xs text-slate-500">
+                      Min seats
+                    </span>
                     <input
                       type="number"
                       min={1}
@@ -708,17 +910,26 @@ export function FloorLayoutEditor({
                         setTables((current) =>
                           current.map((table) =>
                             table.id === selectedDomainTable.id
-                              ? { ...table, capacityMin: Number(event.target.value) }
+                              ? {
+                                  ...table,
+                                  capacityMin: Number(event.target.value)
+                                }
                               : table
                           )
                         )
                       }
-                      onBlur={() => updateDomainTable({ capacityMin: selectedDomainTable.capacityMin })}
+                      onBlur={() =>
+                        updateDomainTable({
+                          capacityMin: selectedDomainTable.capacityMin
+                        })
+                      }
                       className="w-full rounded border p-1.5"
                     />
                   </label>
                   <label>
-                    <span className="mb-1 block text-xs text-slate-500">Max seats</span>
+                    <span className="mb-1 block text-xs text-slate-500">
+                      Max seats
+                    </span>
                     <input
                       type="number"
                       min={1}
@@ -727,26 +938,37 @@ export function FloorLayoutEditor({
                         setTables((current) =>
                           current.map((table) =>
                             table.id === selectedDomainTable.id
-                              ? { ...table, capacityMax: Number(event.target.value) }
+                              ? {
+                                  ...table,
+                                  capacityMax: Number(event.target.value)
+                                }
                               : table
                           )
                         )
                       }
-                      onBlur={() => updateDomainTable({ capacityMax: selectedDomainTable.capacityMax })}
+                      onBlur={() =>
+                        updateDomainTable({
+                          capacityMax: selectedDomainTable.capacityMax
+                        })
+                      }
                       className="w-full rounded border p-1.5"
                     />
                   </label>
                 </div>
 
                 <label className="block">
-                  <span className="mb-1 block text-xs text-slate-500">Shape</span>
+                  <span className="mb-1 block text-xs text-slate-500">
+                    Shape
+                  </span>
                   <select
                     value={selectedDomainTable.shape}
                     onChange={(event) => {
                       const shape = event.target.value as TableShape;
                       setTables((current) =>
                         current.map((table) =>
-                          table.id === selectedDomainTable.id ? { ...table, shape } : table
+                          table.id === selectedDomainTable.id
+                            ? { ...table, shape }
+                            : table
                         )
                       );
                       void updateDomainTable({ shape });
@@ -754,20 +976,26 @@ export function FloorLayoutEditor({
                     className="w-full rounded border p-1.5"
                   >
                     {SHAPES.map((shape) => (
-                      <option key={shape} value={shape}>{shape}</option>
+                      <option key={shape} value={shape}>
+                        {shape}
+                      </option>
                     ))}
                   </select>
                 </label>
 
                 <label className="block">
-                  <span className="mb-1 block text-xs text-slate-500">Zone</span>
+                  <span className="mb-1 block text-xs text-slate-500">
+                    Zone
+                  </span>
                   <select
                     value={selectedDomainTable.areaId}
                     onChange={(event) => {
                       const areaId = event.target.value;
                       setTables((current) =>
                         current.map((table) =>
-                          table.id === selectedDomainTable.id ? { ...table, areaId } : table
+                          table.id === selectedDomainTable.id
+                            ? { ...table, areaId }
+                            : table
                         )
                       );
                       void updateDomainTable({ areaId });
@@ -775,7 +1003,9 @@ export function FloorLayoutEditor({
                     className="w-full rounded border p-1.5"
                   >
                     {areas.map((area) => (
-                      <option key={area.id} value={area.id}>{area.name}</option>
+                      <option key={area.id} value={area.id}>
+                        {area.name}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -783,14 +1013,23 @@ export function FloorLayoutEditor({
                 {selectedPlacedTable ? (
                   <>
                     <label className="block">
-                      <span className="mb-1 block text-xs text-slate-500">Visual footprint</span>
+                      <span className="mb-1 block text-xs text-slate-500">
+                        Visual footprint
+                      </span>
                       <select
-                        value={getVisualSizeKey(selectedPlacedTable.width, selectedPlacedTable.height)}
+                        value={getVisualSizeKey(
+                          selectedPlacedTable.width,
+                          selectedPlacedTable.height
+                        )}
                         onChange={(event) => {
-                          const value = event.target.value as keyof typeof SIZE_PRESETS | 'CUSTOM';
+                          const value = event.target.value as
+                            keyof typeof SIZE_PRESETS | 'CUSTOM';
                           if (value === 'CUSTOM') return;
                           const preset = SIZE_PRESETS[value];
-                          patchPlacedTable({ width: preset.width, height: preset.height });
+                          patchPlacedTable({
+                            width: preset.width,
+                            height: preset.height
+                          });
                         }}
                         className="w-full rounded border p-1.5"
                       >
@@ -803,40 +1042,59 @@ export function FloorLayoutEditor({
 
                     <div className="grid grid-cols-2 gap-2">
                       <label>
-                        <span className="mb-1 block text-xs text-slate-500">Width (visual)</span>
+                        <span className="mb-1 block text-xs text-slate-500">
+                          Width (visual)
+                        </span>
                         <input
                           type="number"
                           value={selectedPlacedTable.width}
-                          onChange={(event) => patchPlacedTable({ width: Number(event.target.value) })}
+                          onChange={(event) =>
+                            patchPlacedTable({
+                              width: Number(event.target.value)
+                            })
+                          }
                           className="w-full rounded border p-1.5"
                         />
                       </label>
                       <label>
-                        <span className="mb-1 block text-xs text-slate-500">Height (visual)</span>
+                        <span className="mb-1 block text-xs text-slate-500">
+                          Height (visual)
+                        </span>
                         <input
                           type="number"
                           value={selectedPlacedTable.height}
-                          onChange={(event) => patchPlacedTable({ height: Number(event.target.value) })}
+                          onChange={(event) =>
+                            patchPlacedTable({
+                              height: Number(event.target.value)
+                            })
+                          }
                           className="w-full rounded border p-1.5"
                         />
                       </label>
                     </div>
 
                     <label className="block">
-                      <span className="mb-1 block text-xs text-slate-500">Rotation (degrees)</span>
+                      <span className="mb-1 block text-xs text-slate-500">
+                        Rotation (degrees)
+                      </span>
                       <input
                         type="number"
                         min={-180}
                         max={180}
                         value={selectedPlacedTable.rotation}
-                        onChange={(event) => patchPlacedTable({ rotation: Number(event.target.value) })}
+                        onChange={(event) =>
+                          patchPlacedTable({
+                            rotation: Number(event.target.value)
+                          })
+                        }
                         className="w-full rounded border p-1.5"
                       />
                     </label>
                   </>
                 ) : (
                   <p className="rounded border bg-slate-50 p-2 text-xs text-slate-600">
-                    This table is not on the floor yet. Use &ldquo;Add to floor&rdquo; to place it.
+                    This table is not on the floor yet. Use &ldquo;Add to
+                    floor&rdquo; to place it.
                   </p>
                 )}
 
@@ -848,7 +1106,9 @@ export function FloorLayoutEditor({
                       const isActive = event.target.checked;
                       setTables((current) =>
                         current.map((table) =>
-                          table.id === selectedDomainTable.id ? { ...table, isActive } : table
+                          table.id === selectedDomainTable.id
+                            ? { ...table, isActive }
+                            : table
                         )
                       );
                       void updateDomainTable({ isActive });
@@ -858,14 +1118,22 @@ export function FloorLayoutEditor({
                 </label>
 
                 <div className="rounded border border-red-200 bg-red-50 p-2">
-                  <p className="mb-2 text-xs font-medium text-red-700">Danger zone</p>
+                  <p className="mb-2 text-xs font-medium text-red-700">
+                    Danger zone
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {selectedPlacedTable ? (
-                      <button onClick={removeFromDraftOnly} className="rounded border border-red-300 px-2 py-1 text-xs text-red-700">
+                      <button
+                        onClick={removeFromDraftOnly}
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700"
+                      >
                         Remove from this layout
                       </button>
                     ) : null}
-                    <button onClick={deleteSelectedTable} className="rounded border border-red-300 px-2 py-1 text-xs text-red-700">
+                    <button
+                      onClick={deleteSelectedTable}
+                      className="rounded border border-red-300 px-2 py-1 text-xs text-red-700"
+                    >
                       Delete table permanently
                     </button>
                   </div>
@@ -876,8 +1144,15 @@ export function FloorLayoutEditor({
         </div>
       </div>
 
-      <SectionCard title="Published Layout" description="Current live layout snapshot.">
-        {published ? <FloorLayoutRenderer layout={published} /> : <p className="text-sm text-slate-500">No published layout yet.</p>}
+      <SectionCard
+        title="Published Layout"
+        description="Current live layout snapshot."
+      >
+        {published ? (
+          <FloorLayoutRenderer layout={published} />
+        ) : (
+          <p className="text-sm text-slate-500">No published layout yet.</p>
+        )}
       </SectionCard>
     </div>
   );

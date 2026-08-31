@@ -15,7 +15,10 @@ export async function POST() {
     return NextResponse.redirect(portalUrl, { status: 303 });
   } catch (error) {
     console.error('Portal session error', error);
-    const msg = error instanceof Error ? error.message : 'Failed to create billing portal session.';
+    const msg =
+      error instanceof Error
+        ? error.message
+        : 'Failed to create billing portal session.';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

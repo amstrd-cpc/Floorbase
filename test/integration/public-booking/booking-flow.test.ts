@@ -46,7 +46,9 @@ function futureSlot(daysAhead: number, hourUtc: number) {
   return date;
 }
 
-function bookingPayload(overrides: Partial<Parameters<typeof createPublicBooking>[0]['payload']> = {}) {
+function bookingPayload(
+  overrides: Partial<Parameters<typeof createPublicBooking>[0]['payload']> = {}
+) {
   return {
     slotId: futureSlot(3, 18).toISOString(),
     partySize: 2,
@@ -62,7 +64,9 @@ test('getPublicVenueBySlug throws VENUE_NOT_AVAILABLE for an unknown slug', asyn
   await assert.rejects(
     () => getPublicVenueBySlug('no-such-venue-slug'),
     (error: unknown) =>
-      error instanceof PublicBookingError && error.code === 'VENUE_NOT_AVAILABLE' && error.status === 404
+      error instanceof PublicBookingError &&
+      error.code === 'VENUE_NOT_AVAILABLE' &&
+      error.status === 404
   );
 });
 
@@ -72,15 +76,26 @@ test('getPublicSlots lists the fixture table as available on an open day', async
 
   const result = await getPublicSlots({ venue, dateText, partySize: 2 });
 
-  assert.ok(result.slots.length > 0, 'expected at least one open slot on a 24h business-hours day');
-  const anySlotHasTables = result.slots.some((slot) => slot.availableTables.length > 0);
-  assert.ok(anySlotHasTables, 'expected at least one slot to list available tables');
+  assert.ok(
+    result.slots.length > 0,
+    'expected at least one open slot on a 24h business-hours day'
+  );
+  const anySlotHasTables = result.slots.some(
+    (slot) => slot.availableTables.length > 0
+  );
+  assert.ok(
+    anySlotHasTables,
+    'expected at least one slot to list available tables'
+  );
 });
 
 test('createPublicBooking (AUTO_CONFIRM + TABLE_SELECTION) creates a confirmed reservation on the selected table', async () => {
   const venue = await getPublicVenueBySlug(fixture.venueSlug);
 
-  const result = await createPublicBooking({ venue, payload: bookingPayload() });
+  const result = await createPublicBooking({
+    venue,
+    payload: bookingPayload()
+  });
 
   const reservation = await prisma.reservation.findUniqueOrThrow({
     where: { id: result.reservationId },
@@ -98,7 +113,10 @@ test('createPublicBooking (REQUEST_ONLY) creates a pending reservation instead o
   });
   const venue = await getPublicVenueBySlug(fixture.venueSlug);
 
-  const result = await createPublicBooking({ venue, payload: bookingPayload() });
+  const result = await createPublicBooking({
+    venue,
+    payload: bookingPayload()
+  });
 
   const reservation = await prisma.reservation.findUniqueOrThrow({
     where: { id: result.reservationId }
@@ -129,8 +147,13 @@ test('createPublicBooking (TABLE_SELECTION) rejects a request with no selected t
   const venue = await getPublicVenueBySlug(fixture.venueSlug);
 
   await assert.rejects(
-    () => createPublicBooking({ venue, payload: bookingPayload({ selectedTableId: undefined }) }),
-    (error: unknown) => error instanceof PublicBookingError && error.code === 'INVALID_INPUT'
+    () =>
+      createPublicBooking({
+        venue,
+        payload: bookingPayload({ selectedTableId: undefined })
+      }),
+    (error: unknown) =>
+      error instanceof PublicBookingError && error.code === 'INVALID_INPUT'
   );
 });
 
@@ -143,7 +166,9 @@ test('createPublicBooking rejects a party size above the venue online limit', as
         venue,
         payload: bookingPayload({ partySize: venue.maxOnlinePartySize + 1 })
       }),
-    (error: unknown) => error instanceof PublicBookingError && error.code === 'PARTY_SIZE_TOO_LARGE'
+    (error: unknown) =>
+      error instanceof PublicBookingError &&
+      error.code === 'PARTY_SIZE_TOO_LARGE'
   );
 });
 
@@ -152,8 +177,13 @@ test('createPublicBooking rejects a slot inside the minimum advance notice windo
   const tooSoon = new Date(Date.now() + 5 * 60_000);
 
   await assert.rejects(
-    () => createPublicBooking({ venue, payload: bookingPayload({ slotId: tooSoon.toISOString() }) }),
-    (error: unknown) => error instanceof PublicBookingError && error.code === 'TOO_SOON'
+    () =>
+      createPublicBooking({
+        venue,
+        payload: bookingPayload({ slotId: tooSoon.toISOString() })
+      }),
+    (error: unknown) =>
+      error instanceof PublicBookingError && error.code === 'TOO_SOON'
   );
 });
 
@@ -169,6 +199,9 @@ test('createPublicBooking rejects a table that is already booked for the window'
         venue,
         payload: { ...payload, email: `second-${Date.now()}@example.com` }
       }),
-    (error: unknown) => error instanceof PublicBookingError && error.code === 'SLOT_UNAVAILABLE' && error.status === 409
+    (error: unknown) =>
+      error instanceof PublicBookingError &&
+      error.code === 'SLOT_UNAVAILABLE' &&
+      error.status === 409
   );
 });

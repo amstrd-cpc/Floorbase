@@ -9,7 +9,7 @@ export default async function OnboardingPage() {
   const [org, venue] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { onboardingComplete: true },
+      select: { onboardingComplete: true }
     }),
     prisma.venue.findUnique({
       where: { id: venueId },
@@ -20,9 +20,9 @@ export default async function OnboardingPage() {
         timezone: true,
         city: true,
         country: true,
-        addressLine: true,
-      },
-    }),
+        addressLine: true
+      }
+    })
   ]);
 
   if (!org || !venue) redirect('/login');

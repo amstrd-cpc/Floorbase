@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
 
 const DEFAULT_HOURS = [
   { dayOfWeek: 0, isClosed: false, openTime: '11:00', closeTime: '21:00' },
@@ -12,7 +20,7 @@ const DEFAULT_HOURS = [
   { dayOfWeek: 3, isClosed: false, openTime: '11:30', closeTime: '22:00' },
   { dayOfWeek: 4, isClosed: false, openTime: '11:30', closeTime: '23:00' },
   { dayOfWeek: 5, isClosed: false, openTime: '10:30', closeTime: '23:00' },
-  { dayOfWeek: 6, isClosed: false, openTime: '10:30', closeTime: '21:30' },
+  { dayOfWeek: 6, isClosed: false, openTime: '10:30', closeTime: '21:30' }
 ];
 
 type Props = {
@@ -43,7 +51,9 @@ export function OnboardingWizard(props: Props) {
 
   // Step 3 state
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'HOST' | 'VENUE_MANAGER'>('HOST');
+  const [inviteRole, setInviteRole] = useState<'HOST' | 'VENUE_MANAGER'>(
+    'HOST'
+  );
 
   async function saveVenueDetails() {
     setSaving(true);
@@ -68,8 +78,8 @@ export function OnboardingWizard(props: Props) {
           maxOnlinePartySize: 12,
           minAdvanceNoticeMinutes: 120,
           maxDaysAhead: 60,
-          defaultReservationDurationMinutes: 120,
-        }),
+          defaultReservationDurationMinutes: 120
+        })
       });
       if (!res.ok) throw new Error('Failed to save venue details.');
       setStep(2);
@@ -87,7 +97,7 @@ export function OnboardingWizard(props: Props) {
       const res = await fetch('/api/onboarding/hours', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours }),
+        body: JSON.stringify({ hours })
       });
       if (!res.ok) throw new Error('Failed to save business hours.');
       setStep(3);
@@ -99,7 +109,10 @@ export function OnboardingWizard(props: Props) {
   }
 
   async function sendInvite() {
-    if (!inviteEmail) { setStep(4); return; }
+    if (!inviteEmail) {
+      setStep(4);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -108,7 +121,10 @@ export function OnboardingWizard(props: Props) {
       body.append('role', inviteRole);
       body.append('organizationId', props.orgId);
       body.append('venueId', props.venueId);
-      const res = await fetch('/api/admin/users/invite', { method: 'POST', body });
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        body
+      });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error ?? 'Failed to send invite.');
@@ -140,7 +156,9 @@ export function OnboardingWizard(props: Props) {
     value: boolean | string
   ) {
     setHours((prev) =>
-      prev.map((h) => (h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h))
+      prev.map((h) =>
+        h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h
+      )
     );
   }
 
@@ -149,8 +167,12 @@ export function OnboardingWizard(props: Props) {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Welcome! Let&apos;s get you set up.</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Step {Math.min(step, 3)} of 3</p>
+        <h1 className="text-2xl font-semibold">
+          Welcome! Let&apos;s get you set up.
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Step {Math.min(step, 3)} of 3
+        </p>
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
           <div
             className="h-full rounded-full bg-black transition-all"
@@ -166,7 +188,7 @@ export function OnboardingWizard(props: Props) {
       ) : null}
 
       {step === 1 && (
-        <div className="border border-border bg-card p-6 space-y-4">
+        <div className="space-y-4 border border-border bg-card p-6">
           <h2 className="font-medium">Step 1 — Venue details</h2>
 
           <label className="block text-sm">
@@ -211,7 +233,8 @@ export function OnboardingWizard(props: Props) {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Timezone: <strong>{props.timezone}</strong> (set during signup — change in Settings if needed)
+            Timezone: <strong>{props.timezone}</strong> (set during signup —
+            change in Settings if needed)
           </p>
 
           <button
@@ -225,19 +248,26 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 2 && (
-        <div className="border border-border bg-card p-6 space-y-4">
+        <div className="space-y-4 border border-border bg-card p-6">
           <h2 className="font-medium">Step 2 — Business hours</h2>
-          <p className="text-sm text-muted-foreground">Set your regular operating hours.</p>
+          <p className="text-sm text-muted-foreground">
+            Set your regular operating hours.
+          </p>
 
           <div className="space-y-2">
             {hours.map((h) => (
-              <div key={h.dayOfWeek} className="flex items-center gap-3 text-sm">
+              <div
+                key={h.dayOfWeek}
+                className="flex items-center gap-3 text-sm"
+              >
                 <span className="w-24 font-medium">{DAYS[h.dayOfWeek]}</span>
                 <label className="flex items-center gap-1">
                   <input
                     type="checkbox"
                     checked={h.isClosed}
-                    onChange={(e) => updateHourField(h.dayOfWeek, 'isClosed', e.target.checked)}
+                    onChange={(e) =>
+                      updateHourField(h.dayOfWeek, 'isClosed', e.target.checked)
+                    }
                   />
                   Closed
                 </label>
@@ -246,14 +276,22 @@ export function OnboardingWizard(props: Props) {
                     <input
                       type="time"
                       value={h.openTime}
-                      onChange={(e) => updateHourField(h.dayOfWeek, 'openTime', e.target.value)}
+                      onChange={(e) =>
+                        updateHourField(h.dayOfWeek, 'openTime', e.target.value)
+                      }
                       className="rounded border p-1 text-sm"
                     />
                     <span>–</span>
                     <input
                       type="time"
                       value={h.closeTime}
-                      onChange={(e) => updateHourField(h.dayOfWeek, 'closeTime', e.target.value)}
+                      onChange={(e) =>
+                        updateHourField(
+                          h.dayOfWeek,
+                          'closeTime',
+                          e.target.value
+                        )
+                      }
                       className="rounded border p-1 text-sm"
                     />
                   </>
@@ -281,7 +319,7 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 3 && (
-        <div className="border border-border bg-card p-6 space-y-4">
+        <div className="space-y-4 border border-border bg-card p-6">
           <h2 className="font-medium">Step 3 — Invite your team (optional)</h2>
           <p className="text-sm text-muted-foreground">
             Add a team member now, or skip and do it later from Settings.
@@ -302,7 +340,9 @@ export function OnboardingWizard(props: Props) {
             Role
             <select
               value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as 'HOST' | 'VENUE_MANAGER')}
+              onChange={(e) =>
+                setInviteRole(e.target.value as 'HOST' | 'VENUE_MANAGER')
+              }
               className="mt-1 w-full rounded border p-2 text-sm"
             >
               <option value="HOST">Host</option>
@@ -311,7 +351,10 @@ export function OnboardingWizard(props: Props) {
           </label>
 
           <div className="flex gap-3">
-            <button onClick={() => setStep(2)} className="rounded border px-4 py-2 text-sm">
+            <button
+              onClick={() => setStep(2)}
+              className="rounded border px-4 py-2 text-sm"
+            >
               ← Back
             </button>
             <button
@@ -326,7 +369,7 @@ export function OnboardingWizard(props: Props) {
       )}
 
       {step === 4 && (
-        <div className="border border-border bg-card p-6 space-y-4 text-center">
+        <div className="space-y-4 border border-border bg-card p-6 text-center">
           <h2 className="text-xl font-semibold">You&apos;re all set!</h2>
           <p className="text-sm text-muted-foreground">
             Your trial runs for 14 days. No card needed until then.

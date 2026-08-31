@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
-import { OrderNotFoundError, OrderValidationError } from '@/server/orders/errors';
+import {
+  OrderNotFoundError,
+  OrderValidationError
+} from '@/server/orders/errors';
 import { removeOrderLine, updateOrderLine } from '@/server/orders/service';
 import { getOrderLineScope } from '@/server/auth/scope-resolvers';
 
@@ -35,7 +38,10 @@ export async function PUT(
   try {
     const lineScope = await getOrderLineScope(params.lineId);
     if (!lineScope) {
-      return NextResponse.json({ error: 'Order line not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Order line not found.' },
+        { status: 404 }
+      );
     }
 
     if (
@@ -71,7 +77,10 @@ export async function DELETE(
   try {
     const lineScope = await getOrderLineScope(params.lineId);
     if (!lineScope) {
-      return NextResponse.json({ error: 'Order line not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Order line not found.' },
+        { status: 404 }
+      );
     }
 
     if (

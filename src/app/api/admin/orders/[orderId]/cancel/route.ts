@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
-import { OrderNotFoundError, OrderValidationError } from '@/server/orders/errors';
+import {
+  OrderNotFoundError,
+  OrderValidationError
+} from '@/server/orders/errors';
 import { cancelOrder } from '@/server/orders/service';
 import { getOrderScope } from '@/server/auth/scope-resolvers';
 

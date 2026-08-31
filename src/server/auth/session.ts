@@ -5,7 +5,9 @@ import { prisma } from '@/server/db/prisma/client';
 import { AUTH_COOKIE_PATH } from './constants';
 
 function hashToken(rawToken: string) {
-  return createHash('sha256').update(`${rawToken}.${env.AUTH_SESSION_SECRET}`).digest('hex');
+  return createHash('sha256')
+    .update(`${rawToken}.${env.AUTH_SESSION_SECRET}`)
+    .digest('hex');
 }
 
 function sessionExpiryDate() {
@@ -39,7 +41,9 @@ export async function destroySession() {
   const rawToken = cookieStore.get(env.AUTH_COOKIE_NAME)?.value;
 
   if (rawToken) {
-    await prisma.authSession.deleteMany({ where: { tokenHash: hashToken(rawToken) } });
+    await prisma.authSession.deleteMany({
+      where: { tokenHash: hashToken(rawToken) }
+    });
   }
 
   cookieStore.set(env.AUTH_COOKIE_NAME, '', {

@@ -77,7 +77,10 @@ export async function POST(request: Request) {
     endsAt.getTime() - startsAt.getTime() > MAX_BLOCK_MS
   ) {
     return NextResponse.json(
-      { error: 'Invalid block window. Must be a valid future range under 1 year.' },
+      {
+        error:
+          'Invalid block window. Must be a valid future range under 1 year.'
+      },
       { status: 400 }
     );
   }

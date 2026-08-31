@@ -9,7 +9,7 @@ export function PageHeader({
   title,
   description,
   eyebrow,
-  actions,
+  actions
 }: {
   title: string;
   description?: string;
@@ -24,8 +24,12 @@ export function PageHeader({
             {eyebrow}
           </div>
         ) : null}
-        <h2 className="text-[clamp(24px,3vw,34px)] font-bold tracking-tightest">{title}</h2>
-        {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
+        <h2 className="text-[clamp(24px,3vw,34px)] font-bold tracking-tightest">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {actions?.length ? (
         <div className="flex flex-wrap gap-2.5">

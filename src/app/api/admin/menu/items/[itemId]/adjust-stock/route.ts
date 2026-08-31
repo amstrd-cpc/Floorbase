@@ -6,7 +6,10 @@ import { getMenuItemScope } from '@/server/auth/scope-resolvers';
 
 function toErrorResponse(error: unknown) {
   if (error instanceof InventoryError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status }
+    );
   }
 
   throw error;
@@ -42,7 +45,10 @@ export async function POST(
       );
     }
 
-    const item = await adjustMenuItemStock({ menuItemId: params.itemId, payload });
+    const item = await adjustMenuItemStock({
+      menuItemId: params.itemId,
+      payload
+    });
     return NextResponse.json({ item });
   } catch (error) {
     return toErrorResponse(error);

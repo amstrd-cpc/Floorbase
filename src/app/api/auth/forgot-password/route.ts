@@ -5,8 +5,13 @@ import { createPasswordResetToken } from '@/server/auth/password-reset';
 import { checkRateLimit } from '@/server/rate-limit';
 
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rl = await checkRateLimit({ key: `forgot-password:${ip}`, limit: 5, windowMs: 60 * 60 * 1000 });
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const rl = await checkRateLimit({
+    key: `forgot-password:${ip}`,
+    limit: 5,
+    windowMs: 60 * 60 * 1000
+  });
   if (!rl.allowed) {
     return NextResponse.json({ ok: true }); // always 200 to avoid enumeration
   }
@@ -14,7 +19,9 @@ export async function POST(request: Request) {
   let email: string;
   try {
     const body = await request.json();
-    email = String(body.email ?? '').trim().toLowerCase();
+    email = String(body.email ?? '')
+      .trim()
+      .toLowerCase();
   } catch {
     return NextResponse.json({ ok: true });
   }

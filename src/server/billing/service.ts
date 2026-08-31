@@ -7,25 +7,31 @@ function mapStripeStatus(
   status: Stripe.Subscription.Status
 ): 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' {
   switch (status) {
-    case 'trialing':            return 'TRIALING';
-    case 'active':              return 'ACTIVE';
-    case 'past_due':            return 'PAST_DUE';
+    case 'trialing':
+      return 'TRIALING';
+    case 'active':
+      return 'ACTIVE';
+    case 'past_due':
+      return 'PAST_DUE';
     case 'canceled':
     case 'incomplete':
     case 'incomplete_expired':
     case 'unpaid':
-    default:                    return 'CANCELLED';
+    default:
+      return 'CANCELLED';
   }
 }
 
 export async function getActiveVenueCount(orgId: string): Promise<number> {
-  return prisma.venue.count({ where: { organizationId: orgId, isActive: true } });
+  return prisma.venue.count({
+    where: { organizationId: orgId, isActive: true }
+  });
 }
 
 async function getOrCreateStripeCustomer(orgId: string): Promise<string> {
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: orgId },
-    select: { stripeCustomerId: true, name: true },
+    select: { stripeCustomerId: true, name: true }
   });
 
   if (org.stripeCustomerId) return org.stripeCustomerId;
@@ -33,34 +39,40 @@ async function getOrCreateStripeCustomer(orgId: string): Promise<string> {
   const owner = await prisma.user.findFirst({
     where: {
       organizationId: orgId,
-      adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } },
+      adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } }
     },
-    select: { email: true },
+    select: { email: true }
   });
 
   const stripe = getStripe();
   const customer = await stripe.customers.create({
     name: org.name,
     email: owner?.email,
-    metadata: { orgId },
+    metadata: { orgId }
   });
 
   // Use updateMany with stripeCustomerId: null so that if a concurrent request
   // already won the race and set the customer ID, we don't overwrite it.
   const result = await prisma.organization.updateMany({
     where: { id: orgId, stripeCustomerId: null },
-    data: { stripeCustomerId: customer.id },
+    data: { stripeCustomerId: customer.id }
   });
 
   if (result.count === 0) {
     // Another request won the race; clean up the orphaned Stripe customer
     // we just created and return the winner's ID.
-    void stripe.customers.del(customer.id).catch((e) =>
-      console.error('Failed to delete orphaned Stripe customer', customer.id, e)
-    );
+    void stripe.customers
+      .del(customer.id)
+      .catch((e) =>
+        console.error(
+          'Failed to delete orphaned Stripe customer',
+          customer.id,
+          e
+        )
+      );
     const updated = await prisma.organization.findUniqueOrThrow({
       where: { id: orgId },
-      select: { stripeCustomerId: true },
+      select: { stripeCustomerId: true }
     });
     return updated.stripeCustomerId!;
   }
@@ -87,7 +99,7 @@ export async function createCheckoutSession(
     success_url: urls.successUrl,
     cancel_url: urls.cancelUrl,
     metadata: { orgId },
-    subscription_data: { metadata: { orgId } },
+    subscription_data: { metadata: { orgId } }
   });
 
   if (!session.url) throw new Error('Stripe did not return a checkout URL.');
@@ -103,7 +115,7 @@ export async function createPortalSession(
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: returnUrl,
+    return_url: returnUrl
   });
 
   return session.url;
@@ -112,11 +124,13 @@ export async function createPortalSession(
 export async function syncSubscription(
   subscription: Stripe.Subscription
 ): Promise<void> {
-  const orgId =
-    (subscription.metadata?.orgId as string | undefined) ?? null;
+  const orgId = (subscription.metadata?.orgId as string | undefined) ?? null;
 
   if (!orgId) {
-    console.warn('syncSubscription: no orgId in subscription metadata', subscription.id);
+    console.warn(
+      'syncSubscription: no orgId in subscription metadata',
+      subscription.id
+    );
     return;
   }
 
@@ -127,24 +141,7 @@ export async function syncSubscription(
     data: {
       subscriptionId: subscription.id,
       subscriptionStatus: status,
-      planId: subscription.items.data[0]?.price.id ?? null,
-    },
+      planId: subscription.items.data[0]?.price.id ?? null
+    }
   });
-}
-
-export async function syncVenueCount(orgId: string): Promise<void> {
-  const org = await prisma.organization.findUnique({
-    where: { id: orgId },
-    select: { subscriptionId: true },
-  });
-
-  if (!org?.subscriptionId) return;
-
-  const stripe = getStripe();
-  const subscription = await stripe.subscriptions.retrieve(org.subscriptionId);
-  const item = subscription.items.data[0];
-  if (!item) return;
-
-  const quantity = Math.max(1, await getActiveVenueCount(orgId));
-  await stripe.subscriptionItems.update(item.id, { quantity });
 }

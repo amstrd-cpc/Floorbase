@@ -33,7 +33,9 @@ export async function POST(
   request: Request,
   { params }: { params: { venueSlug: string } }
 ) {
-  const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
+  const ip =
+    (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
+    'unknown';
   const rate = await checkRateLimit({
     key: `reserve:${params.venueSlug}:${ip}`,
     limit: 10,
@@ -50,13 +52,19 @@ export async function POST(
   try {
     rawBody = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid request body.' },
+      { status: 400 }
+    );
   }
 
   const parsed = createPublicBookingSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Please complete all required fields with valid values.', details: mapZodErrors(parsed.error.issues) },
+      {
+        error: 'Please complete all required fields with valid values.',
+        details: mapZodErrors(parsed.error.issues)
+      },
       { status: 400 }
     );
   }
@@ -78,7 +86,11 @@ export async function POST(
     });
 
     return NextResponse.json(
-      { reservationId: result.reservationId, statusCode: result.statusCode, message: modeMessage },
+      {
+        reservationId: result.reservationId,
+        statusCode: result.statusCode,
+        message: modeMessage
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -95,7 +107,13 @@ async function sendEmailsForPublicBooking(input: {
     const [reservation, orgAdmin] = await Promise.all([
       prisma.reservation.findUnique({
         where: { id: input.reservationId },
-        select: { startAt: true, partySize: true, guest: { select: { id: true, fullName: true, email: true, phone: true } } }
+        select: {
+          startAt: true,
+          partySize: true,
+          guest: {
+            select: { id: true, fullName: true, email: true, phone: true }
+          }
+        }
       }),
       prisma.user.findFirst({
         where: {

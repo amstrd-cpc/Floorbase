@@ -65,7 +65,7 @@ export function FloorLayoutRenderer({
         {layout.tables.map((table) => {
           const state = tableStates?.[table.id];
           const disabled = state?.disabled ?? false;
-          const tone = table.isActive ? state?.tone ?? 'default' : 'inactive';
+          const tone = table.isActive ? (state?.tone ?? 'default') : 'inactive';
 
           return (
             <button
@@ -85,8 +85,12 @@ export function FloorLayoutRenderer({
                 transformOrigin: 'center center'
               }}
             >
-              <span className="block truncate px-2 pt-1 font-medium">{table.label}</span>
-              <span className="block truncate px-2 text-[10px]">{state?.subtitle ?? `${table.capacityMax} seats`}</span>
+              <span className="block truncate px-2 pt-1 font-medium">
+                {table.label}
+              </span>
+              <span className="block truncate px-2 text-[10px]">
+                {state?.subtitle ?? `${table.capacityMax} seats`}
+              </span>
               {state?.badge ? (
                 <span className="absolute bottom-1 right-1 bg-background/70 px-1.5 py-0.5 text-[10px] font-medium">
                   {state.badge}

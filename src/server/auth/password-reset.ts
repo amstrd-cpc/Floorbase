@@ -6,13 +6,17 @@ import { hashPassword } from './password';
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function hashToken(rawToken: string) {
-  return createHash('sha256').update(`${rawToken}.${env.AUTH_SESSION_SECRET}`).digest('hex');
+  return createHash('sha256')
+    .update(`${rawToken}.${env.AUTH_SESSION_SECRET}`)
+    .digest('hex');
 }
 
-export async function createPasswordResetToken(email: string): Promise<string | null> {
+export async function createPasswordResetToken(
+  email: string
+): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: { email: email.trim().toLowerCase() },
-    select: { id: true, isActive: true },
+    select: { id: true, isActive: true }
   });
 
   if (!user || !user.isActive) {
@@ -22,7 +26,7 @@ export async function createPasswordResetToken(email: string): Promise<string | 
   // Invalidate any existing unexpired tokens for this user
   await prisma.passwordResetToken.updateMany({
     where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
-    data: { expiresAt: new Date() },
+    data: { expiresAt: new Date() }
   });
 
   const rawToken = randomBytes(32).toString('hex');
@@ -32,8 +36,8 @@ export async function createPasswordResetToken(email: string): Promise<string | 
     data: {
       userId: user.id,
       tokenHash,
-      expiresAt: new Date(Date.now() + RESET_TTL_MS),
-    },
+      expiresAt: new Date(Date.now() + RESET_TTL_MS)
+    }
   });
 
   return rawToken;
@@ -41,21 +45,24 @@ export async function createPasswordResetToken(email: string): Promise<string | 
 
 export async function consumePasswordResetToken(
   rawToken: string,
-  newPassword: string,
+  newPassword: string
 ): Promise<{ ok: boolean; error?: string }> {
   if (!rawToken || !newPassword) {
     return { ok: false, error: 'Missing token or password.' };
   }
 
   if (newPassword.length < 12 || newPassword.length > 128) {
-    return { ok: false, error: 'Password must be between 12 and 128 characters.' };
+    return {
+      ok: false,
+      error: 'Password must be between 12 and 128 characters.'
+    };
   }
 
   const tokenHash = hashToken(rawToken);
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { tokenHash },
-    include: { user: { select: { id: true, isActive: true } } },
+    include: { user: { select: { id: true, isActive: true } } }
   });
 
   if (!record || record.usedAt || record.expiresAt <= new Date()) {
@@ -73,7 +80,7 @@ export async function consumePasswordResetToken(
   // succeeding and the second overwriting the first user-chosen password.
   const claimed = await prisma.passwordResetToken.updateMany({
     where: { id: record.id, usedAt: null },
-    data: { usedAt: new Date() },
+    data: { usedAt: new Date() }
   });
 
   if (claimed.count === 0) {
@@ -83,10 +90,10 @@ export async function consumePasswordResetToken(
   await prisma.$transaction([
     prisma.user.update({
       where: { id: record.userId },
-      data: { passwordHash },
+      data: { passwordHash }
     }),
     // Invalidate all active sessions so old sessions can't be reused
-    prisma.authSession.deleteMany({ where: { userId: record.userId } }),
+    prisma.authSession.deleteMany({ where: { userId: record.userId } })
   ]);
 
   return { ok: true };

@@ -1,27 +1,63 @@
-import { AuthShell, AuthNotice, AuthLink, fieldInput, fieldLabel, primaryButton } from '@/components/auth/auth-ui';
+import {
+  AuthShell,
+  AuthNotice,
+  AuthLink,
+  fieldInput,
+  fieldLabel,
+  primaryButton
+} from '@/components/auth/auth-ui';
 
 const TIMEZONES = [
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Phoenix', 'America/Anchorage', 'Pacific/Honolulu',
-  'America/Toronto', 'America/Vancouver', 'America/Sao_Paulo',
-  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid',
-  'Europe/Rome', 'Europe/Amsterdam', 'Europe/Warsaw', 'Europe/Stockholm',
-  'Europe/Helsinki', 'Europe/Athens', 'Europe/Istanbul', 'Europe/Moscow',
-  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Singapore',
-  'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul',
-  'Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane',
-  'Pacific/Auckland', 'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'America/Toronto',
+  'America/Vancouver',
+  'America/Sao_Paulo',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Europe/Madrid',
+  'Europe/Rome',
+  'Europe/Amsterdam',
+  'Europe/Warsaw',
+  'Europe/Stockholm',
+  'Europe/Helsinki',
+  'Europe/Athens',
+  'Europe/Istanbul',
+  'Europe/Moscow',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Bangkok',
+  'Asia/Singapore',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Asia/Seoul',
+  'Australia/Sydney',
+  'Australia/Melbourne',
+  'Australia/Brisbane',
+  'Pacific/Auckland',
+  'UTC'
 ];
 
 type Props = { searchParams?: { error?: string } };
 
 function errorMessage(error?: string) {
   switch (error) {
-    case 'email_taken':       return 'An account with that email already exists.';
-    case 'invalid_input':     return 'Please fill in all fields. Password must be 12+ characters with at least one letter and one number.';
-    case 'too_many_requests': return 'Too many attempts. Try again in an hour.';
-    case 'server_error':      return 'Something went wrong. Please try again.';
-    default:                  return null;
+    case 'email_taken':
+      return 'An account with that email already exists.';
+    case 'invalid_input':
+      return 'Please fill in all fields. Password must be 12+ characters with at least one letter and one number.';
+    case 'too_many_requests':
+      return 'Too many attempts. Try again in an hour.';
+    case 'server_error':
+      return 'Something went wrong. Please try again.';
+    default:
+      return null;
   }
 }
 
@@ -94,7 +130,9 @@ export default function SignupPage({ searchParams }: Props) {
             className={fieldInput}
           >
             {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>{tz}</option>
+              <option key={tz} value={tz}>
+                {tz}
+              </option>
             ))}
           </select>
         </label>

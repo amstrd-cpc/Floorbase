@@ -66,25 +66,53 @@ async function seedVenueWithTableAndMenu() {
     data: { venueId: venue.id, name: 'Main Room', isActive: true }
   });
   const table = await prisma.table.create({
-    data: { venueId: venue.id, areaId: area.id, name: 'T1', capacityMax: 4, isActive: true }
+    data: {
+      venueId: venue.id,
+      areaId: area.id,
+      name: 'T1',
+      capacityMax: 4,
+      isActive: true
+    }
   });
   const category = await prisma.menuCategory.create({
     data: { venueId: venue.id, name: 'Mains', isActive: true }
   });
   const menuItem = await prisma.menuItem.create({
-    data: { venueId: venue.id, categoryId: category.id, name: 'Burger', priceMinor: 1250, isActive: true }
+    data: {
+      venueId: venue.id,
+      categoryId: category.id,
+      name: 'Burger',
+      priceMinor: 1250,
+      isActive: true
+    }
   });
   const inactiveMenuItem = await prisma.menuItem.create({
-    data: { venueId: venue.id, categoryId: category.id, name: 'Discontinued', priceMinor: 999, isActive: false }
+    data: {
+      venueId: venue.id,
+      categoryId: category.id,
+      name: 'Discontinued',
+      priceMinor: 999,
+      isActive: false
+    }
   });
 
-  return { organization, venue, area, table, category, menuItem, inactiveMenuItem };
+  return {
+    organization,
+    venue,
+    area,
+    table,
+    category,
+    menuItem,
+    inactiveMenuItem
+  };
 }
 
 test('createOrder against a table, then addOrderLine snapshots name/price', async () => {
   const { venue, table, menuItem } = await seedVenueWithTableAndMenu();
 
-  const order = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
   assert.equal(order.status, 'OPEN');
   assert.equal(order.tableId, table.id);
 
@@ -105,7 +133,10 @@ test('createOrder rejects a table from a different venue', async () => {
   const venueB = await seedVenueWithTableAndMenu();
 
   await assert.rejects(
-    () => createOrder({ payload: { venueId: venueB.venue.id, tableId: venueA.table.id } }),
+    () =>
+      createOrder({
+        payload: { venueId: venueB.venue.id, tableId: venueA.table.id }
+      }),
     (error: unknown) => error instanceof OrderValidationError
   );
 });
@@ -114,9 +145,16 @@ test('createOrder rejects a reservation from a different venue', async () => {
   const venueA = await seedVenueWithTableAndMenu();
   const venueB = await seedVenueWithTableAndMenu();
   const statusOnA = await prisma.reservationStatus.create({
-    data: { organizationId: venueA.organization.id, code: 'PENDING', label: 'Pending', isDefault: true }
+    data: {
+      organizationId: venueA.organization.id,
+      code: 'PENDING',
+      label: 'Pending',
+      isDefault: true
+    }
   });
-  const guestOnA = await prisma.guest.create({ data: { organizationId: venueA.organization.id, fullName: 'Guest' } });
+  const guestOnA = await prisma.guest.create({
+    data: { organizationId: venueA.organization.id, fullName: 'Guest' }
+  });
   const reservationOnA = await prisma.reservation.create({
     data: {
       organizationId: venueA.organization.id,
@@ -131,25 +169,39 @@ test('createOrder rejects a reservation from a different venue', async () => {
   });
 
   await assert.rejects(
-    () => createOrder({ payload: { venueId: venueB.venue.id, reservationId: reservationOnA.id } }),
+    () =>
+      createOrder({
+        payload: { venueId: venueB.venue.id, reservationId: reservationOnA.id }
+      }),
     (error: unknown) => error instanceof OrderValidationError
   );
 });
 
 test('addOrderLine rejects an inactive menu item', async () => {
   const { venue, table, inactiveMenuItem } = await seedVenueWithTableAndMenu();
-  const order = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
 
   await assert.rejects(
-    () => addOrderLine({ orderId: order.id, payload: { menuItemId: inactiveMenuItem.id } }),
+    () =>
+      addOrderLine({
+        orderId: order.id,
+        payload: { menuItemId: inactiveMenuItem.id }
+      }),
     (error: unknown) => error instanceof OrderValidationError
   );
 });
 
 test('updateOrderLine changes quantity and removeOrderLine removes it', async () => {
   const { venue, table, menuItem } = await seedVenueWithTableAndMenu();
-  const order = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
-  const withLine = await addOrderLine({ orderId: order.id, payload: { menuItemId: menuItem.id, quantity: 1 } });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
+  const withLine = await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: menuItem.id, quantity: 1 }
+  });
   const lineId = withLine.lines[0].id;
 
   const updated = await updateOrderLine({ lineId, payload: { quantity: 3 } });
@@ -162,15 +214,21 @@ test('updateOrderLine changes quantity and removeOrderLine removes it', async ()
 
 test('closeOrder transitions status and blocks further line changes', async () => {
   const { venue, table, menuItem } = await seedVenueWithTableAndMenu();
-  const order = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
-  await addOrderLine({ orderId: order.id, payload: { menuItemId: menuItem.id } });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
+  await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: menuItem.id }
+  });
 
   const closed = await closeOrder({ orderId: order.id });
   assert.equal(closed.status, 'CLOSED');
   assert.ok(closed.closedAt);
 
   await assert.rejects(
-    () => addOrderLine({ orderId: order.id, payload: { menuItemId: menuItem.id } }),
+    () =>
+      addOrderLine({ orderId: order.id, payload: { menuItemId: menuItem.id } }),
     (error: unknown) => error instanceof OrderValidationError
   );
 
@@ -182,7 +240,9 @@ test('closeOrder transitions status and blocks further line changes', async () =
 
 test('cancelOrder transitions status to CANCELLED', async () => {
   const { venue, table } = await seedVenueWithTableAndMenu();
-  const order = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
 
   const cancelled = await cancelOrder({ orderId: order.id });
   assert.equal(cancelled.status, 'CANCELLED');
@@ -190,8 +250,12 @@ test('cancelOrder transitions status to CANCELLED', async () => {
 
 test('listOrders filters by status', async () => {
   const { venue, table } = await seedVenueWithTableAndMenu();
-  const openOrder = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
-  const orderToClose = await createOrder({ payload: { venueId: venue.id, tableId: table.id } });
+  const openOrder = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
+  const orderToClose = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
   await closeOrder({ orderId: orderToClose.id });
 
   const openOnly = await listOrders({ venueId: venue.id, status: 'OPEN' });

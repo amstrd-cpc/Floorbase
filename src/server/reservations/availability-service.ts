@@ -159,7 +159,10 @@ function isWithinBusinessHours(input: {
   const openMinutes = open.hours * 60 + open.minutes;
   const closeMinutes = close.hours * 60 + close.minutes;
 
-  if (weekdayFor(input.window.startAt, input.timeZone) !== weekdayFor(input.window.endAt, input.timeZone)) {
+  if (
+    weekdayFor(input.window.startAt, input.timeZone) !==
+    weekdayFor(input.window.endAt, input.timeZone)
+  ) {
     return false;
   }
 
@@ -214,7 +217,10 @@ export async function listAvailableTables(input: {
     durationMinutes: input.durationMinutes
   });
 
-  if (!validateSlotAligned(window.startAt) || !validateSlotAligned(window.endAt)) {
+  if (
+    !validateSlotAligned(window.startAt) ||
+    !validateSlotAligned(window.endAt)
+  ) {
     return {
       availableTables: [],
       recommendedTableIds: [],
@@ -224,8 +230,13 @@ export async function listAvailableTables(input: {
     };
   }
 
-  const { businessHours, blackoutRules, timezone } = await getVenuePolicy(input.venueId);
-  const dayHours = businessHours.find((hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)) ?? null;
+  const { businessHours, blackoutRules, timezone } = await getVenuePolicy(
+    input.venueId
+  );
+  const dayHours =
+    businessHours.find(
+      (hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)
+    ) ?? null;
 
   if (!isWithinBusinessHours({ window, dayHours, timeZone: timezone })) {
     return {
@@ -255,7 +266,9 @@ export async function listAvailableTables(input: {
         reservation: {
           organizationId: input.organizationId,
           venueId: input.venueId,
-          ...(input.reservationIdToExclude ? { id: { not: input.reservationIdToExclude } } : {}),
+          ...(input.reservationIdToExclude
+            ? { id: { not: input.reservationIdToExclude } }
+            : {}),
           bookingStatus: { not: 'CANCELLED' },
           startAt: { lt: window.endAt },
           endAt: { gt: window.startAt }
@@ -291,9 +304,16 @@ export async function listAvailableTables(input: {
   ];
 
   const availableTables = tables
-    .filter((table) => !table.capacityMin || input.partySize >= table.capacityMin)
-    .filter((table) => !isTableBlocked({ tableId: table.id, window, busyIntervals }));
-  const recommendedTables = chooseBestTableSet(availableTables, input.partySize);
+    .filter(
+      (table) => !table.capacityMin || input.partySize >= table.capacityMin
+    )
+    .filter(
+      (table) => !isTableBlocked({ tableId: table.id, window, busyIntervals })
+    );
+  const recommendedTables = chooseBestTableSet(
+    availableTables,
+    input.partySize
+  );
 
   return {
     allowed: recommendedTables.length > 0,
@@ -334,8 +354,12 @@ export async function canPlaceReservation(input: {
     return { ok: false, reason: availability.reason };
   }
 
-  const tableSet = new Set(availability.availableTables.map((table) => table.id));
-  const allRequestedAreAvailable = input.tableIds.every((tableId) => tableSet.has(tableId));
+  const tableSet = new Set(
+    availability.availableTables.map((table) => table.id)
+  );
+  const allRequestedAreAvailable = input.tableIds.every((tableId) =>
+    tableSet.has(tableId)
+  );
 
   return {
     ok: allRequestedAreAvailable,
@@ -352,10 +376,13 @@ export async function listAvailableSlots(input: {
   allowedAreaIds?: string[];
   allowedTableIds?: string[];
 }) {
-  const durationMinutes = input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
+  const durationMinutes =
+    input.durationMinutes ?? DEFAULT_RESERVATION_DURATION_MINUTES;
   const { businessHours, timezone } = await getVenuePolicy(input.venueId);
   const zonedDate = getZonedDateTimeParts(input.date, timezone);
-  const dayHours = businessHours.find((hours) => hours.dayOfWeek === zonedDate.weekday);
+  const dayHours = businessHours.find(
+    (hours) => hours.dayOfWeek === zonedDate.weekday
+  );
 
   if (!dayHours || dayHours.isClosed) {
     return [] as Array<{

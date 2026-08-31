@@ -22,7 +22,10 @@ function mapZodErrors(
 }
 
 function toValidationError(error: unknown) {
-  if (error instanceof OrderValidationError || error instanceof OrderNotFoundError) {
+  if (
+    error instanceof OrderValidationError ||
+    error instanceof OrderNotFoundError
+  ) {
     return error;
   }
 
@@ -30,15 +33,23 @@ function toValidationError(error: unknown) {
     return new OrderValidationError(error.message);
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2025'
+  ) {
     return new OrderNotFoundError();
   }
 
   return new OrderValidationError('Invalid order payload.');
 }
 
-export function computeOrderTotalMinor(lines: Array<{ priceMinorSnapshot: number; quantity: number }>) {
-  return lines.reduce((sum, line) => sum + line.priceMinorSnapshot * line.quantity, 0);
+export function computeOrderTotalMinor(
+  lines: Array<{ priceMinorSnapshot: number; quantity: number }>
+) {
+  return lines.reduce(
+    (sum, line) => sum + line.priceMinorSnapshot * line.quantity,
+    0
+  );
 }
 
 async function assertVenue(venueId: string) {
@@ -62,7 +73,10 @@ async function assertTableInVenue(input: { tableId: string; venueId: string }) {
   }
 }
 
-async function assertReservationInVenue(input: { reservationId: string; venueId: string }) {
+async function assertReservationInVenue(input: {
+  reservationId: string;
+  venueId: string;
+}) {
   const reservation = await prisma.reservation.findFirst({
     where: { id: input.reservationId, venueId: input.venueId },
     select: { id: true }
@@ -78,7 +92,9 @@ async function getOpenOrderOrThrow(orderId: string) {
     throw new OrderNotFoundError();
   }
   if (order.status !== 'OPEN') {
-    throw new OrderValidationError('Order is not open.', { status: order.status });
+    throw new OrderValidationError('Order is not open.', {
+      status: order.status
+    });
   }
   return order;
 }
@@ -90,7 +106,10 @@ const orderWithLines = {
 export async function listOrders(input: { venueId: string; status?: string }) {
   const parsed = listOrdersSchema.safeParse(input);
   if (!parsed.success) {
-    throw new OrderValidationError('Invalid query params.', mapZodErrors(parsed.error.issues));
+    throw new OrderValidationError(
+      'Invalid query params.',
+      mapZodErrors(parsed.error.issues)
+    );
   }
 
   await assertVenue(parsed.data.venueId);
@@ -132,7 +151,10 @@ export async function createOrder(input: {
     const venue = await assertVenue(parsed.data.venueId);
 
     if (parsed.data.tableId) {
-      await assertTableInVenue({ tableId: parsed.data.tableId, venueId: parsed.data.venueId });
+      await assertTableInVenue({
+        tableId: parsed.data.tableId,
+        venueId: parsed.data.venueId
+      });
     }
     if (parsed.data.reservationId) {
       await assertReservationInVenue({
@@ -173,11 +195,17 @@ export async function addOrderLine(input: {
     const order = await getOpenOrderOrThrow(input.orderId);
 
     const menuItem = await prisma.menuItem.findFirst({
-      where: { id: parsed.data.menuItemId, venueId: order.venueId, isActive: true },
+      where: {
+        id: parsed.data.menuItemId,
+        venueId: order.venueId,
+        isActive: true
+      },
       select: { id: true, name: true, priceMinor: true, trackInventory: true }
     });
     if (!menuItem) {
-      throw new OrderValidationError('Menu item does not exist or is inactive in this venue.');
+      throw new OrderValidationError(
+        'Menu item does not exist or is inactive in this venue.'
+      );
     }
 
     const quantity = parsed.data.quantity ?? 1;
@@ -223,7 +251,13 @@ export async function updateOrderLine(input: {
 
     const line = await prisma.orderLine.findUnique({
       where: { id: input.lineId },
-      select: { id: true, orderId: true, menuItemId: true, quantity: true, stockReserved: true }
+      select: {
+        id: true,
+        orderId: true,
+        menuItemId: true,
+        quantity: true,
+        stockReserved: true
+      }
     });
     if (!line) {
       throw new OrderNotFoundError('Order line not found.');
@@ -273,7 +307,13 @@ export async function removeOrderLine(input: { lineId: string }) {
   try {
     const line = await prisma.orderLine.findUnique({
       where: { id: input.lineId },
-      select: { id: true, orderId: true, menuItemId: true, quantity: true, stockReserved: true }
+      select: {
+        id: true,
+        orderId: true,
+        menuItemId: true,
+        quantity: true,
+        stockReserved: true
+      }
     });
     if (!line) {
       throw new OrderNotFoundError('Order line not found.');

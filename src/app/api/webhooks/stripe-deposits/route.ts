@@ -80,10 +80,16 @@ export async function POST(request: Request) {
 
     await prisma.stripeEvent.create({ data: { id: event.id } });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
       return NextResponse.json({ ok: true });
     }
-    console.error(`Stripe deposits webhook handler failed for event ${event.id}`, e);
+    console.error(
+      `Stripe deposits webhook handler failed for event ${event.id}`,
+      e
+    );
     return NextResponse.json(
       { error: 'Webhook handler failed.' },
       { status: 500 }

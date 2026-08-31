@@ -77,13 +77,17 @@ async function resolveVenueTimeZone(venueId: string) {
 
 async function verifyAreaIds(areaIds: string[], venueId: string) {
   if (!areaIds || areaIds.length === 0) return true;
-  const count = await prisma.area.count({ where: { id: { in: areaIds }, venueId } });
+  const count = await prisma.area.count({
+    where: { id: { in: areaIds }, venueId }
+  });
   return count === areaIds.length;
 }
 
 async function verifyTableIds(tableIds: string[], venueId: string) {
   if (!tableIds || tableIds.length === 0) return true;
-  const count = await prisma.table.count({ where: { id: { in: tableIds }, venueId } });
+  const count = await prisma.table.count({
+    where: { id: { in: tableIds }, venueId }
+  });
   return count === tableIds.length;
 }
 
@@ -124,7 +128,10 @@ export async function POST(
   const parsed = createBookingEventSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid event payload.', details: mapZodErrors(parsed.error.issues) },
+      {
+        error: 'Invalid event payload.',
+        details: mapZodErrors(parsed.error.issues)
+      },
       { status: 400 }
     );
   }
@@ -134,14 +141,20 @@ export async function POST(
   if (data.allowedAreaIds?.length) {
     const valid = await verifyAreaIds(data.allowedAreaIds, params.venueId);
     if (!valid) {
-      return NextResponse.json({ error: 'One or more allowedAreaIds do not belong to this venue.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'One or more allowedAreaIds do not belong to this venue.' },
+        { status: 400 }
+      );
     }
   }
 
   if (data.allowedTableIds?.length) {
     const valid = await verifyTableIds(data.allowedTableIds, params.venueId);
     if (!valid) {
-      return NextResponse.json({ error: 'One or more allowedTableIds do not belong to this venue.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'One or more allowedTableIds do not belong to this venue.' },
+        { status: 400 }
+      );
     }
   }
 
@@ -151,8 +164,14 @@ export async function POST(
       isActive: data.isActive ?? true,
       name: data.name.trim(),
       eventType: data.eventType,
-      singleDate: parseCalendarDateInVenueTimeZone(data.singleDate, venueTimeZone),
-      dateStart: parseCalendarDateInVenueTimeZone(data.dateStart, venueTimeZone),
+      singleDate: parseCalendarDateInVenueTimeZone(
+        data.singleDate,
+        venueTimeZone
+      ),
+      dateStart: parseCalendarDateInVenueTimeZone(
+        data.dateStart,
+        venueTimeZone
+      ),
       dateEnd: parseCalendarDateInVenueTimeZone(data.dateEnd, venueTimeZone),
       weekdays: data.weekdays ?? [],
       confirmationMode: data.confirmationMode ?? null,
@@ -194,7 +213,10 @@ export async function PUT(
   const parsed = updateBookingEventSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid event payload.', details: mapZodErrors(parsed.error.issues) },
+      {
+        error: 'Invalid event payload.',
+        details: mapZodErrors(parsed.error.issues)
+      },
       { status: 400 }
     );
   }
@@ -212,14 +234,20 @@ export async function PUT(
   if (data.allowedAreaIds?.length) {
     const valid = await verifyAreaIds(data.allowedAreaIds, params.venueId);
     if (!valid) {
-      return NextResponse.json({ error: 'One or more allowedAreaIds do not belong to this venue.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'One or more allowedAreaIds do not belong to this venue.' },
+        { status: 400 }
+      );
     }
   }
 
   if (data.allowedTableIds?.length) {
     const valid = await verifyTableIds(data.allowedTableIds, params.venueId);
     if (!valid) {
-      return NextResponse.json({ error: 'One or more allowedTableIds do not belong to this venue.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'One or more allowedTableIds do not belong to this venue.' },
+        { status: 400 }
+      );
     }
   }
 
@@ -229,8 +257,14 @@ export async function PUT(
       isActive: data.isActive ?? true,
       name: data.name.trim(),
       eventType: data.eventType,
-      singleDate: parseCalendarDateInVenueTimeZone(data.singleDate, venueTimeZone),
-      dateStart: parseCalendarDateInVenueTimeZone(data.dateStart, venueTimeZone),
+      singleDate: parseCalendarDateInVenueTimeZone(
+        data.singleDate,
+        venueTimeZone
+      ),
+      dateStart: parseCalendarDateInVenueTimeZone(
+        data.dateStart,
+        venueTimeZone
+      ),
       dateEnd: parseCalendarDateInVenueTimeZone(data.dateEnd, venueTimeZone),
       weekdays: data.weekdays ?? [],
       confirmationMode: data.confirmationMode ?? null,

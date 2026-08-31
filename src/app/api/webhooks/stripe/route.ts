@@ -32,8 +32,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     data: {
       stripeCustomerId: session.customer as string,
       subscriptionId: session.subscription as string,
-      subscriptionStatus: 'ACTIVE',
-    },
+      subscriptionStatus: 'ACTIVE'
+    }
   });
 }
 
@@ -76,7 +76,9 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        await handleCheckoutCompleted(
+          event.data.object as Stripe.Checkout.Session
+        );
         break;
 
       case 'customer.subscription.created':
@@ -100,7 +102,10 @@ export async function POST(request: Request) {
     // Mark processed only after successful handling.
     await prisma.stripeEvent.create({ data: { id: event.id } });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
       // Concurrent duplicate delivery already completed successfully.
       return NextResponse.json({ ok: true });
     }

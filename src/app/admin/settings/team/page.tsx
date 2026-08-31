@@ -9,11 +9,15 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   ORGANIZATION_ADMIN: 'Org Admin',
   VENUE_MANAGER: 'Venue Manager',
-  HOST: 'Host',
+  HOST: 'Host'
 };
 
 export default async function TeamSettingsPage() {
-  const { organizationId, venueId, user: currentUser } = await getAdminContext();
+  const {
+    organizationId,
+    venueId,
+    user: currentUser
+  } = await getAdminContext();
   if (!organizationId || !venueId) return <p>Missing admin scope.</p>;
 
   const [users, pendingInvites] = await Promise.all([
@@ -27,20 +31,20 @@ export default async function TeamSettingsPage() {
         lastLoginAt: true,
         adminRoles: {
           where: { organizationId, isActive: true },
-          select: { role: true },
-        },
+          select: { role: true }
+        }
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'asc' }
     }),
     prisma.authInvite.findMany({
       where: {
         organizationId,
         acceptedAt: null,
-        expiresAt: { gt: new Date() },
+        expiresAt: { gt: new Date() }
       },
       select: { id: true, email: true, role: true, expiresAt: true },
-      orderBy: { createdAt: 'desc' },
-    }),
+      orderBy: { createdAt: 'desc' }
+    })
   ]);
 
   return (
@@ -66,8 +70,11 @@ export default async function TeamSettingsPage() {
               </thead>
               <tbody>
                 {users.map((u) => {
-                  const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || null;
-                  const roles = u.adminRoles.map((r) => ROLE_LABELS[r.role] ?? r.role).join(', ');
+                  const name =
+                    [u.firstName, u.lastName].filter(Boolean).join(' ') || null;
+                  const roles = u.adminRoles
+                    .map((r) => ROLE_LABELS[r.role] ?? r.role)
+                    .join(', ');
                   const isMe = u.id === currentUser.id;
                   return (
                     <tr key={u.id} className="border-b last:border-0">
@@ -75,15 +82,21 @@ export default async function TeamSettingsPage() {
                         {name && <div className="font-medium">{name}</div>}
                         <div className="text-muted-foreground">{u.email}</div>
                       </td>
-                      <td className="py-2 pr-4 text-muted-foreground">{roles || '—'}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {roles || '—'}
+                      </td>
                       <td className="py-2 pr-4 text-muted-foreground">
                         {u.lastLoginAt
-                          ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(u.lastLoginAt)
+                          ? new Intl.DateTimeFormat('en-US', {
+                              dateStyle: 'medium'
+                            }).format(u.lastLoginAt)
                           : 'Never'}
                       </td>
                       <td className="py-2">
                         {isMe ? (
-                          <span className="text-xs text-muted-foreground">You</span>
+                          <span className="text-xs text-muted-foreground">
+                            You
+                          </span>
                         ) : (
                           <RevokeUserButton userId={u.id} />
                         )}
@@ -101,7 +114,10 @@ export default async function TeamSettingsPage() {
         <SectionCard title="Pending invites">
           <div className="space-y-1 text-sm">
             {pendingInvites.map((invite) => (
-              <div key={invite.id} className="flex items-center justify-between gap-4 border-b py-2 last:border-0">
+              <div
+                key={invite.id}
+                className="flex items-center justify-between gap-4 border-b py-2 last:border-0"
+              >
                 <div>
                   <span className="font-medium">{invite.email}</span>
                   <span className="ml-2 text-muted-foreground">
@@ -109,7 +125,10 @@ export default async function TeamSettingsPage() {
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  Expires {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(invite.expiresAt)}
+                  Expires{' '}
+                  {new Intl.DateTimeFormat('en-US', {
+                    dateStyle: 'medium'
+                  }).format(invite.expiresAt)}
                 </span>
               </div>
             ))}

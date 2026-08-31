@@ -57,10 +57,22 @@ async function seedVenueWithTables() {
     data: { venueId: venue.id, name: 'Patio', sortOrder: 1, isActive: true }
   });
   const tableA = await prisma.table.create({
-    data: { venueId: venue.id, areaId: areaA.id, name: 'A1', capacityMax: 4, isActive: true }
+    data: {
+      venueId: venue.id,
+      areaId: areaA.id,
+      name: 'A1',
+      capacityMax: 4,
+      isActive: true
+    }
   });
   const tableB = await prisma.table.create({
-    data: { venueId: venue.id, areaId: areaB.id, name: 'B1', capacityMax: 2, isActive: true }
+    data: {
+      venueId: venue.id,
+      areaId: areaB.id,
+      name: 'B1',
+      capacityMax: 2,
+      isActive: true
+    }
   });
   return { venue, areaA, areaB, tableA, tableB };
 }
@@ -70,11 +82,18 @@ test('getOrCreateDraftLayout seeds a draft from existing areas/tables and is ide
 
   const draft = await getOrCreateDraftLayout(venue.id);
   assert.equal(draft.status, 'DRAFT');
-  assert.deepEqual(draft.areas.map((area) => area.name).sort(), ['Main Room', 'Patio']);
+  assert.deepEqual(draft.areas.map((area) => area.name).sort(), [
+    'Main Room',
+    'Patio'
+  ]);
   assert.equal(draft.tables.length, 2);
 
   const draftAgain = await getOrCreateDraftLayout(venue.id);
-  assert.equal(draftAgain.id, draft.id, 'a second call must reuse the same draft, not create another one');
+  assert.equal(
+    draftAgain.id,
+    draft.id,
+    'a second call must reuse the same draft, not create another one'
+  );
 });
 
 test('saveDraftLayout persists position changes', async () => {
@@ -89,7 +108,9 @@ test('saveDraftLayout persists position changes', async () => {
     gridSize: draft.gridSize,
     areas: draft.areas,
     tables: draft.tables.map((table) =>
-      table.id === movedTable.id ? { ...table, x: 777, y: 333, rotation: 90 } : table
+      table.id === movedTable.id
+        ? { ...table, x: 777, y: 333, rotation: 90 }
+        : table
     )
   });
 
@@ -125,15 +146,31 @@ test('publishDraftLayout maps each table to its own area, not by array position'
   const published = await publishDraftLayout(venue.id);
   assert.ok(published);
 
-  const publishedTableA = published.tables.find((table) => table.tableId === tableA.id);
-  const publishedTableB = published.tables.find((table) => table.tableId === tableB.id);
+  const publishedTableA = published.tables.find(
+    (table) => table.tableId === tableA.id
+  );
+  const publishedTableB = published.tables.find(
+    (table) => table.tableId === tableB.id
+  );
   assert.ok(publishedTableA && publishedTableB);
 
-  const areaForTableA = published.areas.find((area) => area.id === publishedTableA.floorLayoutAreaId);
-  const areaForTableB = published.areas.find((area) => area.id === publishedTableB.floorLayoutAreaId);
+  const areaForTableA = published.areas.find(
+    (area) => area.id === publishedTableA.floorLayoutAreaId
+  );
+  const areaForTableB = published.areas.find(
+    (area) => area.id === publishedTableB.floorLayoutAreaId
+  );
 
-  assert.equal(areaForTableA?.areaId, areaA.id, 'table A must stay linked to area A after publish');
-  assert.equal(areaForTableB?.areaId, areaB.id, 'table B must stay linked to area B after publish');
+  assert.equal(
+    areaForTableA?.areaId,
+    areaA.id,
+    'table A must stay linked to area A after publish'
+  );
+  assert.equal(
+    areaForTableB?.areaId,
+    areaB.id,
+    'table B must stay linked to area B after publish'
+  );
 });
 
 test('publishDraftLayout archives the previous published version and bumps the version number', async () => {

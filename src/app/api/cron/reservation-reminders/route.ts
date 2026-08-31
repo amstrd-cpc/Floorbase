@@ -23,7 +23,9 @@ export async function GET(request: Request) {
   }
 
   const now = new Date();
-  const windowEnd = new Date(now.getTime() + REMINDER_WINDOW_HOURS * 60 * 60_000);
+  const windowEnd = new Date(
+    now.getTime() + REMINDER_WINDOW_HOURS * 60 * 60_000
+  );
 
   const candidates = await prisma.reservation.findMany({
     where: {

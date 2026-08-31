@@ -7,10 +7,10 @@ import { PageHeader } from '@/components/admin/page-header';
 import { BillingActions } from '@/components/admin/billing-actions';
 
 const STATUS_LABELS: Record<string, string> = {
-  TRIALING:  'Free trial',
-  ACTIVE:    'Active',
-  PAST_DUE:  'Payment overdue',
-  CANCELLED: 'Cancelled',
+  TRIALING: 'Free trial',
+  ACTIVE: 'Active',
+  PAST_DUE: 'Payment overdue',
+  CANCELLED: 'Cancelled'
 };
 
 function planTier(venueCount: number): string {
@@ -21,12 +21,14 @@ function planTier(venueCount: number): string {
 }
 
 export default async function BillingPage({
-  searchParams,
+  searchParams
 }: {
   searchParams?: { success?: string };
 }) {
   const user = await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN']);
-  const isSuperAdmin = user.adminRoles.some((r: { role: string }) => r.role === 'SUPER_ADMIN');
+  const isSuperAdmin = user.adminRoles.some(
+    (r: { role: string }) => r.role === 'SUPER_ADMIN'
+  );
   if (isSuperAdmin) redirect('/admin');
 
   const { organizationId } = await getAdminContext();
@@ -39,10 +41,10 @@ export default async function BillingPage({
         subscriptionStatus: true,
         trialEndsAt: true,
         subscriptionId: true,
-        planId: true,
-      },
+        planId: true
+      }
     }),
-    getActiveVenueCount(organizationId),
+    getActiveVenueCount(organizationId)
   ]);
 
   const justSubscribed = searchParams?.success === '1';
@@ -51,7 +53,8 @@ export default async function BillingPage({
     org.trialEndsAt &&
     org.trialEndsAt < new Date();
 
-  const statusLabel = STATUS_LABELS[org.subscriptionStatus] ?? org.subscriptionStatus;
+  const statusLabel =
+    STATUS_LABELS[org.subscriptionStatus] ?? org.subscriptionStatus;
   const tier = planTier(venueCount);
 
   return (
@@ -67,7 +70,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      <div className="border border-border bg-card p-6 space-y-4">
+      <div className="space-y-4 border border-border bg-card p-6">
         <h2 className="font-medium">Current plan</h2>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -78,9 +81,11 @@ export default async function BillingPage({
           <dd>
             <span
               className={
-                org.subscriptionStatus === 'ACTIVE' ? 'text-green-700 font-medium' :
-                org.subscriptionStatus === 'PAST_DUE' ? 'text-red-700 font-medium' :
-                'font-medium'
+                org.subscriptionStatus === 'ACTIVE'
+                  ? 'font-medium text-green-700'
+                  : org.subscriptionStatus === 'PAST_DUE'
+                    ? 'font-medium text-red-700'
+                    : 'font-medium'
               }
             >
               {statusLabel}
@@ -103,7 +108,8 @@ export default async function BillingPage({
 
         {(org.subscriptionStatus !== 'ACTIVE' || isExpiredTrial) && (
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-            <strong>Pricing:</strong> $49/venue/month for 1 venue · $39/venue/month for 2–5 venues · $29/venue/month for 6–15 venues
+            <strong>Pricing:</strong> $49/venue/month for 1 venue ·
+            $39/venue/month for 2–5 venues · $29/venue/month for 6–15 venues
           </div>
         )}
 

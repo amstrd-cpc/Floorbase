@@ -25,7 +25,7 @@ function roleMatchesScope(
   return organizationMatches && venueMatches;
 }
 
-export async function requireAuthenticatedUser() {
+async function requireAuthenticatedUser() {
   const session = await getCurrentSession();
 
   if (!session) {

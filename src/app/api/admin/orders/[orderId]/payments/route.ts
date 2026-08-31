@@ -14,7 +14,10 @@ const bodySchema = z
 
 function toErrorResponse(error: unknown) {
   if (error instanceof OrderPaymentError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status }
+    );
   }
 
   throw error;
@@ -35,12 +38,18 @@ export async function POST(
   try {
     rawBody = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid request body.' },
+      { status: 400 }
+    );
   }
 
   const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'A valid amountMinor is required.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'A valid amountMinor is required.' },
+      { status: 400 }
+    );
   }
 
   try {

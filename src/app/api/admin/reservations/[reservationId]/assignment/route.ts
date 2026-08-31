@@ -36,7 +36,9 @@ export async function GET(
     'HOST'
   ]);
 
-  const organizationId = new URL(request.url).searchParams.get('organizationId');
+  const organizationId = new URL(request.url).searchParams.get(
+    'organizationId'
+  );
   if (!organizationId) {
     return NextResponse.json(
       { error: 'organizationId query param is required.' },
@@ -47,7 +49,10 @@ export async function GET(
   try {
     const scope = await getReservationScope(params.reservationId);
     if (!scope || scope.organizationId !== organizationId) {
-      return NextResponse.json({ error: 'Reservation not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
     }
 
     if (!hasAdminScope(user, scope)) {
@@ -82,13 +87,19 @@ export async function PUT(
   };
 
   if (!payload.organizationId) {
-    return NextResponse.json({ error: 'organizationId is required.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'organizationId is required.' },
+      { status: 400 }
+    );
   }
 
   try {
     const scope = await getReservationScope(params.reservationId);
     if (!scope || scope.organizationId !== payload.organizationId) {
-      return NextResponse.json({ error: 'Reservation not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Reservation not found.' },
+        { status: 404 }
+      );
     }
 
     if (!hasAdminScope(user, scope)) {

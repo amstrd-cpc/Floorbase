@@ -10,16 +10,23 @@ export function BillingBanner({ status, trialEndsAt }: BillingBannerProps) {
   let style = '';
 
   if (status === 'TRIALING' && trialEndsAt) {
-    const daysLeft = Math.ceil((trialEndsAt.getTime() - Date.now()) / 86_400_000);
+    const daysLeft = Math.ceil(
+      (trialEndsAt.getTime() - Date.now()) / 86_400_000
+    );
     if (daysLeft > 3) return null;
-    message = daysLeft <= 0
-      ? 'Your trial has expired. Subscribe to keep access.'
-      : `Trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Subscribe to keep access.`;
-    style = daysLeft <= 1 ? 'border-foreground bg-secondary text-foreground' : 'border-border bg-secondary text-foreground';
+    message =
+      daysLeft <= 0
+        ? 'Your trial has expired. Subscribe to keep access.'
+        : `Trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Subscribe to keep access.`;
+    style =
+      daysLeft <= 1
+        ? 'border-foreground bg-secondary text-foreground'
+        : 'border-border bg-secondary text-foreground';
   }
 
   if (status === 'PAST_DUE') {
-    message = 'Payment failed. Update your payment method to restore full access.';
+    message =
+      'Payment failed. Update your payment method to restore full access.';
     style = 'border-foreground bg-secondary text-foreground';
   }
 

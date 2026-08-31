@@ -38,3 +38,14 @@ export type FloorLayoutDto = {
   areas: FloorLayoutAreaDto[];
   tables: FloorLayoutTableDto[];
 };
+
+export type PublicTableVisualState = {
+  status:
+    | 'AVAILABLE'
+    | 'UNAVAILABLE_BOOKED'
+    | 'UNAVAILABLE_RULE'
+    | 'UNAVAILABLE_EVENT'
+    | 'INACTIVE';
+  reason: string;
+  selectable: boolean;
+};

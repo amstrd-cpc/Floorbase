@@ -39,10 +39,10 @@ async function resolveVenueId(
     where: {
       organizationId,
       isActive: true,
-      ...(allowedVenueIds ? { id: { in: allowedVenueIds } } : {}),
+      ...(allowedVenueIds ? { id: { in: allowedVenueIds } } : {})
     },
     select: { id: true },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'asc' }
   });
 
   if (venues.length === 0) {
@@ -75,12 +75,14 @@ export async function getAdminContext() {
 
   const roles = user.adminRoles as AdminAssignment[];
 
-  const scopedAssignments = roles.filter(
-    (assignment) => Boolean(assignment.organizationId)
+  const scopedAssignments = roles.filter((assignment) =>
+    Boolean(assignment.organizationId)
   );
 
   if (scopedAssignments.length === 0) {
-    const isSuperAdmin = roles.some((assignment) => assignment.role === 'SUPER_ADMIN');
+    const isSuperAdmin = roles.some(
+      (assignment) => assignment.role === 'SUPER_ADMIN'
+    );
 
     if (!isSuperAdmin) {
       throw new Error(
@@ -156,7 +158,9 @@ export async function getAdminContext() {
     new Set(
       scopedAssignments
         .map((assignment) => assignment.organizationId)
-        .filter((organizationId): organizationId is string => Boolean(organizationId))
+        .filter((organizationId): organizationId is string =>
+          Boolean(organizationId)
+        )
     )
   );
 

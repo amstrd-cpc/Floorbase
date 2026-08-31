@@ -34,7 +34,10 @@ export async function PUT(
   try {
     const categoryScope = await getMenuCategoryScope(params.categoryId);
     if (!categoryScope) {
-      return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Category not found.' },
+        { status: 404 }
+      );
     }
 
     if (
@@ -49,7 +52,10 @@ export async function PUT(
       );
     }
 
-    const category = await updateMenuCategory({ categoryId: params.categoryId, payload });
+    const category = await updateMenuCategory({
+      categoryId: params.categoryId,
+      payload
+    });
     return NextResponse.json({ category });
   } catch (error) {
     return toErrorResponse(error);
@@ -69,7 +75,10 @@ export async function DELETE(
   try {
     const categoryScope = await getMenuCategoryScope(params.categoryId);
     if (!categoryScope) {
-      return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Category not found.' },
+        { status: 404 }
+      );
     }
 
     if (

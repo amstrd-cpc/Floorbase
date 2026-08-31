@@ -136,24 +136,34 @@ export async function POST(request: Request) {
 }
 
 async function sendAdminReservationAlert(input: {
-  reservation: { id: string; startAt: Date; partySize: number; guest: { id: string; fullName: string | null; email: string | null; phone: string | null } };
+  reservation: {
+    id: string;
+    startAt: Date;
+    partySize: number;
+    guest: {
+      id: string;
+      fullName: string | null;
+      email: string | null;
+      phone: string | null;
+    };
+  };
   organizationId: string;
 }) {
   try {
     const [venue, orgAdmin] = await Promise.all([
       prisma.venue.findFirst({
         where: { organizationId: input.organizationId, isActive: true },
-        select: { name: true, timezone: true },
+        select: { name: true, timezone: true }
       }),
       prisma.user.findFirst({
         where: {
           organizationId: input.organizationId,
           isActive: true,
-          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } },
+          adminRoles: { some: { role: 'ORGANIZATION_ADMIN', isActive: true } }
         },
         select: { email: true },
-        orderBy: { createdAt: 'asc' },
-      }),
+        orderBy: { createdAt: 'asc' }
+      })
     ]);
 
     if (!venue || !orgAdmin?.email) return;
@@ -171,7 +181,7 @@ async function sendAdminReservationAlert(input: {
       appUrl: env.APP_URL,
       reservationId: input.reservation.id,
       organizationId: input.organizationId,
-      guestId: input.reservation.guest.id,
+      guestId: input.reservation.guest.id
     });
   } catch (err) {
     console.error('Admin reservation email error', err);

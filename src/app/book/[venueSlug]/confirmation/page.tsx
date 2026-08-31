@@ -10,13 +10,13 @@ function formatDateTime(date: Date, timeZone: string) {
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
-    minute: '2-digit',
+    minute: '2-digit'
   }).format(date);
 }
 
 export default async function BookingConfirmationPage({
   params,
-  searchParams,
+  searchParams
 }: {
   params: { venueSlug: string };
   searchParams?: { reservationId?: string };
@@ -24,10 +24,14 @@ export default async function BookingConfirmationPage({
   const reservationId = searchParams?.reservationId ?? '';
   if (!reservationId) notFound();
 
-  const reservation = await getPublicReservationConfirmation(params.venueSlug, reservationId);
+  const reservation = await getPublicReservationConfirmation(
+    params.venueSlug,
+    reservationId
+  );
   if (!reservation) notFound();
 
-  const { venue, guest, status, startAt, partySize, specialRequests } = reservation;
+  const { venue, guest, status, startAt, partySize, specialRequests } =
+    reservation;
   const isPending = status.code === 'PENDING';
   const guestName = guest.fullName ?? guest.firstName ?? 'Guest';
 
@@ -39,18 +43,27 @@ export default async function BookingConfirmationPage({
         </div>
         {isPending ? (
           <>
-            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">Booking request received</h1>
+            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">
+              Booking request received
+            </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Hi {guestName} — your request is pending review. {venue.name} will confirm it shortly.
-              {guest.email ? ` A confirmation will be sent to ${guest.email}.` : ''}
+              Hi {guestName} — your request is pending review. {venue.name} will
+              confirm it shortly.
+              {guest.email
+                ? ` A confirmation will be sent to ${guest.email}.`
+                : ''}
             </p>
           </>
         ) : (
           <>
-            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">Reservation confirmed</h1>
+            <h1 className="mt-3 text-[26px] font-bold tracking-tightest">
+              Reservation confirmed
+            </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               You&apos;re all set, {guestName}.
-              {guest.email ? ` A confirmation has been sent to ${guest.email}.` : ''}
+              {guest.email
+                ? ` A confirmation has been sent to ${guest.email}.`
+                : ''}
             </p>
           </>
         )}
@@ -63,16 +76,22 @@ export default async function BookingConfirmationPage({
           {(venue.addressLine || venue.city) && (
             <div className="flex justify-between gap-4 border-b border-border py-2.5">
               <dt className="text-muted-foreground">Address</dt>
-              <dd className="text-right">{[venue.addressLine, venue.city].filter(Boolean).join(', ')}</dd>
+              <dd className="text-right">
+                {[venue.addressLine, venue.city].filter(Boolean).join(', ')}
+              </dd>
             </div>
           )}
           <div className="flex justify-between gap-4 border-b border-border py-2.5">
             <dt className="text-muted-foreground">Date &amp; time</dt>
-            <dd className="text-right">{formatDateTime(new Date(startAt), venue.timezone)}</dd>
+            <dd className="text-right">
+              {formatDateTime(new Date(startAt), venue.timezone)}
+            </dd>
           </div>
           <div className="flex justify-between gap-4 border-b border-border py-2.5">
             <dt className="text-muted-foreground">Party size</dt>
-            <dd>{partySize} {partySize === 1 ? 'guest' : 'guests'}</dd>
+            <dd>
+              {partySize} {partySize === 1 ? 'guest' : 'guests'}
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-4 border-b border-border py-2.5">
             <dt className="text-muted-foreground">Status</dt>

@@ -12,12 +12,30 @@ const baseEventSchema = z.object({
   name: z.string().trim().min(1).max(200),
   eventType: z.enum(['SINGLE_DATE', 'DATE_RANGE', 'WEEKLY_RECURRING']),
   isActive: z.boolean().optional().default(true),
-  singleDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  dateStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  dateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  singleDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  dateStart: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  dateEnd: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
   weekdays: weekdaysSchema.optional(),
-  confirmationMode: z.enum(['AUTO_CONFIRM', 'REQUEST_ONLY']).nullable().optional(),
-  placementMode: z.enum(['AUTO_ASSIGN', 'TABLE_SELECTION']).nullable().optional(),
+  confirmationMode: z
+    .enum(['AUTO_CONFIRM', 'REQUEST_ONLY'])
+    .nullable()
+    .optional(),
+  placementMode: z
+    .enum(['AUTO_ASSIGN', 'TABLE_SELECTION'])
+    .nullable()
+    .optional(),
   minPartySize: nullablePositiveInt(1, 100),
   maxOnlinePartySize: nullablePositiveInt(1, 100),
   durationMinutes: nullablePositiveInt(30, 720),
@@ -65,7 +83,10 @@ function refineEvent(
     }
   }
 
-  if (value.eventType === 'WEEKLY_RECURRING' && (!value.weekdays || value.weekdays.length === 0)) {
+  if (
+    value.eventType === 'WEEKLY_RECURRING' &&
+    (!value.weekdays || value.weekdays.length === 0)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'weekdays is required for WEEKLY_RECURRING events.',
@@ -86,11 +107,9 @@ function refineEvent(
   }
 }
 
-export const createBookingEventSchema = baseEventSchema.superRefine(refineEvent);
+export const createBookingEventSchema =
+  baseEventSchema.superRefine(refineEvent);
 
 export const updateBookingEventSchema = baseEventSchema
   .extend({ id: z.string().cuid() })
   .superRefine(refineEvent);
-
-export type CreateBookingEventInput = z.infer<typeof createBookingEventSchema>;
-export type UpdateBookingEventInput = z.infer<typeof updateBookingEventSchema>;

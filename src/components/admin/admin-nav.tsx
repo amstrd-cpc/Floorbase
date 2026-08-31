@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: '/admin/orders', label: 'Orders', n: '05' },
   { href: '/admin/events', label: 'Events', n: '06' },
   { href: '/admin/settings', label: 'Settings', n: '07' },
-  { href: '/admin/billing', label: 'Billing', n: '08' },
+  { href: '/admin/billing', label: 'Billing', n: '08' }
 ];
 
 export function AdminNav() {

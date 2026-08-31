@@ -21,7 +21,12 @@ type Order = {
 };
 
 type TableOption = { id: string; name: string };
-type MenuItemOption = { id: string; name: string; priceMinor: number; isActive: boolean };
+type MenuItemOption = {
+  id: string;
+  name: string;
+  priceMinor: number;
+  isActive: boolean;
+};
 type MenuCategoryOption = { id: string; name: string; items: MenuItemOption[] };
 
 function formatPrice(priceMinor: number) {
@@ -29,7 +34,10 @@ function formatPrice(priceMinor: number) {
 }
 
 function orderTotalMinor(order: Order) {
-  return order.lines.reduce((sum, line) => sum + line.priceMinorSnapshot * line.quantity, 0);
+  return order.lines.reduce(
+    (sum, line) => sum + line.priceMinorSnapshot * line.quantity,
+    0
+  );
 }
 
 export function OrdersManager({ venueId }: { venueId: string }) {
@@ -37,9 +45,14 @@ export function OrdersManager({ venueId }: { venueId: string }) {
   const [tables, setTables] = useState<TableOption[]>([]);
   const [categories, setCategories] = useState<MenuCategoryOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState<{ text: string; kind: 'ok' | 'err' } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    kind: 'ok' | 'err';
+  } | null>(null);
   const [newOrderTableId, setNewOrderTableId] = useState('');
-  const [addItemSelection, setAddItemSelection] = useState<Record<string, string>>({});
+  const [addItemSelection, setAddItemSelection] = useState<
+    Record<string, string>
+  >({});
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -60,7 +73,10 @@ export function OrdersManager({ venueId }: { venueId: string }) {
       setTables(tablesBody.tables ?? []);
       setCategories(menuBody.categories ?? []);
     } catch {
-      setMessage({ text: 'Failed to load orders data. Please refresh.', kind: 'err' });
+      setMessage({
+        text: 'Failed to load orders data. Please refresh.',
+        kind: 'err'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +96,10 @@ export function OrdersManager({ venueId }: { venueId: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to create order.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to create order.',
+          kind: 'err'
+        });
         return;
       }
       setNewOrderTableId('');
@@ -123,7 +142,10 @@ export function OrdersManager({ venueId }: { venueId: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to update item.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to update item.',
+          kind: 'err'
+        });
         return;
       }
       await loadData();
@@ -135,10 +157,15 @@ export function OrdersManager({ venueId }: { venueId: string }) {
   async function removeLine(lineId: string) {
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/orders/lines/${lineId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/orders/lines/${lineId}`, {
+        method: 'DELETE'
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to remove item.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to remove item.',
+          kind: 'err'
+        });
         return;
       }
       await loadData();
@@ -150,10 +177,15 @@ export function OrdersManager({ venueId }: { venueId: string }) {
   async function closeOrder(orderId: string) {
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/close`, { method: 'POST' });
+      const res = await fetch(`/api/admin/orders/${orderId}/close`, {
+        method: 'POST'
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to close order.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to close order.',
+          kind: 'err'
+        });
         return;
       }
       setMessage({ text: 'Order closed.', kind: 'ok' });
@@ -167,10 +199,15 @@ export function OrdersManager({ venueId }: { venueId: string }) {
     if (!window.confirm('Cancel this order? This cannot be undone.')) return;
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/cancel`, { method: 'POST' });
+      const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
+        method: 'POST'
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: body.error ?? 'Failed to cancel order.', kind: 'err' });
+        setMessage({
+          text: body.error ?? 'Failed to cancel order.',
+          kind: 'err'
+        });
         return;
       }
       setMessage({ text: 'Order cancelled.', kind: 'ok' });
@@ -182,7 +219,9 @@ export function OrdersManager({ venueId }: { venueId: string }) {
 
   function tableName(tableId: string | null) {
     if (!tableId) return 'Walk-in';
-    return tables.find((table) => table.id === tableId)?.name ?? 'Unknown table';
+    return (
+      tables.find((table) => table.id === tableId)?.name ?? 'Unknown table'
+    );
   }
 
   return (
@@ -224,7 +263,9 @@ export function OrdersManager({ venueId }: { venueId: string }) {
 
       <div className="space-y-3">
         {isLoading ? (
-          <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">Loading…</p>
+          <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
+            Loading…
+          </p>
         ) : null}
         {!isLoading && orders.length === 0 ? (
           <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">
@@ -235,12 +276,17 @@ export function OrdersManager({ venueId }: { venueId: string }) {
           <div key={order.id} className="border border-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-medium">{tableName(order.tableId)}</h4>
-              <p className="font-mono text-sm">{formatPrice(orderTotalMinor(order))}</p>
+              <p className="font-mono text-sm">
+                {formatPrice(orderTotalMinor(order))}
+              </p>
             </div>
 
             <ul className="mt-2 space-y-1 text-sm">
               {order.lines.map((line) => (
-                <li key={line.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
+                <li
+                  key={line.id}
+                  className="flex items-center justify-between gap-2 rounded border px-2 py-1"
+                >
                   <span>{line.nameSnapshot}</span>
                   <span className="flex items-center gap-2">
                     <input
@@ -248,7 +294,9 @@ export function OrdersManager({ venueId }: { venueId: string }) {
                       min={1}
                       className="w-14 rounded border p-1 text-xs"
                       value={line.quantity}
-                      onChange={(e) => setLineQuantity(line.id, Number(e.target.value))}
+                      onChange={(e) =>
+                        setLineQuantity(line.id, Number(e.target.value))
+                      }
                     />
                     <span className="font-mono text-xs">
                       {formatPrice(line.priceMinorSnapshot * line.quantity)}
@@ -273,7 +321,10 @@ export function OrdersManager({ venueId }: { venueId: string }) {
                 className="rounded border p-2 text-xs"
                 value={addItemSelection[order.id] ?? ''}
                 onChange={(e) =>
-                  setAddItemSelection((current) => ({ ...current, [order.id]: e.target.value }))
+                  setAddItemSelection((current) => ({
+                    ...current,
+                    [order.id]: e.target.value
+                  }))
                 }
               >
                 <option value="">Add item…</option>

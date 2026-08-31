@@ -93,8 +93,10 @@ async function verifyTableIds(tableIds: string[], venueId: string) {
 
 export async function GET(
   _request: Request,
-  { params }: { params: { venueId: string } }
+  { params: paramsPromise }: { params: Promise<{ venueId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
 
@@ -108,8 +110,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { venueId: string } }
+  { params: paramsPromise }: { params: Promise<{ venueId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
 
@@ -193,8 +197,10 @@ export async function POST(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { venueId: string } }
+  { params: paramsPromise }: { params: Promise<{ venueId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
 
@@ -286,8 +292,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { venueId: string } }
+  { params: paramsPromise }: { params: Promise<{ venueId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const denied = await assertWriteAccess(params.venueId);
   if (denied) return denied;
 

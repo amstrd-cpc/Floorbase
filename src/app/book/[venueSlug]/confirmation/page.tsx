@@ -18,14 +18,15 @@ export default async function BookingConfirmationPage({
   params,
   searchParams
 }: {
-  params: { venueSlug: string };
-  searchParams?: { reservationId?: string };
+  params: Promise<{ venueSlug: string }>;
+  searchParams?: Promise<{ reservationId?: string }>;
 }) {
-  const reservationId = searchParams?.reservationId ?? '';
+  const { venueSlug } = await params;
+  const reservationId = (await searchParams)?.reservationId ?? '';
   if (!reservationId) notFound();
 
   const reservation = await getPublicReservationConfirmation(
-    params.venueSlug,
+    venueSlug,
     reservationId
   );
   if (!reservation) notFound();

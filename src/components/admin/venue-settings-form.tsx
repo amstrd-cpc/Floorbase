@@ -64,6 +64,9 @@ export function VenueSettingsForm({ venue }: { venue: VenueSettings }) {
   useEffect(() => {
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (browserTimezone && !venue.timezone.trim()) {
+      // Must run as an effect: Intl resolves the *browser's* zone and would
+      // resolve the *server's* zone instead if read during SSR/lazy-init.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValues((current) => ({
         ...current,
         timezone: current.timezone.trim() || browserTimezone

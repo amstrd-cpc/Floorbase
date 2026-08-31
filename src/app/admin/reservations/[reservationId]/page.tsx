@@ -28,14 +28,15 @@ function formatTime(date: Date, timeZone: string) {
 export default async function ReservationDetailsPage({
   params
 }: {
-  params: { reservationId: string };
+  params: Promise<{ reservationId: string }>;
 }) {
+  const { reservationId } = await params;
   const { organizationId, venueId } = await getAdminContext();
   if (!organizationId || !venueId) return <p>Missing admin scope.</p>;
 
   const [reservation, statuses, venue] = await Promise.all([
     prisma.reservation.findFirst({
-      where: { id: params.reservationId, organizationId, venueId },
+      where: { id: reservationId, organizationId, venueId },
       include: {
         guest: true,
         status: true,

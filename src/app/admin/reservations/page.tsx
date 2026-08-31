@@ -40,10 +40,15 @@ function parseDateFilter(dateText: string, timeZone: string, endOfDay = false) {
 }
 
 export default async function ReservationListPage({
-  searchParams
+  searchParams: searchParamsPromise
 }: {
-  searchParams?: { dateFrom?: string; dateTo?: string; statusId?: string };
+  searchParams?: Promise<{
+    dateFrom?: string;
+    dateTo?: string;
+    statusId?: string;
+  }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const { organizationId, venueId } = await getAdminContext();
   if (!organizationId || !venueId) return <p>Missing admin scope.</p>;
 

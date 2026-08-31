@@ -10,7 +10,10 @@ export function BillingBanner({ status, trialEndsAt }: BillingBannerProps) {
   let style = '';
 
   if (status === 'TRIALING' && trialEndsAt) {
+    // Server Component: re-rendered fresh per request, not memoized, so
+    // reading the wall clock here is safe despite the react-hooks/purity rule.
     const daysLeft = Math.ceil(
+      // eslint-disable-next-line react-hooks/purity
       (trialEndsAt.getTime() - Date.now()) / 86_400_000
     );
     if (daysLeft > 3) return null;

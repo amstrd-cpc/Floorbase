@@ -24,8 +24,10 @@ function toErrorResponse(error: unknown) {
 
 export async function PUT(
   request: Request,
-  { params }: { params: { lineId: string } }
+  { params: paramsPromise }: { params: Promise<{ lineId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
@@ -65,8 +67,10 @@ export async function PUT(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { lineId: string } }
+  { params: paramsPromise }: { params: Promise<{ lineId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',

@@ -7,8 +7,9 @@ import { prisma } from '@/server/db/prisma/client';
 export default async function EditReservationPage({
   params
 }: {
-  params: { reservationId: string };
+  params: Promise<{ reservationId: string }>;
 }) {
+  const { reservationId } = await params;
   const { organizationId, venueId } = await getAdminContext();
   if (!organizationId || !venueId) return <p>Missing admin scope.</p>;
 
@@ -23,7 +24,7 @@ export default async function EditReservationPage({
       orderBy: [{ name: 'asc' }]
     }),
     prisma.reservation.findFirst({
-      where: { id: params.reservationId, organizationId, venueId },
+      where: { id: reservationId, organizationId, venueId },
       include: { guest: true, reservationTables: true }
     })
   ]);

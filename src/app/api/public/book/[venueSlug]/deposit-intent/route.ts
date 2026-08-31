@@ -12,8 +12,10 @@ const bodySchema = z
 
 export async function POST(
   request: Request,
-  { params }: { params: { venueSlug: string } }
+  { params: paramsPromise }: { params: Promise<{ venueSlug: string }> }
 ) {
+  const params = await paramsPromise;
+
   const ip =
     (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
     'unknown';

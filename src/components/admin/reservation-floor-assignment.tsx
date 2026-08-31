@@ -84,6 +84,9 @@ export function ReservationFloorAssignment({
   }
 
   useEffect(() => {
+    // Standard fetch-on-mount; this app has no React Compiler / data-fetching
+    // library, loadSnapshot's setLoading(true) is the intended initial state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadSnapshot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reservationId, organizationId]);

@@ -158,6 +158,9 @@ export function BookingEventsManager({ venueId }: { venueId: string }) {
   }, [venueId]);
 
   useEffect(() => {
+    // Standard fetch-on-mount; this app has no React Compiler / data-fetching
+    // library, loadData's setIsLoading(true) is the intended initial state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadData();
   }, [loadData]);
 

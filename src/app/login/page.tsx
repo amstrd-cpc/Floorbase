@@ -8,10 +8,10 @@ import {
 } from '@/components/auth/auth-ui';
 
 type LoginPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     error?: string;
     inviteToken?: string;
-  };
+  }>;
 };
 
 function errorMessage(error?: string) {
@@ -33,9 +33,10 @@ function errorMessage(error?: string) {
   }
 }
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  const inviteToken = searchParams?.inviteToken;
-  const error = errorMessage(searchParams?.error);
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const inviteToken = resolvedSearchParams?.inviteToken;
+  const error = errorMessage(resolvedSearchParams?.error);
 
   return (
     <AuthShell

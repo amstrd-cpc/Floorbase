@@ -4,8 +4,10 @@ import { prisma } from '@/server/db/prisma/client';
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { userId: string } }
+  { params: paramsPromise }: { params: Promise<{ userId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const actor = await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN']);
 
   const target = await prisma.user.findUnique({

@@ -44,7 +44,7 @@ const TIMEZONES = [
   'UTC'
 ];
 
-type Props = { searchParams?: { error?: string } };
+type Props = { searchParams?: Promise<{ error?: string }> };
 
 function errorMessage(error?: string) {
   switch (error) {
@@ -61,8 +61,8 @@ function errorMessage(error?: string) {
   }
 }
 
-export default function SignupPage({ searchParams }: Props) {
-  const error = errorMessage(searchParams?.error);
+export default async function SignupPage({ searchParams }: Props) {
+  const error = errorMessage((await searchParams)?.error);
 
   return (
     <AuthShell

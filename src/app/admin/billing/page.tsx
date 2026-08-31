@@ -23,7 +23,7 @@ function planTier(venueCount: number): string {
 export default async function BillingPage({
   searchParams
 }: {
-  searchParams?: { success?: string };
+  searchParams?: Promise<{ success?: string }>;
 }) {
   const user = await requireRole(['SUPER_ADMIN', 'ORGANIZATION_ADMIN']);
   const isSuperAdmin = user.adminRoles.some(
@@ -47,7 +47,7 @@ export default async function BillingPage({
     getActiveVenueCount(organizationId)
   ]);
 
-  const justSubscribed = searchParams?.success === '1';
+  const justSubscribed = (await searchParams)?.success === '1';
   const isExpiredTrial =
     org.subscriptionStatus === 'TRIALING' &&
     org.trialEndsAt &&

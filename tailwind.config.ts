@@ -87,7 +87,13 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
-        mono: ['Space Mono', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace']
+        mono: [
+          'var(--font-space-mono)',
+          'ui-monospace',
+          'SF Mono',
+          'Menlo',
+          'monospace'
+        ]
       },
       letterSpacing: {
         tightest: '-0.03em'

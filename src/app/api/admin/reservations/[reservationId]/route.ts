@@ -29,8 +29,10 @@ function toErrorResponse(error: unknown) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { reservationId: string } }
+  { params: paramsPromise }: { params: Promise<{ reservationId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
@@ -82,8 +84,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { reservationId: string } }
+  { params: paramsPromise }: { params: Promise<{ reservationId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
@@ -139,8 +143,10 @@ export async function PUT(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { reservationId: string } }
+  { params: paramsPromise }: { params: Promise<{ reservationId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',
@@ -208,8 +214,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { reservationId: string } }
+  { params: paramsPromise }: { params: Promise<{ reservationId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',

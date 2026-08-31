@@ -27,7 +27,7 @@ export async function createSession(userId: string) {
     }
   });
 
-  cookies().set(env.AUTH_COOKIE_NAME, rawToken, {
+  (await cookies()).set(env.AUTH_COOKIE_NAME, rawToken, {
     httpOnly: true,
     sameSite: 'lax',
     secure: env.NODE_ENV === 'production',
@@ -37,7 +37,7 @@ export async function createSession(userId: string) {
 }
 
 export async function destroySession() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const rawToken = cookieStore.get(env.AUTH_COOKIE_NAME)?.value;
 
   if (rawToken) {
@@ -56,7 +56,7 @@ export async function destroySession() {
 }
 
 export async function getCurrentSession() {
-  const rawToken = cookies().get(env.AUTH_COOKIE_NAME)?.value;
+  const rawToken = (await cookies()).get(env.AUTH_COOKIE_NAME)?.value;
 
   if (!rawToken) {
     return null;

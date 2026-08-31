@@ -25,8 +25,10 @@ function toErrorResponse(error: unknown) {
 
 export async function POST(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params: paramsPromise }: { params: Promise<{ orderId: string }> }
 ) {
+  const params = await paramsPromise;
+
   const user = await requireRole([
     'SUPER_ADMIN',
     'ORGANIZATION_ADMIN',

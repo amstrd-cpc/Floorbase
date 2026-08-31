@@ -23,8 +23,10 @@ function toErrorResponse(error: unknown) {
 
 export async function GET(
   request: Request,
-  { params }: { params: { venueSlug: string } }
+  { params: paramsPromise }: { params: Promise<{ venueSlug: string }> }
 ) {
+  const params = await paramsPromise;
+
   const url = new URL(request.url);
   const date = url.searchParams.get('date');
   const partySize = Number(url.searchParams.get('partySize') ?? '0');

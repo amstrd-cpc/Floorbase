@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { env } from '@/env';
 import { sendPasswordResetEmail } from '@/server/email/service';
 import { createPasswordResetToken } from '@/server/auth/password-reset';
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   if (rawToken) {
     const resetUrl = `${env.APP_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
-    void sendPasswordResetEmail({ to: email, resetUrl });
+    after(() => sendPasswordResetEmail({ to: email, resetUrl }));
   }
 
   // Always return 200 — never confirm whether email exists

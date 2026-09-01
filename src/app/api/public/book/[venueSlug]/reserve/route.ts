@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { checkRateLimit } from '@/server/rate-limit';
 import {
   createPublicBooking,
@@ -80,12 +80,16 @@ export async function POST(
         ? 'Your reservation is confirmed.'
         : 'Your booking request was received and is pending review.';
 
-    // Send emails in background — never fail the request on email error.
-    void sendEmailsForPublicBooking({
-      reservationId: result.reservationId,
-      statusCode: result.statusCode,
-      venue
-    });
+    // Send emails after the response is flushed, via Next's after() so the
+    // runtime doesn't tear down the invocation mid-send — never fail the
+    // request on email error.
+    after(() =>
+      sendEmailsForPublicBooking({
+        reservationId: result.reservationId,
+        statusCode: result.statusCode,
+        venue
+      })
+    );
 
     return NextResponse.json(
       {
@@ -133,38 +137,46 @@ async function sendEmailsForPublicBooking(input: {
     const guestEmail = reservation.guest.email;
     const guestName = reservation.guest.fullName ?? 'Guest';
 
+    const emailTasks: Promise<unknown>[] = [];
+
     if (guestEmail) {
-      void sendGuestConfirmation({
-        to: guestEmail,
-        guestName,
-        venueName: input.venue.name,
-        startAt: reservation.startAt,
-        timezone: input.venue.timezone,
-        partySize: reservation.partySize,
-        statusCode: input.statusCode,
-        reservationId: input.reservationId,
-        organizationId: input.venue.organizationId,
-        guestId: reservation.guest.id
-      });
+      emailTasks.push(
+        sendGuestConfirmation({
+          to: guestEmail,
+          guestName,
+          venueName: input.venue.name,
+          startAt: reservation.startAt,
+          timezone: input.venue.timezone,
+          partySize: reservation.partySize,
+          statusCode: input.statusCode,
+          reservationId: input.reservationId,
+          organizationId: input.venue.organizationId,
+          guestId: reservation.guest.id
+        })
+      );
     }
 
     if (orgAdmin?.email) {
-      void sendVenueNewReservationAlert({
-        to: orgAdmin.email,
-        venueName: input.venue.name,
-        guestName,
-        guestEmail,
-        guestPhone: reservation.guest.phone,
-        startAt: reservation.startAt,
-        timezone: input.venue.timezone,
-        partySize: reservation.partySize,
-        source: 'Online booking',
-        appUrl: env.APP_URL,
-        reservationId: input.reservationId,
-        organizationId: input.venue.organizationId,
-        guestId: reservation.guest.id
-      });
+      emailTasks.push(
+        sendVenueNewReservationAlert({
+          to: orgAdmin.email,
+          venueName: input.venue.name,
+          guestName,
+          guestEmail,
+          guestPhone: reservation.guest.phone,
+          startAt: reservation.startAt,
+          timezone: input.venue.timezone,
+          partySize: reservation.partySize,
+          source: 'Online booking',
+          appUrl: env.APP_URL,
+          reservationId: input.reservationId,
+          organizationId: input.venue.organizationId,
+          guestId: reservation.guest.id
+        })
+      );
     }
+
+    await Promise.all(emailTasks);
   } catch (err) {
     console.error('Post-booking email error', err);
   }

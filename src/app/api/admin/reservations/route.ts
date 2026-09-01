@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { hasAdminScope, requireRole } from '@/server/auth/authorization';
 import { prisma } from '@/server/db/prisma/client';
 import {
@@ -126,8 +126,10 @@ export async function POST(request: Request) {
       context: { actorUserId: user.id }
     });
 
-    // Send venue alert in background — never fail the request on email error.
-    void sendAdminReservationAlert({ reservation, organizationId });
+    // Send venue alert after the response is flushed, via Next's after() so
+    // the runtime doesn't tear down the invocation mid-send — never fail the
+    // request on email error.
+    after(() => sendAdminReservationAlert({ reservation, organizationId }));
 
     return NextResponse.json({ reservation }, { status: 201 });
   } catch (error) {
@@ -168,7 +170,7 @@ async function sendAdminReservationAlert(input: {
 
     if (!venue || !orgAdmin?.email) return;
 
-    void sendVenueNewReservationAlert({
+    await sendVenueNewReservationAlert({
       to: orgAdmin.email,
       venueName: venue.name,
       guestName: input.reservation.guest.fullName ?? 'Guest',

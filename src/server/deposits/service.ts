@@ -81,6 +81,31 @@ export async function markDepositPaidByPaymentIntent(
   });
 }
 
+// Called from cancelReservation after the cancellation itself has
+// committed. A refund failure here must never block/undo the cancellation -
+// the booking is cancelled either way, this is a best-effort follow-up.
+export async function refundDepositForReservation(
+  reservationId: string
+): Promise<void> {
+  const deposit = await prisma.deposit.findUnique({
+    where: { reservationId }
+  });
+  if (!deposit || deposit.status !== 'PAID') {
+    return;
+  }
+  if (!deposit.provider || !deposit.providerRef) {
+    return;
+  }
+
+  const stripe = getStripe();
+  await stripe.refunds.create({ payment_intent: deposit.providerRef });
+
+  await prisma.deposit.update({
+    where: { id: deposit.id },
+    data: { status: 'REFUNDED' }
+  });
+}
+
 export async function markDepositFailedByPaymentIntent(
   paymentIntentId: string
 ): Promise<void> {

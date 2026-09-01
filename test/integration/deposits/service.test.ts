@@ -13,9 +13,11 @@ let teardown: () => Promise<void>;
 let fixture: TestFixture;
 
 let createReservation: typeof import('@/server/reservations/service').createReservation;
+let cancelReservation: typeof import('@/server/reservations/service').cancelReservation;
 let createDepositPaymentIntent: typeof import('@/server/deposits/service').createDepositPaymentIntent;
 let markDepositPaidByPaymentIntent: typeof import('@/server/deposits/service').markDepositPaidByPaymentIntent;
 let markDepositFailedByPaymentIntent: typeof import('@/server/deposits/service').markDepositFailedByPaymentIntent;
+let refundDepositForReservation: typeof import('@/server/deposits/service').refundDepositForReservation;
 let DepositError: typeof import('@/server/deposits/errors').DepositError;
 
 before(async () => {
@@ -32,11 +34,13 @@ before(async () => {
   const depositErrors = await import('@/server/deposits/errors');
 
   createReservation = reservationService.createReservation;
+  cancelReservation = reservationService.cancelReservation;
   createDepositPaymentIntent = depositService.createDepositPaymentIntent;
   markDepositPaidByPaymentIntent =
     depositService.markDepositPaidByPaymentIntent;
   markDepositFailedByPaymentIntent =
     depositService.markDepositFailedByPaymentIntent;
+  refundDepositForReservation = depositService.refundDepositForReservation;
   DepositError = depositErrors.DepositError;
 });
 
@@ -187,4 +191,56 @@ test('markDepositFailedByPaymentIntent does not regress a deposit that is alread
     'PAID',
     'a late failure webhook must never downgrade an already-paid deposit'
   );
+});
+
+test('refundDepositForReservation is a no-op when the deposit is UNPAID', async () => {
+  const reservation = await createReservationWithDeposit('UNPAID');
+
+  await assert.doesNotReject(() =>
+    refundDepositForReservation(reservation.id)
+  );
+
+  const deposit = await prisma.deposit.findUniqueOrThrow({
+    where: { reservationId: reservation.id }
+  });
+  assert.equal(deposit.status, 'UNPAID');
+});
+
+test('refundDepositForReservation is a no-op when there is no deposit at all', async () => {
+  const reservation = await createReservation({
+    organizationId: fixture.organizationId,
+    payload: {
+      venueId: fixture.venueId,
+      reservationDate: futureSlot(3, 18),
+      startAt: futureSlot(3, 18),
+      durationMinutes: 90,
+      partySize: 2,
+      guest: {
+        fullName: 'No Deposit Guest',
+        email: `no-deposit-${Date.now()}@example.com`,
+        phone: '+15551230000'
+      },
+      tableIds: [fixture.tableId],
+      source: 'ADMIN',
+      depositRequired: false
+    },
+    context: { actorUserId: fixture.actorUserId }
+  });
+
+  await assert.doesNotReject(() =>
+    refundDepositForReservation(reservation.id)
+  );
+});
+
+test('cancelReservation succeeds even when the deposit refund step has nothing to do', async () => {
+  const reservation = await createReservationWithDeposit('UNPAID');
+
+  const cancelled = await cancelReservation({
+    reservationId: reservation.id,
+    organizationId: fixture.organizationId,
+    payload: {},
+    context: { actorUserId: fixture.actorUserId }
+  });
+
+  assert.equal(cancelled.bookingStatus, 'CANCELLED');
 });

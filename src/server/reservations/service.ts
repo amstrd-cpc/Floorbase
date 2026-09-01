@@ -15,6 +15,7 @@ import {
   canPlaceReservation,
   lockTablesForBooking
 } from './availability-service';
+import { refundDepositForReservation } from '@/server/deposits/service';
 import {
   type CancelReservationInput,
   type ChangeReservationStatusInput,
@@ -804,7 +805,7 @@ export async function changeReservationStatus(input: {
   });
 }
 
-export async function cancelReservation(input: {
+async function cancelReservationCore(input: {
   reservationId: string;
   organizationId: string;
   payload: CancelReservationInput;
@@ -879,4 +880,23 @@ export async function cancelReservation(input: {
 
     return getReservationByIdInternal(tx, current.id, input.organizationId);
   });
+}
+
+export async function cancelReservation(
+  input: Parameters<typeof cancelReservationCore>[0]
+) {
+  const result = await cancelReservationCore(input);
+
+  try {
+    await refundDepositForReservation(input.reservationId);
+  } catch (err) {
+    // The reservation is cancelled either way - a refund failure is a
+    // best-effort follow-up, not a reason to fail the whole cancellation.
+    console.error(
+      `Deposit refund failed for cancelled reservation ${input.reservationId}`,
+      err
+    );
+  }
+
+  return result;
 }

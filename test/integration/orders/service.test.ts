@@ -274,6 +274,52 @@ test('cancelOrder transitions status to CANCELLED', async () => {
   assert.equal(cancelled.status, 'CANCELLED');
 });
 
+test('concurrent addOrderLine calls racing against cancelOrder never leak reserved stock', async () => {
+  const { venue, table, category } = await seedVenueWithTableAndMenu();
+  const trackedItem = await prisma.menuItem.create({
+    data: {
+      venueId: venue.id,
+      categoryId: category.id,
+      name: 'Race Item',
+      priceMinor: 500,
+      isActive: true,
+      trackInventory: true,
+      stockQty: 50,
+      lowStockThreshold: 0
+    }
+  });
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
+
+  // Every add and the cancel all race for the same order's advisory lock;
+  // whichever addOrderLine calls commit before cancelOrder's transaction
+  // acquires the lock succeed (and must have their stock released by it),
+  // and any that lose the race to a committed cancel must be rejected -
+  // either way, no reservation should ever survive uncounted.
+  const results = await Promise.allSettled([
+    ...Array.from({ length: 8 }, () =>
+      addOrderLine({
+        orderId: order.id,
+        payload: { menuItemId: trackedItem.id, quantity: 1 }
+      })
+    ),
+    cancelOrder({ orderId: order.id })
+  ]);
+
+  const cancelResult = results[results.length - 1];
+  assert.equal(cancelResult.status, 'fulfilled', 'cancelOrder must succeed');
+
+  const finalItem = await prisma.menuItem.findUniqueOrThrow({
+    where: { id: trackedItem.id }
+  });
+  assert.equal(
+    finalItem.stockQty,
+    50,
+    'every reservation from a line that made it onto the order must be released by cancelOrder - no leak regardless of interleaving'
+  );
+});
+
 test('listOrders filters by status', async () => {
   const { venue, table } = await seedVenueWithTableAndMenu();
   const openOrder = await createOrder({

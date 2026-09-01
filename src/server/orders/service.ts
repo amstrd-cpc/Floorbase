@@ -86,8 +86,23 @@ async function assertReservationInVenue(input: {
   }
 }
 
-async function getOpenOrderOrThrow(orderId: string) {
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+// Serializes concurrent mutations of the same order (add/update/remove line,
+// close, cancel) so the "is it still OPEN" check inside a transaction can't
+// be raced by another mutation that committed in the gap between a plain
+// read and $transaction starting. Same pattern as reservations'
+// lockTablesForBooking.
+export async function lockOrderForMutation(
+  tx: Prisma.TransactionClient,
+  orderId: string
+) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${orderId}))`;
+}
+
+async function getOpenOrderOrThrowTx(
+  tx: Prisma.TransactionClient,
+  orderId: string
+) {
+  const order = await tx.order.findUnique({ where: { id: orderId } });
   if (!order) {
     throw new OrderNotFoundError();
   }
@@ -192,12 +207,21 @@ export async function addOrderLine(input: {
       );
     }
 
-    const order = await getOpenOrderOrThrow(input.orderId);
+    // Existence-only pre-read, just to scope the menu item lookup to the
+    // right venue - not authoritative for order state. The real OPEN check
+    // happens inside the locked transaction below.
+    const orderRef = await prisma.order.findUnique({
+      where: { id: input.orderId },
+      select: { id: true, venueId: true }
+    });
+    if (!orderRef) {
+      throw new OrderNotFoundError();
+    }
 
     const menuItem = await prisma.menuItem.findFirst({
       where: {
         id: parsed.data.menuItemId,
-        venueId: order.venueId,
+        venueId: orderRef.venueId,
         isActive: true
       },
       select: { id: true, name: true, priceMinor: true, trackInventory: true }
@@ -211,6 +235,9 @@ export async function addOrderLine(input: {
     const quantity = parsed.data.quantity ?? 1;
 
     await prisma.$transaction(async (tx) => {
+      await lockOrderForMutation(tx, orderRef.id);
+      await getOpenOrderOrThrowTx(tx, orderRef.id);
+
       const reserved = await reserveStock(tx, {
         menuItemId: menuItem.id,
         trackInventory: menuItem.trackInventory,
@@ -219,7 +246,7 @@ export async function addOrderLine(input: {
 
       await tx.orderLine.create({
         data: {
-          orderId: order.id,
+          orderId: orderRef.id,
           menuItemId: menuItem.id,
           nameSnapshot: menuItem.name,
           priceMinorSnapshot: menuItem.priceMinor,
@@ -230,7 +257,7 @@ export async function addOrderLine(input: {
       });
     });
 
-    return getOrder({ orderId: order.id });
+    return getOrder({ orderId: orderRef.id });
   } catch (error) {
     throw toValidationError(error);
   }
@@ -263,9 +290,10 @@ export async function updateOrderLine(input: {
       throw new OrderNotFoundError('Order line not found.');
     }
 
-    await getOpenOrderOrThrow(line.orderId);
-
     await prisma.$transaction(async (tx) => {
+      await lockOrderForMutation(tx, line.orderId);
+      await getOpenOrderOrThrowTx(tx, line.orderId);
+
       if (
         line.stockReserved &&
         line.menuItemId &&
@@ -320,9 +348,10 @@ export async function removeOrderLine(input: { lineId: string }) {
       throw new OrderNotFoundError('Order line not found.');
     }
 
-    await getOpenOrderOrThrow(line.orderId);
-
     await prisma.$transaction(async (tx) => {
+      await lockOrderForMutation(tx, line.orderId);
+      await getOpenOrderOrThrowTx(tx, line.orderId);
+
       if (line.menuItemId) {
         await releaseStock(tx, {
           menuItemId: line.menuItemId,
@@ -341,12 +370,15 @@ export async function removeOrderLine(input: { lineId: string }) {
 
 export async function closeOrder(input: { orderId: string }) {
   try {
-    await getOpenOrderOrThrow(input.orderId);
+    return await prisma.$transaction(async (tx) => {
+      await lockOrderForMutation(tx, input.orderId);
+      await getOpenOrderOrThrowTx(tx, input.orderId);
 
-    return await prisma.order.update({
-      where: { id: input.orderId },
-      data: { status: 'CLOSED', closedAt: new Date() },
-      ...orderWithLines
+      return tx.order.update({
+        where: { id: input.orderId },
+        data: { status: 'CLOSED', closedAt: new Date() },
+        ...orderWithLines
+      });
     });
   } catch (error) {
     throw toValidationError(error);
@@ -355,13 +387,20 @@ export async function closeOrder(input: { orderId: string }) {
 
 export async function cancelOrder(input: { orderId: string }) {
   try {
-    const order = await getOpenOrderOrThrow(input.orderId);
-    const lines = await prisma.orderLine.findMany({
-      where: { orderId: order.id, stockReserved: true },
-      select: { menuItemId: true, quantity: true }
-    });
-
     return await prisma.$transaction(async (tx) => {
+      await lockOrderForMutation(tx, input.orderId);
+      await getOpenOrderOrThrowTx(tx, input.orderId);
+
+      // Read the stock-reserved lines from inside the same locked
+      // transaction, not before it starts - otherwise a concurrent
+      // addOrderLine that reserves stock and commits in that gap would
+      // never have its line's stock released here (it's CANCELLED and
+      // permanently un-editable the moment this transaction commits).
+      const lines = await tx.orderLine.findMany({
+        where: { orderId: input.orderId, stockReserved: true },
+        select: { menuItemId: true, quantity: true }
+      });
+
       for (const line of lines) {
         if (line.menuItemId) {
           await releaseStock(tx, {

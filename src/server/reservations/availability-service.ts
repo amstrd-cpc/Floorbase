@@ -142,9 +142,28 @@ async function getPublishedFloorTables(input: {
   }));
 }
 
+// Minutes elapsed since referenceWeekday's local midnight - 0-1439 if `date`
+// falls on that same day, 1440-2879 if it falls on the day after (used to
+// evaluate the post-midnight tail of an overnight business-hours window).
+// Returns null if `date` is neither, since dayOffset could otherwise wrap
+// around to a false match 6 days later.
+function minutesSinceReferenceDay(
+  date: Date,
+  timeZone: string,
+  referenceWeekday: number
+): number | null {
+  const weekday = weekdayFor(date, timeZone);
+  const dayOffset = (weekday - referenceWeekday + 7) % 7;
+  if (dayOffset > 1) {
+    return null;
+  }
+  return toZonedMinutes(date, timeZone) + dayOffset * 1440;
+}
+
 function isWithinBusinessHours(input: {
   window: AvailabilityWindow;
   dayHours: { openTime: string; closeTime: string; isClosed: boolean } | null;
+  referenceWeekday: number;
   timeZone: string;
 }) {
   if (!input.dayHours || input.dayHours.isClosed) {
@@ -153,20 +172,33 @@ function isWithinBusinessHours(input: {
 
   const open = parseHourMinute(input.dayHours.openTime);
   const close = parseHourMinute(input.dayHours.closeTime);
-
-  const startMinutes = toZonedMinutes(input.window.startAt, input.timeZone);
-  const endMinutes = toZonedMinutes(input.window.endAt, input.timeZone);
   const openMinutes = open.hours * 60 + open.minutes;
-  const closeMinutes = close.hours * 60 + close.minutes;
+  const closeMinutesRaw = close.hours * 60 + close.minutes;
+  // closeTime at or before openTime means the venue closes after midnight
+  // (e.g. open 18:00, close 02:00) - compare close on a 24h-extended axis
+  // rather than rejecting every evening slot as "unsatisfiable".
+  const isOvernight = closeMinutesRaw <= openMinutes;
+  const closeMinutes = isOvernight ? closeMinutesRaw + 1440 : closeMinutesRaw;
 
-  if (
-    weekdayFor(input.window.startAt, input.timeZone) !==
-    weekdayFor(input.window.endAt, input.timeZone)
-  ) {
+  const startMinutes = minutesSinceReferenceDay(
+    input.window.startAt,
+    input.timeZone,
+    input.referenceWeekday
+  );
+  const endMinutes = minutesSinceReferenceDay(
+    input.window.endAt,
+    input.timeZone,
+    input.referenceWeekday
+  );
+  if (startMinutes === null || endMinutes === null) {
     return false;
   }
 
-  return startMinutes >= openMinutes && endMinutes <= closeMinutes;
+  return (
+    startMinutes >= openMinutes &&
+    endMinutes <= closeMinutes &&
+    endMinutes >= startMinutes
+  );
 }
 
 function isInsideBlackout(input: {
@@ -233,12 +265,32 @@ export async function listAvailableTables(input: {
   const { businessHours, blackoutRules, timezone } = await getVenuePolicy(
     input.venueId
   );
-  const dayHours =
-    businessHours.find(
-      (hours) => hours.dayOfWeek === weekdayFor(window.startAt, timezone)
-    ) ?? null;
+  const todayWeekday = weekdayFor(window.startAt, timezone);
+  const todayHours =
+    businessHours.find((hours) => hours.dayOfWeek === todayWeekday) ?? null;
+  const yesterdayWeekday = (todayWeekday + 6) % 7;
+  const yesterdayHours =
+    businessHours.find((hours) => hours.dayOfWeek === yesterdayWeekday) ??
+    null;
 
-  if (!isWithinBusinessHours({ window, dayHours, timeZone: timezone })) {
+  // A window starting in the early hours can belong to either today's
+  // opening or the post-midnight tail of yesterday's overnight shift -
+  // accept it if either day's hours validate it.
+  const withinHours =
+    isWithinBusinessHours({
+      window,
+      dayHours: todayHours,
+      referenceWeekday: todayWeekday,
+      timeZone: timezone
+    }) ||
+    isWithinBusinessHours({
+      window,
+      dayHours: yesterdayHours,
+      referenceWeekday: yesterdayWeekday,
+      timeZone: timezone
+    });
+
+  if (!withinHours) {
     return {
       availableTables: [],
       recommendedTableIds: [],
@@ -405,10 +457,16 @@ export async function listAvailableSlots(input: {
     timeZone: timezone
   });
 
+  // closeTime at or before openTime means the venue closes after midnight
+  // (e.g. open 18:00, close 02:00) - the close instant falls on the next
+  // calendar day. zonedTimeToUtc's Date.UTC-based construction normalizes
+  // day: zonedDate.day + 1 across month/year boundaries automatically.
+  const isOvernight =
+    close.hours * 60 + close.minutes <= open.hours * 60 + open.minutes;
   const closeAt = zonedTimeToUtc({
     year: zonedDate.year,
     month: zonedDate.month,
-    day: zonedDate.day,
+    day: zonedDate.day + (isOvernight ? 1 : 0),
     hour: close.hours,
     minute: close.minutes,
     timeZone: timezone

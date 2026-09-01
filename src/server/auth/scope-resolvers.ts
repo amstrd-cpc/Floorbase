@@ -68,3 +68,10 @@ export async function getOrderPaymentScope(orderPaymentId: string) {
     }
   });
 }
+
+export async function getStaffMemberScope(staffMemberId: string) {
+  return prisma.staffMember.findUnique({
+    where: { id: staffMemberId },
+    select: { id: true, venue: { select: { id: true, organizationId: true } } }
+  });
+}

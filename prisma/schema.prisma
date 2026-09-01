@@ -194,6 +194,8 @@ model Venue {
   menuCategories MenuCategory[]
   menuItems      MenuItem[]
   orders         Order[]
+  staffMembers   StaffMember[]
+  shifts         Shift[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -424,6 +426,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   sentInvites         AuthInvite[]          @relation("AuthInviteSender")
   createdOrders       Order[]
+  staffMember         StaffMember?
 
   @@index([organizationId])
 }
@@ -782,4 +785,37 @@ model FloorLayoutTable {
   @@index([floorLayoutId])
   @@index([floorLayoutAreaId])
   @@index([tableId])
+}
+
+model StaffMember {
+  id        String   @id @default(cuid())
+  venueId   String
+  userId    String?  @unique
+  name      String
+  pinHash   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue  Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shifts Shift[]
+
+  @@index([venueId])
+}
+
+model Shift {
+  id            String    @id @default(cuid())
+  staffMemberId String
+  venueId       String
+  clockInAt     DateTime  @default(now())
+  clockOutAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  venue       Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([staffMemberId])
+  @@index([venueId, clockOutAt])
 }

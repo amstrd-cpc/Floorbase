@@ -111,7 +111,11 @@ test('sends a reminder for a reservation inside the 24h window and logs it', asy
   assert.equal(log.status, 'SKIPPED'); // no RESEND_API_KEY in this test env
 });
 
-test('does not re-send a reminder for a reservation already reminded', async () => {
+test('retries a reservation whose only previous attempt was SKIPPED/FAILED', async () => {
+  // No RESEND_API_KEY in this test env, so every real attempt logs SKIPPED,
+  // never SENT - which is exactly the scenario the dedup filter must not
+  // treat as "done". A stale FAILED (e.g. a Resend outage) must not
+  // permanently exclude the reservation from every later cron run either.
   await createReservationAt(futureSlot(6));
 
   const first = await callCron(`Bearer ${CRON_SECRET}`);
@@ -120,8 +124,29 @@ test('does not re-send a reminder for a reservation already reminded', async () 
   const second = await callCron(`Bearer ${CRON_SECRET}`);
   assert.equal(
     (await second.json()).sent,
+    1,
+    'a SKIPPED (or FAILED) prior attempt must be retried, not permanently excluded'
+  );
+});
+
+test('does not re-send a reminder once one attempt actually SENT', async () => {
+  const reservation = await createReservationAt(futureSlot(6));
+  await prisma.notificationLog.create({
+    data: {
+      organizationId: fixture.organizationId,
+      reservationId: reservation.id,
+      templateKey: 'reservation_reminder',
+      channel: 'EMAIL',
+      recipient: 'guest@example.com',
+      status: 'SENT'
+    }
+  });
+
+  const res = await callCron(`Bearer ${CRON_SECRET}`);
+  assert.equal(
+    (await res.json()).sent,
     0,
-    'the dedup check should exclude an already-reminded reservation'
+    'a SENT reminder must exclude the reservation from further attempts'
   );
 });
 

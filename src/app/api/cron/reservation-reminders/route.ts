@@ -31,7 +31,12 @@ export async function GET(request: Request) {
     where: {
       bookingStatus: { in: ['PENDING', 'CONFIRMED'] },
       startAt: { gt: now, lte: windowEnd },
-      notifications: { none: { templateKey: 'reservation_reminder' } }
+      // Only a successfully SENT reminder should stop retries - a FAILED
+      // (e.g. Resend outage) or SKIPPED (no API key at the time) attempt
+      // must not permanently exclude the reservation from every later run.
+      notifications: {
+        none: { templateKey: 'reservation_reminder', status: 'SENT' }
+      }
     },
     select: {
       id: true,

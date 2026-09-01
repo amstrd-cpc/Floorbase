@@ -133,18 +133,18 @@ enum OrderPaymentStatus {
 }
 
 model Organization {
-  id                   String             @id @default(cuid())
-  name                 String
-  slug                 String             @unique
-  isActive             Boolean            @default(true)
-  onboardingComplete   Boolean            @default(false)
-  trialEndsAt          DateTime?
-  subscriptionStatus   SubscriptionStatus @default(TRIALING)
-  stripeCustomerId     String?            @unique
-  subscriptionId       String?            @unique
-  planId               String?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  id                  String                @id @default(cuid())
+  name                String
+  slug                String                @unique
+  isActive            Boolean               @default(true)
+  onboardingComplete  Boolean               @default(false)
+  trialEndsAt         DateTime?
+  subscriptionStatus  SubscriptionStatus    @default(TRIALING)
+  stripeCustomerId    String?               @unique
+  subscriptionId      String?               @unique
+  planId              String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
   venues              Venue[]
   guests              Guest[]
   reservationStatuses ReservationStatus[]
@@ -159,69 +159,69 @@ model Organization {
 }
 
 model Venue {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  slug           String
-  country        String?
-  city           String?
-  addressLine    String?
-  timezone       String           @default("UTC")
-  currency       String           @default("USD")
-  isActive       Boolean          @default(true)
-  publicBookingEnabled Boolean    @default(false)
-  bookingMode    VenueBookingMode @default(AUTO_CONFIRM)
-  placementMode  VenuePlacementMode @default(AUTO_ASSIGN)
-  minPartySize   Int              @default(1)
-  maxOnlinePartySize Int          @default(12)
-  minAdvanceNoticeMinutes Int     @default(120)
-  maxDaysAhead   Int              @default(60)
-  defaultReservationDurationMinutes Int @default(120)
-  publicInstructions String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                                String             @id @default(cuid())
+  organizationId                    String
+  name                              String
+  slug                              String
+  country                           String?
+  city                              String?
+  addressLine                       String?
+  timezone                          String             @default("UTC")
+  currency                          String             @default("USD")
+  isActive                          Boolean            @default(true)
+  publicBookingEnabled              Boolean            @default(false)
+  bookingMode                       VenueBookingMode   @default(AUTO_CONFIRM)
+  placementMode                     VenuePlacementMode @default(AUTO_ASSIGN)
+  minPartySize                      Int                @default(1)
+  maxOnlinePartySize                Int                @default(12)
+  minAdvanceNoticeMinutes           Int                @default(120)
+  maxDaysAhead                      Int                @default(60)
+  defaultReservationDurationMinutes Int                @default(120)
+  publicInstructions                String?
+  createdAt                         DateTime           @default(now())
+  updatedAt                         DateTime           @updatedAt
 
-  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  areas         Area[]
-  reservations  Reservation[]
-  businessHours BusinessHours[]
-  blackoutRules BlackoutRule[]
-  tables        Table[]
-  bookingEvents BookingEvent[]
-  floorLayouts FloorLayout[]
-  adminRoles    AdminRoleAssignment[]
-  authInvites   AuthInvite[]
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  areas          Area[]
+  reservations   Reservation[]
+  businessHours  BusinessHours[]
+  blackoutRules  BlackoutRule[]
+  tables         Table[]
+  bookingEvents  BookingEvent[]
+  floorLayouts   FloorLayout[]
+  adminRoles     AdminRoleAssignment[]
+  authInvites    AuthInvite[]
   menuCategories MenuCategory[]
-  menuItems     MenuItem[]
-  orders        Order[]
+  menuItems      MenuItem[]
+  orders         Order[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
 }
 
 model BookingEvent {
-  id          String   @id @default(cuid())
-  venueId     String
-  isActive    Boolean  @default(true)
-  name        String
-  eventType   BookingEventType
-  singleDate  DateTime?
-  dateStart   DateTime?
-  dateEnd     DateTime?
-  weekdays    Int[]    @default([])
-  confirmationMode VenueBookingMode?
-  placementMode VenuePlacementMode?
-  minPartySize Int?
-  maxOnlinePartySize Int?
+  id                      String              @id @default(cuid())
+  venueId                 String
+  isActive                Boolean             @default(true)
+  name                    String
+  eventType               BookingEventType
+  singleDate              DateTime?
+  dateStart               DateTime?
+  dateEnd                 DateTime?
+  weekdays                Int[]               @default([])
+  confirmationMode        VenueBookingMode?
+  placementMode           VenuePlacementMode?
+  minPartySize            Int?
+  maxOnlinePartySize      Int?
   minAdvanceNoticeMinutes Int?
-  maxDaysAhead Int?
-  durationMinutes Int?
-  publicInstructions String?
-  publicLabel String?
-  allowedAreaIds String[] @default([])
-  allowedTableIds String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  maxDaysAhead            Int?
+  durationMinutes         Int?
+  publicInstructions      String?
+  publicLabel             String?
+  allowedAreaIds          String[]            @default([])
+  allowedTableIds         String[]            @default([])
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 
   venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
@@ -237,8 +237,8 @@ model Area {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  venue  Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  tables Table[]
+  venue            Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables           Table[]
   floorLayoutAreas FloorLayoutArea[]
 
   @@unique([venueId, name])
@@ -261,12 +261,12 @@ model Table {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  venue        Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  area         Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
-  reservations ReservationTable[]
-  blocks       TableBlock[]
+  venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  area              Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  reservations      ReservationTable[]
+  blocks            TableBlock[]
   floorLayoutTables FloorLayoutTable[]
-  orders       Order[]
+  orders            Order[]
 
   @@unique([venueId, name])
   @@unique([venueId, code])
@@ -332,7 +332,7 @@ model ReservationStatus {
 }
 
 model Reservation {
-  id                  String   @id @default(cuid())
+  id                  String                 @id @default(cuid())
   organizationId      String
   venueId             String
   guestId             String
@@ -344,13 +344,13 @@ model Reservation {
   source              String?
   internalNotes       String?
   specialRequests     String?
-  depositRequired     Boolean  @default(false)
+  depositRequired     Boolean                @default(false)
   bookingStatus       BookingLifecycleStatus @default(PENDING)
-  paymentStatus       PaymentStatus @default(UNPAID)
+  paymentStatus       PaymentStatus          @default(UNPAID)
   createdByUserId     String?
   updatedByUserId     String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   venue             Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
@@ -592,7 +592,6 @@ model NotificationLog {
   @@index([createdAt])
 }
 
-
 model StripeEvent {
   id          String   @id
   processedAt DateTime @default(now())
@@ -660,11 +659,11 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  venue         Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  table         Table?       @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
-  createdByUser User?        @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  venue         Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table         Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  reservation   Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  createdByUser User?          @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   lines         OrderLine[]
   payments      OrderPayment[]
 
@@ -675,17 +674,18 @@ model Order {
 }
 
 model OrderPayment {
-  id            String             @id @default(cuid())
-  orderId       String
-  amountMinor   Int
-  tipMinor      Int                @default(0)
-  currency      String             @default("USD")
-  status        OrderPaymentStatus @default(PENDING)
-  provider      String?
-  providerRef   String?
-  refundedMinor Int                @default(0)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id               String             @id @default(cuid())
+  orderId          String
+  amountMinor      Int
+  tipMinor         Int                @default(0)
+  currency         String             @default("USD")
+  status           OrderPaymentStatus @default(PENDING)
+  provider         String?
+  providerRef      String?
+  refundedMinor    Int                @default(0)
+  refundedTipMinor Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -694,12 +694,12 @@ model OrderPayment {
 }
 
 model OrderLine {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   orderId            String
   menuItemId         String?
   nameSnapshot       String
   priceMinorSnapshot Int
-  quantity           Int      @default(1)
+  quantity           Int           @default(1)
   notes              String?
   stockReserved      Boolean       @default(false)
   kitchenStatus      KitchenStatus @default(PENDING)
@@ -727,56 +727,56 @@ model FloorLayout {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
-  venue                 Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  publishedFromLayout   FloorLayout?      @relation("FloorLayoutPublishSource", fields: [publishedFromLayoutId], references: [id], onDelete: SetNull)
-  publishChildren       FloorLayout[]     @relation("FloorLayoutPublishSource")
-  areas                 FloorLayoutArea[]
-  tables                FloorLayoutTable[]
+  venue               Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  publishedFromLayout FloorLayout?       @relation("FloorLayoutPublishSource", fields: [publishedFromLayoutId], references: [id], onDelete: SetNull)
+  publishChildren     FloorLayout[]      @relation("FloorLayoutPublishSource")
+  areas               FloorLayoutArea[]
+  tables              FloorLayoutTable[]
 
   @@unique([venueId, status, version])
   @@index([venueId, status, isCurrent])
 }
 
 model FloorLayoutArea {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   floorLayoutId String
   areaId        String?
   name          String
-  sortOrder     Int         @default(0)
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  floorLayout   FloorLayout @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
-  area          Area?       @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  tables        FloorLayoutTable[]
+  floorLayout FloorLayout        @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
+  area        Area?              @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  tables      FloorLayoutTable[]
 
   @@index([floorLayoutId])
   @@index([areaId])
 }
 
 model FloorLayoutTable {
-  id                String           @id @default(cuid())
+  id                String     @id @default(cuid())
   floorLayoutId     String
   floorLayoutAreaId String?
   tableId           String
   label             String
   capacityMin       Int?
   capacityMax       Int
-  shape             TableShape       @default(SQUARE)
-  x                 Int              @default(0)
-  y                 Int              @default(0)
-  width             Int              @default(96)
-  height            Int              @default(96)
-  rotation          Int              @default(0)
-  isActive          Boolean          @default(true)
+  shape             TableShape @default(SQUARE)
+  x                 Int        @default(0)
+  y                 Int        @default(0)
+  width             Int        @default(96)
+  height            Int        @default(96)
+  rotation          Int        @default(0)
+  isActive          Boolean    @default(true)
   combinableMeta    Json?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  floorLayout       FloorLayout      @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
-  floorLayoutArea   FloorLayoutArea? @relation(fields: [floorLayoutAreaId], references: [id], onDelete: SetNull)
-  table             Table            @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  floorLayout     FloorLayout      @relation(fields: [floorLayoutId], references: [id], onDelete: Cascade)
+  floorLayoutArea FloorLayoutArea? @relation(fields: [floorLayoutAreaId], references: [id], onDelete: SetNull)
+  table           Table            @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
   @@unique([floorLayoutId, tableId])
   @@index([floorLayoutId])

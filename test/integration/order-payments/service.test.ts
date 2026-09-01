@@ -10,6 +10,7 @@ let createOrder: typeof import('@/server/orders/service').createOrder;
 let addOrderLine: typeof import('@/server/orders/service').addOrderLine;
 let closeOrder: typeof import('@/server/orders/service').closeOrder;
 let computeOrderPaymentSummary: typeof import('@/server/order-payments/service').computeOrderPaymentSummary;
+let computeRefundSplit: typeof import('@/server/order-payments/service').computeRefundSplit;
 let createOrderPaymentIntent: typeof import('@/server/order-payments/service').createOrderPaymentIntent;
 let refundOrderPayment: typeof import('@/server/order-payments/service').refundOrderPayment;
 let markOrderPaymentSucceededByIntent: typeof import('@/server/order-payments/service').markOrderPaymentSucceededByIntent;
@@ -33,6 +34,7 @@ before(async () => {
   addOrderLine = ordersService.addOrderLine;
   closeOrder = ordersService.closeOrder;
   computeOrderPaymentSummary = paymentsService.computeOrderPaymentSummary;
+  computeRefundSplit = paymentsService.computeRefundSplit;
   createOrderPaymentIntent = paymentsService.createOrderPaymentIntent;
   refundOrderPayment = paymentsService.refundOrderPayment;
   markOrderPaymentSucceededByIntent =
@@ -110,6 +112,59 @@ test('computeOrderPaymentSummary sums lines and only counts settled payments tow
   // 800 (fully settled) + (400 - 100 refunded) = 1100; PENDING/FAILED excluded
   assert.equal(summary.paidTowardOrderMinor, 1100);
   assert.equal(summary.remainingMinor, 900);
+});
+
+test('computeRefundSplit draws from the tip before the order amount, and tracks them separately', () => {
+  // $10.00 order portion + $2.00 tip, nothing refunded yet
+  const base = {
+    amountMinor: 1000,
+    tipMinor: 200,
+    refundedMinor: 0,
+    refundedTipMinor: 0
+  };
+
+  const tipOnly = computeRefundSplit({ ...base, requestedMinor: 200 });
+  assert.equal(
+    tipOnly.newRefundedMinor,
+    0,
+    'order portion must be untouched by a tip-only refund'
+  );
+  assert.equal(tipOnly.newRefundedTipMinor, 200);
+  assert.equal(tipOnly.isFullyRefunded, false); // order portion still owed
+  assert.equal(tipOnly.refundableMinor, 1200);
+
+  const afterTipRefunded = { ...base, refundedTipMinor: 200 };
+  const orderPortion = computeRefundSplit({
+    ...afterTipRefunded,
+    requestedMinor: 500
+  });
+  assert.equal(orderPortion.newRefundedMinor, 500);
+  assert.equal(orderPortion.newRefundedTipMinor, 200);
+
+  const full = computeRefundSplit({
+    ...afterTipRefunded,
+    requestedMinor: 1000
+  });
+  assert.equal(full.newRefundedMinor, 1000);
+  assert.equal(full.isFullyRefunded, true);
+});
+
+test('createOrderPaymentIntent counts an existing PENDING payment toward the reserved balance', async () => {
+  const order = await seedOrderWithLine(1000); // order total 1000
+  await prisma.orderPayment.create({
+    data: {
+      orderId: order.id,
+      amountMinor: 700,
+      status: 'PENDING',
+      provider: 'stripe'
+    }
+  });
+
+  // remaining should be 1000 - 700 (reserved) = 300; 400 must be rejected
+  await assert.rejects(
+    () => createOrderPaymentIntent({ orderId: order.id, amountMinor: 400 }),
+    (error: unknown) => error instanceof OrderPaymentError
+  );
 });
 
 test('createOrderPaymentIntent rejects a non-positive amount before touching the DB', async () => {

@@ -292,7 +292,8 @@ export async function updateOrderLine(input: {
         where: { id: line.id },
         data: {
           quantity: parsed.data.quantity,
-          notes: parsed.data.notes
+          notes: parsed.data.notes,
+          kitchenStatus: parsed.data.kitchenStatus
         }
       });
     });

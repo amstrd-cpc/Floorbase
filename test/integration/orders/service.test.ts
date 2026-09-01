@@ -212,6 +212,32 @@ test('updateOrderLine changes quantity and removeOrderLine removes it', async ()
   assert.equal(afterRemoval.lines.length, 0);
 });
 
+test('addOrderLine defaults kitchenStatus to PENDING; updateOrderLine bumps it to READY and back', async () => {
+  const { venue, table, menuItem } = await seedVenueWithTableAndMenu();
+  const order = await createOrder({
+    payload: { venueId: venue.id, tableId: table.id }
+  });
+  const withLine = await addOrderLine({
+    orderId: order.id,
+    payload: { menuItemId: menuItem.id, quantity: 1 }
+  });
+  const lineId = withLine.lines[0].id;
+  assert.equal(withLine.lines[0].kitchenStatus, 'PENDING');
+
+  const bumped = await updateOrderLine({
+    lineId,
+    payload: { kitchenStatus: 'READY' }
+  });
+  assert.equal(bumped.lines[0].kitchenStatus, 'READY');
+  assert.equal(bumped.lines[0].quantity, 1, 'bumping status must not touch quantity');
+
+  const unbumped = await updateOrderLine({
+    lineId,
+    payload: { kitchenStatus: 'PENDING' }
+  });
+  assert.equal(unbumped.lines[0].kitchenStatus, 'PENDING');
+});
+
 test('closeOrder transitions status and blocks further line changes', async () => {
   const { venue, table, menuItem } = await seedVenueWithTableAndMenu();
   const order = await createOrder({

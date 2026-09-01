@@ -10,9 +10,10 @@ const NAV_ITEMS = [
   { href: '/admin/floor', label: 'Floor', n: '03' },
   { href: '/admin/menu', label: 'Menu', n: '04' },
   { href: '/admin/orders', label: 'Orders', n: '05' },
-  { href: '/admin/events', label: 'Events', n: '06' },
-  { href: '/admin/settings', label: 'Settings', n: '07' },
-  { href: '/admin/billing', label: 'Billing', n: '08' }
+  { href: '/admin/kitchen', label: 'Kitchen', n: '06' },
+  { href: '/admin/events', label: 'Events', n: '07' },
+  { href: '/admin/settings', label: 'Settings', n: '08' },
+  { href: '/admin/billing', label: 'Billing', n: '09' }
 ];
 
 export function AdminNav() {

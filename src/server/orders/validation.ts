@@ -27,7 +27,8 @@ export const addOrderLineSchema = z
 export const updateOrderLineSchema = z
   .object({
     quantity: z.number().int().min(1).max(50).optional(),
-    notes: z.string().trim().max(300).nullable().optional()
+    notes: z.string().trim().max(300).nullable().optional(),
+    kitchenStatus: z.enum(['PENDING', 'READY']).optional()
   })
   .strict();
 

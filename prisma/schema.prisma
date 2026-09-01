@@ -119,6 +119,11 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum KitchenStatus {
+  PENDING
+  READY
+}
+
 enum OrderPaymentStatus {
   PENDING
   SUCCEEDED
@@ -696,9 +701,10 @@ model OrderLine {
   priceMinorSnapshot Int
   quantity           Int      @default(1)
   notes              String?
-  stockReserved      Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  stockReserved      Boolean       @default(false)
+  kitchenStatus      KitchenStatus @default(PENDING)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
